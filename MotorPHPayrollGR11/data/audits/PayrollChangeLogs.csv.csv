@@ -1,0 +1,2 @@
+Action,PerformedBy,TargetEmpID,PayPeriod,TicketID,OldPayslipFile,NewPayslipFile,DateTime,Status,Notes
+PAYSLIP_RECOMPUTE_OVERRIDE,20001,10000,260101-260115,GARCIAMANU10001260110001,10000_260101-260115.csv,10000_260101-260115.csv,2026-01-16T15:05:00,SUCCESS,Validated ticket and recomputed payslip based on corrected time entries.
