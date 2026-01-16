@@ -1,0 +1,22 @@
+Action,User,TargetEmpID,Field,OldValue,NewValue,DateTime,Status,Notes
+ADD,Super Admin,10000,ALL FIELDS,N/A,New Record,6/13/2025 0:03,Approved,New employee added
+ADD,Roderick Alvaro,10000,ALL FIELDS,N/A,New Record,2025-06-15 23:11:54,Approved,New employee added
+ADD,Super Admin,10035,ALL FIELDS,N/A,New Record,2025-06-16 22:56:59,Approved,New employee added
+DELETE,Super Admin,,ALL FIELDS,N/A,Employee Deleted,2025-06-16 22:57:15,Approved,Record removed
+UPDATE,Super Admin,10035,ALL FIELDS,N/A,Record modified,2025-06-16 23:14:26,Approved,Employee data updated
+DELETE,Super Admin,10035,ALL FIELDS,N/A,Employee Deleted,2025-06-16 23:15:45,Approved,Record removed
+UPDATE,Super Admin,10000,ALL FIELDS,N/A,Record modified,2025-06-16 23:20:46,Approved,Employee data updated
+ADD,Super Admin,10035,ALL FIELDS,N/A,New Record,2025-06-16 23:22:29,Approved,New employee added
+DELETE,Super Admin,10035,ALL FIELDS,N/A,Employee Deleted,2025-06-16 23:24:29,Approved,Record removed
+UPDATE,Brad San Jose,10034,ALL FIELDS,N/A,Record modified,2025-06-24 01:17:27,Approved,Employee data updated
+UPDATE,Brad San Jose,10034,ALL FIELDS,N/A,Record modified,2025-06-24 01:17:39,Approved,Employee data updated
+UPDATE,Andrea Mae Villanueva,10034,ALL FIELDS,N/A,Record modified,2025-06-29 08:50:16,Approved,Employee data updated
+ADD,Super Admin,10035,ALL FIELDS,N/A,New Record,2025-07-06 10:44:02,Approved,New employee added
+UPDATE,Super Admin,10035,ALL FIELDS,N/A,Record modified,2025-07-06 10:45:04,Approved,Employee data updated
+UPDATE,Andrea Mae Villanueva,10035,ALL FIELDS,N/A,Record modified,2025-07-07 00:49:07,Approved,Employee data updated
+UPDATE,Andrea Mae Villanueva,10034,ALL FIELDS,N/A,Record modified,2025-07-07 00:49:35,Approved,Employee data updated
+UPDATE,Andrea Mae Villanueva,10035,ALL FIELDS,N/A,Record modified,2025-07-07 00:51:42,Approved,Employee data updated
+DELETE,Super Admin,10035,ALL FIELDS,N/A,Employee Deleted,2025-07-08 00:28:52,Approved,Record removed
+ADD,Super Admin,10035,ALL FIELDS,N/A,New Record,2025-07-08 00:30:18,Approved,New employee added
+ADD,Andrea Mae Villanueva,10036,ALL FIELDS,N/A,New Record,2025-07-19 12:20:57,Approved,New employee added
+DELETE,Andrea Mae Villanueva,10036,ALL FIELDS,N/A,Employee Deleted,2025-07-19 12:21:50,Approved,Record removed
