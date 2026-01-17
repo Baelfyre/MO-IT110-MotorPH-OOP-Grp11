@@ -128,14 +128,7 @@ _Compliance layer using the Strategy Pattern to support regulatory updates (Open
 
 ---
 
-### 7) `com.motorph.ui.console`
-_Optional console UI used for quick testing/demo._
-
-- **`ConsoleApp`**: Command-line runner for testing workflows without Swing.
-
----
-
-### 8) `com.motorph.ui.swing`
+### 7) `com.motorph.ui.swing`
 _Swing UI layer aligned with system stakeholders and RBAC routing._
 
 - **`SwingApp`**: Application entry point. Initializes services and injects `DeductionStrategy2025` into payroll processing.
