@@ -13,91 +13,138 @@ Built in Java using layered architecture (Domain, Repository, Service, UI) with 
 
 ---
 
+## Project Architecture (Aligned with MotorPH BRS)
+
+This repository follows a layered, object-oriented architecture aligned with the MotorPH **Business Requirement Specification (BRS)** and Information Management principles. The design prioritizes:
+
+- **Regulatory Compliance**: payroll deductions and statutory contributions are computed using government reference tables (SSS Circular 2024-006-derived table, PhilHealth, Pag-IBIG, and withholding tax tables).
+- **Data Security (RBAC)**: access to features and sensitive payroll data is restricted by user roles (**Employee, HR, IT, Manager, Payroll**) through centralized access control.
+- **Reporting**: payroll outputs support generation of management reports such as the **Monthly Payroll Summary Report** (e.g., totals per department for SSS and tax).
+
+All ticketing modules have been removed to keep the scope focused on payroll compliance, role-based access, and reporting.
+
+---
+
 ## Package Overview
 
-### `com.motorph.domain.enum` (Enums)
-- **ApprovalStatus**: Standard values for approval workflow states (Pending, Approved, Rejected) used for timecard validation and payroll actions.
-- **Role**: Defines system roles (Employee, HR, IT, Manager, Payroll) used for role-based access control and UI routing.
-- **Permission** *(New)*: Fine-grained access rights (e.g., VIEW_REPORTS, RUN_PAYROLL, EDIT_EMPLOYEE, UNLOCK_USER, APPROVE_TIMECARD) enforced by `AccessControlService`.
-- **TicketCategory**: Groups tickets by type (Payroll, HR, IT) to route/organize issues properly.
-- **TicketStatus**: Tracks the lifecycle of a ticket (Open, In Progress, Resolved, Closed).
+### 1) `com.motorph.domain.enum`
+_Defining constants to ensure data integrity._
 
-### `com.motorph.domain.models` (Core domain objects)
-- **AuditLogEntry**: Represents a single audit record (who did what, when, and details) for traceability and security monitoring.
-- **DtrChangeLogEntry**: Captures edits made to DTR/time records (what changed, who changed it, and when).
-- **EmployeeProfile**: Master employee data record (employee number, name, birthday, salary base, department, and other profile fields). Used for department-based reporting.
-- **PayPeriod**: Represents a payroll cut-off window (start/end dates) used to group time entries/timecards and compute pay.
-- **Holiday** *(New)*: Stores holiday dates and type (Regular/Special). Used to automatically tag time entries and determine holiday pay eligibility.
-- **TimeEntry**: Represents a single day’s log (time in/time out). Includes logic/flags for Workday vs Weekend and supports holiday tagging.
-- **Timecard**: Aggregate root that groups a list of `TimeEntry` records for a pay period/week and is the unit submitted for approval.
-- **Payslip** *(Refactored Composite)*: Stores computed payroll results for an employee for a pay period. Now composed of:
-  - **Earnings** (Rate, Days Worked, Overtime)
-  - **Benefits** (Rice, Clothing, Phone)
-  - **Deductions** (SSS, PhilHealth, Pag-IBIG, Withholding Tax)
-- **UserAccount**: Holds login/access information (username, password hash, role, lock status, etc.) and links to `EmployeeProfile`.
-- **Ticket**: Stores ticket details (ID, creator, category, status, description, timestamps, assignment).
+- **`Role`**: Defines system roles (**Employee, HR, IT, Manager, Payroll**) to enforce role-based access across dashboards and services.
+- **`ApprovalStatus`**: Standardizes workflow states (**Pending, Approved, Rejected**) used for timecard approval and validation.
 
-### `com.motorph.repository` (Repository interfaces: contracts)
-- **AuditRepository**: Defines how audit logs are saved/retrieved.
-- **EmployeeRepository**: Defines CRUD/read operations for employee master data.
-- **PayslipRepository**: Defines how generated payslips are stored and retrieved (supports historical Monthly Payroll Summary reporting).
-- **TimeEntryRepository**: Defines how daily time logs are stored and queried.
-- **TimecardRepository** *(Recommended)*: Defines how timecards are stored, retrieved, and queried for approval workflows.
-- **UserAccountRepository**: Defines how user accounts are stored, retrieved, and authenticated against.
-- **HolidayRepository** *(New)*: Defines how holiday dates are retrieved to support holiday tagging and pay eligibility.
-- **TeamRepository**: Defines how team/department mappings are stored/retrieved (often for assignment/routing).
-- **TicketRepository**: Defines how tickets are created, updated, and queried.
+---
 
-### `com.motorph.repository.csv` (CSV persistence implementations)
-- **CsvAuditRepository**: CSV-based implementation of `AuditRepository`.
-- **CsvEmployeeRepository**: CSV-based implementation of `EmployeeRepository`.
-- **CsvPayslipRepository**: CSV-based implementation of `PayslipRepository`.
-- **CsvTimeEntryRepository**: CSV-based implementation of `TimeEntryRepository`.
-- **CsvTimecardRepository** *(Recommended)*: CSV-based implementation of `TimecardRepository` if timecards are persisted separately from time entries.
-- **CsvUserAccountRepository**: CSV-based implementation of `UserAccountRepository`.
-- **CsvHolidayRepository** *(New)*: Loads holiday reference data (e.g., `Holidays_2025.csv`).
-- **CsvTeamRepository**: CSV-based implementation of `TeamRepository`.
-- **CsvTicketRepository**: CSV-based implementation of `TicketRepository`.
-- **DataPaths** *(Updated)*: Central configuration for CSV file paths/constants so file locations are not hardcoded across classes. Includes compliance/reference tables, such as:
-  - `SSS_Table_2025.csv`
-  - `Philhealth_2025.csv`
-  - `Tax_Table.csv`
-  - `Pagibig_Table.csv` 
-  - `Holidays_2025.csv`
+### 2) `com.motorph.domain.models`
+_Rich domain models designed to support payroll computation, compliance, and reporting._
 
-### `com.motorph.service` (Business logic layer)
-- **AuthService**: Handles login validation, user authentication, lockout checks, and failed-login audit logging.
-- **AccessControlService**: Enforces permissions (what each role can view/do) across features using `Role` and `Permission`.
-- **EmployeeService**: Employee-related operations (fetch/update profiles, validations, salary/department changes).
-- **TimeEntryService**: Validates/processes time entries and prepares them for weekly/pay-period aggregation.
-- **TimecardApprovalService**: Handles submit/approve/reject flows for timecards (ties into `ApprovalStatus`).
-- **PayrollService**: Core payroll orchestration (approved timecards → gross → deductions → net) and payslip generation; delegates deductions to a strategy implementation.
-- **ReportGenerationService** *(New)*: Generates reporting outputs such as the Monthly Payroll Summary Matrix (e.g., totals per department: SSS, tax, etc.) using persisted payslip data.
-- **UserMaintenanceService**: Admin functions for accounts (create/update users, role changes, lock/unlock, password resets).
-- **TicketIdGenerator**: Generates unique ticket IDs (often with sequence + formatting rules).
-- **TicketService**: Ticketing business logic (create ticket, assign, update status, list/filter).
+- **`EmployeeProfile`**: Master employee record. Stores personal details, salary base, and **department** (used for Summary Report grouping).
+- **`UserAccount`**: Links to `EmployeeProfile`. Stores credentials and assigned `Role` to support RBAC security (including lockout status if implemented).
+- **`PayPeriod`**: Represents payroll cut-off windows (start/end dates) used to group time entries, timecards, and payslips consistently.
+- **`Timecard`**: **Aggregate root.** Contains a list of `TimeEntry` records for a pay period/week and is the unit submitted for manager approval.
+- **`TimeEntry`**: One day log (Time In/Time Out). Includes checks for **workday vs weekend** and supports holiday tagging.
+- **`Holiday`** *(New)*: Stores holiday dates and type (Regular/Special) to automate holiday tagging and pay eligibility rules (including double-pay logic if required).
+- **`Payslip`** *(Refactored Composite)*: Represents payroll results for an employee and pay period. Structured to match the payslip layout using:
+  - **`Earnings`** (Rate, Days Worked, Overtime)
+  - **`Benefits`** (Rice, Clothing, Phone)
+  - **`Deductions`** (SSS, PhilHealth, **Pag-IBIG**, Withholding Tax)
+- **`AuditLogEntry`**: Records security-relevant actions and key system events (e.g., failed logins, payroll runs/overrides, approvals) for traceability.
+- **`DtrChangeLogEntry`**: Captures edits made to DTR/time records (what changed, who changed it, and when) for audit and accountability.
 
-### `com.motorph.service.strategy` *(New: Compliance via Strategy Pattern)*
-- **DeductionStrategy**: Interface defining deduction computations (SSS, PhilHealth, Pag-IBIG, Withholding Tax).
-- **DeductionStrategy2025**: Concrete implementation that reads from the current compliance tables (SSS/PhilHealth/Tax/Pag-IBIG) to keep payroll rules compliant and maintainable.
+---
 
-### `com.motorph.ui.console` (Console UI)
-- **ConsoleApp**: Command-line runner for quick testing/demo of workflows without Swing.
+### 3) `com.motorph.repository`
+_Interfaces defining contracts for data persistence._
 
-### `com.motorph.ui.swing` (Swing UI)
-- **SwingApp**: Main entry point/launcher for the Swing application and dependency initialization (including deduction strategy injection).
-- **LoginView**: Login screen UI; calls `AuthService`.
-- **HomeView**: General landing page after login; routes users to role-specific dashboards.
-- **EmployeeDashboardView** *(New)*: Employee Self-Service (Time In/Out, view own payslip, view profile).
-- **HrDashboardView**: HR-specific dashboard (employee profile maintenance and HR actions).
-- **ItDashboardView**: IT-specific dashboard (account maintenance, lockout toggles, system utilities).
-- **ManagerDashboardView**: Manager dashboard (timecard review/approval, team oversight).
-- **PayrollDashboardView**: Payroll dashboard (payslip generation, payroll runs, reporting access).
-- **ProfileView**: Displays employee/user profile details (read-only or editable depending on role).
-- **PayView**: Payslip viewing screen that matches the payslip structure (Earnings vs Benefits vs Deductions).
-- **TicketsView**: Ticket list/details UI (create, view, filter, update status based on permissions).
+- **`EmployeeRepository`**: Read/write operations for employee master data.
+- **`PayslipRepository`**: Stores generated payslips (supports historical retrieval for Monthly Payroll Summary and reporting).
+- **`TimeEntryRepository`**: Stores and queries daily attendance logs used to compute timecards and hours.
+- **`UserAccountRepository`**: Stores and retrieves user accounts for authentication and access control.
+- **`HolidayRepository`** *(New)*: Retrieves holiday reference data used for holiday tagging and pay eligibility.
+- **`AuditRepository`**: Stores and retrieves audit log records (`AuditLogEntry`) used for security monitoring and traceability.
 
-## Notes
-- Current implementation focuses on establishing a clean project structure (domain models, repositories, services, and UI screens) as the foundation.
-- Compliance tables (SSS/PhilHealth/Tax/Pag-IBIG) are treated as reference datasets; payslips and summary reports are generated outputs derived from approved timecards.
-- Features and validations will be implemented incrementally, with access control enforced centrally through `AccessControlService` to avoid duplicated security logic across UI screens.
+> If your persistence design treats timecards as first-class stored records (separate from raw time entries), add:
+> - **`TimecardRepository`**: Stores and retrieves `Timecard` aggregates for approval workflows and payroll processing.
+
+---
+
+### 4) `com.motorph.repository.csv`
+_CSV-based implementations responsible for file I/O and storage paths._
+
+- **`CsvEmployeeRepository`**: CSV persistence for employee profiles.
+- **`CsvPayslipRepository`**: CSV persistence for generated payslips (final payroll outputs).
+- **`CsvTimeEntryRepository`**: CSV persistence for daily time logs.
+- **`CsvUserAccountRepository`**: CSV persistence for user credentials and role assignments.
+- **`CsvHolidayRepository`** *(New)*: Loads holiday reference data from the holiday calendar CSV.
+- **`CsvAuditRepository`**: CSV persistence for audit logs (failed logins, approvals, payroll actions).
+- **`DataPaths`** *(Updated)*: Centralized configuration of CSV file paths, including:
+  - **Master Data**
+    - `data_Employee.csv`
+    - `data_Login.csv` (user accounts)
+    - `data_HolidayCalendar.csv`
+    - `data_Supervisor.csv` (if used for manager/team mapping)
+  - **Records / Outputs**
+    - `records_dtr/` (per-employee DTR logs)
+    - `records_payroll/` (per-employee payroll run records)
+    - `records_payslips/` (generated payslip outputs)
+  - **Change Logs**
+    - `changeLogs_DTR.csv`
+    - `changeLogs_EmpDataChangeLogs.csv`
+    - `changeLogs_Payroll.csv`
+  - **Compliance Tables (Government Reference Tables)**
+    - `gov_SSS_Table.csv`
+    - `gov_Philhealth_Table.csv`
+    - `gov_Pagibig_Table.csv`
+    - `gov_Tax_Table.csv`
+
+> Note: Government tables should be treated as read-only reference datasets during runtime.
+
+---
+
+### 5) `com.motorph.service`
+_Business logic layer for compliance, security, payroll computation, approvals, and reporting._
+
+- **`AuthService`**: Authenticates users and performs lockout checks. Logs failed attempts via `AuditRepository` to mitigate unauthorized access risks.
+- **`AccessControlService`** *(New)*: RBAC “gatekeeper” that enforces role permissions before allowing access to restricted dashboards/features.
+- **`EmployeeService`**: Manages `EmployeeProfile` updates (salary adjustments, position/department changes) and logs sensitive changes when applicable.
+- **`TimeEntryService`**: Validates and processes time entries and prepares them for aggregation into a timecard.
+- **`TimecardApprovalService`**: Handles submit/approve/reject flows for timecards (ties into `ApprovalStatus`) and logs approval actions to audit when applicable.
+- **`TimeCardService`** *(Renamed/Scoped)*: Validates time logs and cross-references `HolidayRepository` to tag holidays and compute correct hour classifications (regular/overtime/holiday).
+- **`PayrollService`** *(Core)*: Orchestrates payroll processing flow (approved timecard → gross → deductions → net → payslip persistence). Delegates deduction calculations to a strategy implementation.
+- **`ReportGenerationService`** *(New)*: Aggregates payslip data to generate the **Monthly Payroll Summary Matrix** (e.g., total SSS and total tax per department).
+- **`UserMaintenanceService`**: IT admin operations such as unlocking accounts and resetting passwords (with audit logging for security-relevant actions).
+
+---
+
+### 6) `com.motorph.service.strategy`
+_Compliance layer using the Strategy Pattern to support regulatory updates (Open/Closed Principle)._
+
+- **`DeductionStrategy`**: Interface defining deduction computation contracts:
+  - `calculateSSS()`
+  - `calculatePhilHealth()`
+  - `calculatePagibig()`
+  - `calculateTax()`
+- **`DeductionStrategy2025`**: Concrete strategy that applies the current reference tables (SSS Circular 2024-006-derived table, PhilHealth, Pag-IBIG, and withholding tax rules) to ensure compliant and maintainable payroll deductions.
+
+---
+
+### 7) `com.motorph.ui.console`
+_Optional console UI used for quick testing/demo._
+
+- **`ConsoleApp`**: Command-line runner for testing workflows without Swing.
+
+---
+
+### 8) `com.motorph.ui.swing`
+_Swing UI layer aligned with system stakeholders and RBAC routing._
+
+- **`SwingApp`**: Application entry point. Initializes services and injects `DeductionStrategy2025` into payroll processing.
+- **`LoginView`**: Secure login screen calling `AuthService`.
+- **`HomeView`** *(Router)*: Redirects users to the correct dashboard based on `Role`.
+- **`EmployeeDashboardView`** *(New)*: Employee self-service for Time In/Out and viewing personal payslips.
+- **`ManagerDashboardView`**: Timecard review and approval (shows `ApprovalStatus.PENDING`; allows Approve/Reject).
+- **`HrDashboardView`**: HR management view for editing employee profile data.
+- **`ItDashboardView`**: IT tools for account maintenance via `UserMaintenanceService` (unlock/reset).
+- **`PayrollDashboardView`**: Payroll processing and reporting dashboard; triggers payslip generation and opens Summary Report view/output.
+- **`PayView`**: Payslip presentation view matching the payslip structure (Earnings/Benefits/Deductions).
+- **`ProfileView`**: Employee profile view (read-only for employees; editable for HR).
