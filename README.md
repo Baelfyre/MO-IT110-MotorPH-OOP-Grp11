@@ -1,6 +1,6 @@
 # MO-IT110-MotorPH-OOP-Grp11
 
-MotorPH Payroll and Inventory System (OOP) for **MO-IT110**.  
+MotorPH Payroll and Employee Management System (OOP) for **MO-IT110**.  
 Built in Java using layered architecture (Domain, Repository, Service, UI) with CSV-backed persistence and role-based screens.
 
 ---
