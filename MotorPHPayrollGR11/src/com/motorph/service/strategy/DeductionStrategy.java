@@ -9,5 +9,13 @@ package com.motorph.service.strategy;
  * @author ACER
  */
 public interface DeductionStrategy {
-    
+
+    // [Method Dictionary Implementation]
+    double calculateSSS(double grossPay);
+
+    double calculatePhilHealth(double grossPay);
+
+    double calculatePagibig(double grossPay);
+
+    double calculateTax(double taxableIncome);
 }

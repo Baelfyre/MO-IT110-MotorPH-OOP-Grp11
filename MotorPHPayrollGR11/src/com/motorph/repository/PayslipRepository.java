@@ -3,11 +3,12 @@
  * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Interface.java to edit this template
  */
 package com.motorph.repository;
+import com.motorph.domain.models.Payslip;
 
 /**
  *
  * @author ACER
  */
 public interface PayslipRepository {
-    
+    boolean save(Payslip payslip);
 }

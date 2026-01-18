@@ -4,10 +4,21 @@
  */
 package com.motorph.repository;
 
+import com.motorph.domain.models.AuditLogEntry;
+
 /**
  *
  * @author ACER
  */
 public interface AuditRepository {
-    
+
+    // Generic save
+    void save(AuditLogEntry entry);
+
+    // Specific Log Methods (This fixes your error!)
+    void logPayrollChange(String user, String details);
+
+    void logEmpDataChange(String user, String details);
+
+    void logDtrChange(String user, String details);
 }

@@ -4,17 +4,22 @@
  */
 package com.motorph.ui.swing;
 
+import com.motorph.repository.csv.CsvUserAccountRepository;
+import com.motorph.service.AuthService;
+import javax.swing.SwingUtilities;
+
 /**
  *
  * @author ACER
  */
 public class SwingApp {
 
-    /**
-     * @param args the command line arguments
-     */
     public static void main(String[] args) {
-        // TODO code application logic here
+        SwingUtilities.invokeLater(() -> {
+            CsvUserAccountRepository userRepo = new CsvUserAccountRepository();
+            AuthService authService = new AuthService(userRepo);
+            LoginView loginView = new LoginView(authService);
+            loginView.setVisible(true);
+        });
     }
-    
 }
