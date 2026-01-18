@@ -10,6 +10,8 @@ import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 
 /**
  * Implementation that saves calculated Payslips to a CSV file. Saves to
@@ -19,42 +21,52 @@ import java.io.IOException;
  */
 public class CsvPayslipRepository implements PayslipRepository {
 
-    // Helper: Construct filename "records_payslip_10001.csv"
-    private File getFileForEmployee(int empId) {
-        // Ensure DataPaths.PAYSLIP_FOLDER ends with a slash in DataPaths.java
-        return new File(DataPaths.PAYSLIP_FOLDER + "records_payslip_" + empId + ".csv");
-    }
+    private static final DateTimeFormatter DATE_FMT = DateTimeFormatter.ofPattern("yyyy-MM-dd");
+    private static final DateTimeFormatter TIME_FMT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
     @Override
     public boolean save(Payslip p) {
-        File file = getFileForEmployee(p.getEmployeeId());
+        // Filename format: records_payslips_{EmpID}_{Period}.csv
+        String periodRange = p.getPeriod().getStartDate().format(DateTimeFormatter.ofPattern("yyMMdd")) + "-" +
+                             p.getPeriod().getEndDate().format(DateTimeFormatter.ofPattern("yyMMdd"));
+        
+        File file = new File(DataPaths.PAYSLIP_FOLDER + "records_payslips_" + p.getEmployeeId() + "_" + periodRange + ".csv");
 
-        // Safety: Auto-Create folder if missing
-        if (file.getParentFile() != null) {
-            file.getParentFile().mkdirs();
-        }
-
+        if (file.getParentFile() != null) file.getParentFile().mkdirs();
         boolean isNewFile = !file.exists();
 
-        try (BufferedWriter bw = new BufferedWriter(new FileWriter(file, true))) { // true = append mode
+        try (BufferedWriter bw = new BufferedWriter(new FileWriter(file, true))) {
             if (isNewFile) {
-                // WRITE HEADER
-                bw.write("TransactionID,PeriodStart,PeriodEnd,GrossIncome,TotalDeductions,NetPay");
+                bw.write("EmployeeID,LastName,FirstName,PayPeriodStart,PayPeriodEnd,BasicSalary," +
+                         "RiceAllowance,PhoneAllowance,ClothingAllowance,GrossSemiMonthlyRate,HourlyRate," +
+                         "TotalHoursWorked,GrossIncome,SSS,PhilHealth,Pagibig,WithholdingTax," +
+                         "TotalDeductions,NetPay,ProcessedBy,DateProcessed");
                 bw.newLine();
             }
 
-            // Extract dates safely (prevent crash if period is null)
-            String start = (p.getPeriod() != null) ? p.getPeriod().getStartDate().toString() : "";
-            String end = (p.getPeriod() != null) ? p.getPeriod().getEndDate().toString() : "";
-
-            // Simple CSV Line Generation
-            String line = String.format("%s,%s,%s,%.2f,%.2f,%.2f",
-                    p.getTransactionId(),
-                    start,
-                    end,
-                    p.getGrossIncome(),
-                    p.getTotalDeductions(),
-                    p.getNetPay()
+            // Formatting the detailed row
+            String line = String.format("%d,%s,%s,%s,%s,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%s,%s",
+                p.getEmployeeId(),
+                p.getLastName(),
+                p.getFirstName(),
+                p.getPeriod().getStartDate().format(DATE_FMT),
+                p.getPeriod().getEndDate().format(DATE_FMT),
+                p.getBasicSalary(),
+                p.getRiceAllowance(),
+                p.getPhoneAllowance(),
+                p.getClothingAllowance(),
+                p.getGrossSemiMonthlyRate(),
+                p.getHourlyRate(),
+                p.getTotalHoursWorked(),
+                p.getGrossIncome(),
+                p.getSss(),
+                p.getPhilHealth(),
+                p.getPagIbig(),
+                p.getWithholdingTax(),
+                p.getTotalDeductions(),
+                p.getNetPay(),
+                "Admin", // Can be replaced with session user ID
+                LocalDateTime.now().format(TIME_FMT)
             );
 
             bw.write(line);

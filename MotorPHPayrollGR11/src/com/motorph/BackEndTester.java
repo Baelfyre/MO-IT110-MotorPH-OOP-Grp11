@@ -8,12 +8,11 @@ import com.motorph.service.strategy.DeductionStrategy2025;
 
 import java.time.Duration;
 import java.time.LocalDate;
-import java.time.LocalTime;
 import java.util.List;
 
 /**
  * CONSOLE TEST RUNNER 
- * Verifies Backend Logic and displays detailed Attendance/Work Duration.
+ * Verifies Backend Logic and displays detailed Attendance and Payroll Breakdown.
  */
 public class BackEndTester {
 
@@ -31,17 +30,17 @@ public class BackEndTester {
                 empRepo, timeRepo, strategy, payslipRepo, auditRepo
         );
 
-        // 2. Define Test Data
-        int employeeId = 10001;
-        LocalDate start = LocalDate.of(2024, 6, 1);
-        LocalDate end = LocalDate.of(2024, 6, 30);
+        // 2. Define Test Data (Employee 10001 - Manuel Garcia)
+        int employeeId = 10002;
+        LocalDate start = LocalDate.of(2024, 7, 1);
+        LocalDate end = LocalDate.of(2024, 7, 30);
         PayPeriod period = new PayPeriod(start, end);
 
         System.out.println("Testing Attendance and Calculation for Emp ID: " + employeeId);
         System.out.println("Period: " + start + " to " + end);
         System.out.println("--------------------------------------------------");
 
-        // 3. NEW: Display Attendance Logs and Duration
+        // 3. Display Attendance Logs and Duration
         List<TimeEntry> entries = timeRepo.findByEmployeeAndPeriod(employeeId, period);
         
         if (entries.isEmpty()) {
@@ -67,20 +66,38 @@ public class BackEndTester {
             }
         }
 
-        // 4. Run Calculation
+        // 4. Run Calculation (Passing 10001 as the Admin processing this)
         Payslip result = payrollService.generatePayslip(employeeId, period, 10001);
 
-        // 5. Print Financial Results
+        // 5. Detailed Calculation Results
         if (result != null) {
-            System.out.println("\n--- FINAL CALCULATION RESULT ---");
-            System.out.println("Basic Salary : " + String.format("%.2f", result.getBasicSalary()));
-            System.out.println("Gross Income : " + String.format("%.2f", result.getGrossIncome()));
+            System.out.println("\n--- EMPLOYEE IDENTITY ---");
+            System.out.println("Name         : " + result.getLastName() + ", " + result.getFirstName());
+            System.out.println("Employee ID  : " + result.getEmployeeId());
+            
+            System.out.println("\n--- WORK DURATION & RATES ---");
+            System.out.println("Hourly Rate  : " + String.format("%.2f", result.getHourlyRate()));
+            System.out.println("Total Hours  : " + String.format("%.2f", result.getTotalHoursWorked()));
+            
+            System.out.println("\n--- EARNINGS BREAKDOWN ---");
+            System.out.println("Basic (Semi) : " + String.format("%.2f", result.getBasicSalary()));
+            System.out.println("Rice Allow.  : " + String.format("%.2f", result.getRiceAllowance()));
+            System.out.println("Phone Allow. : " + String.format("%.2f", result.getPhoneAllowance()));
+            System.out.println("Cloth Allow. : " + String.format("%.2f", result.getClothingAllowance()));
+            System.out.println("Overtime Pay : " + String.format("%.2f", result.getOvertimePay()));
             System.out.println("--------------------------");
+            System.out.println("GROSS INCOME : " + String.format("%.2f", result.getGrossIncome()));
+
+            System.out.println("\n--- DEDUCTIONS ---");
+            System.out.println("Late/Under   : " + String.format("%.2f", result.getLateDeduction()));
             System.out.println("SSS          : " + String.format("%.2f", result.getSss()));
             System.out.println("PhilHealth   : " + String.format("%.2f", result.getPhilHealth()));
             System.out.println("Pag-IBIG     : " + String.format("%.2f", result.getPagIbig()));
-            System.out.println("Tax          : " + String.format("%.2f", result.getWithholdingTax()));
+            System.out.println("Withholding  : " + String.format("%.2f", result.getWithholdingTax()));
             System.out.println("--------------------------");
+            System.out.println("TOTAL DEDUCT : " + String.format("%.2f", result.getTotalDeductions()));
+
+            System.out.println("\n--- NET RESULT ---");
             System.out.println("NET PAY      : " + String.format("%.2f", result.getNetPay()));
             System.out.println("--------------------------");
             System.out.println("Status: Saved to records_payslips.csv");

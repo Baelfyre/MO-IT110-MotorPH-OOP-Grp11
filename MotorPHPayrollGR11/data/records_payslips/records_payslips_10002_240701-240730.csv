@@ -1,0 +1,2 @@
+EmployeeID,LastName,FirstName,PayPeriodStart,PayPeriodEnd,BasicSalary,RiceAllowance,PhoneAllowance,ClothingAllowance,GrossSemiMonthlyRate,HourlyRate,TotalHoursWorked,GrossIncome,SSS,PhilHealth,Pagibig,WithholdingTax,TotalDeductions,NetPay,ProcessedBy,DateProcessed
+10002,Lim,Antonio,2024-07-01,2024-07-30,30000.00,750.00,1000.00,500.00,30000.00,357.14,163.93,18866.18,950.00,471.65,100.00,0.00,17122.72,17344.52,Admin,2026-01-18 02:45:42

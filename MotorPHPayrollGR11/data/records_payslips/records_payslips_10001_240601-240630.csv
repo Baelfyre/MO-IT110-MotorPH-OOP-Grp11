@@ -1,0 +1,2 @@
+EmployeeID,LastName,FirstName,PayPeriodStart,PayPeriodEnd,BasicSalary,RiceAllowance,PhoneAllowance,ClothingAllowance,GrossSemiMonthlyRate,HourlyRate,TotalHoursWorked,GrossIncome,SSS,PhilHealth,Pagibig,WithholdingTax,TotalDeductions,NetPay,ProcessedBy,DateProcessed
+10001,Garcia,Manuel III,2024-06-01,2024-06-30,45000.00,750.00,1000.00,500.00,45000.00,535.71,170.45,42542.45,1750.00,1063.56,100.00,4073.97,22174.91,35554.92,Admin,2026-01-18 02:44:44
