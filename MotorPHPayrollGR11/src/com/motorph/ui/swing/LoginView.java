@@ -1,21 +1,91 @@
 /*
  * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
- * Click nbfs://nbhost/SystemFileSystem/Templates/GUIForms/JPanel.java to edit this template
+ * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
  */
 package com.motorph.ui.swing;
 
+import com.motorph.domain.models.UserAccount;
+import com.motorph.service.AuthService;
+import javax.swing.*;
+import java.awt.*;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
+
 /**
- *
+ * Login Panel (Not a Frame). 
+ * This sits inside the MainFrame.
  * @author ACER
  */
-public class LoginView extends javax.swing.JPanel {
+public class LoginView extends JPanel {
 
-    /**
-     * Creates new form LoginView
-     */
-    public LoginView() {
+    private AuthService authService;
+    
+    // UI Components
+    private JTextField userField;
+    private JPasswordField passField;
+    private JButton loginButton;
+
+    // Constructor
+    public LoginView(AuthService authService) {
+        this.authService = authService;
         initComponents();
     }
+
+    private void initComponents() {
+        // Set Layout for this Panel
+        // We use GridBagLayout for centering, or GridLayout for simple rows.
+        // Let's stick to the grid you had, but maybe look nicer with a border.
+        setLayout(new GridLayout(4, 2, 10, 10)); 
+        setBorder(BorderFactory.createEmptyBorder(50, 50, 50, 50)); // Add padding around edges
+
+        // --- ROW 1: Username ---
+        add(new JLabel("Username:"));
+        userField = new JTextField();
+        add(userField);
+
+        // --- ROW 2: Password ---
+        add(new JLabel("Password:"));
+        passField = new JPasswordField();
+        add(passField);
+
+        // --- ROW 3: Button ---
+        add(new JLabel("")); // Spacer
+        loginButton = new JButton("Login");
+        add(loginButton);
+
+        // --- ROW 4: Status Area ---
+        add(new JLabel("")); 
+        add(new JLabel("")); 
+
+        // --- ACTION LISTENER ---
+        loginButton.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                performLogin();
+            }
+        });
+    }
+
+private void performLogin() {
+        String user = userField.getText();
+        String pass = new String(passField.getPassword());
+
+        UserAccount account = authService.authenticate(user, pass);
+
+        if (account != null) {
+            // Get the parent window (MainFrame)
+            Window parentWindow = SwingUtilities.getWindowAncestor(this);
+            
+            if (parentWindow instanceof MainFrame) {
+                // Tell MainFrame to switch screens
+                ((MainFrame) parentWindow).showDashboard(account);
+            }
+            
+        } else {
+            JOptionPane.showMessageDialog(this, "Invalid Username or Password", "Error", JOptionPane.ERROR_MESSAGE);
+        }
+    }
+}
 
     /**
      * This method is called from within the constructor to initialize the form.

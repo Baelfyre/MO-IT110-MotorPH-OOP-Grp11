@@ -1,23 +1,95 @@
 /*
  * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
- * Click nbfs://nbhost/SystemFileSystem/Templates/GUIForms/JFrame.java to edit this template
+ * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
  */
 package com.motorph.ui.swing;
 
+import com.motorph.domain.models.UserAccount;
+import com.motorph.repository.csv.CsvUserAccountRepository;
+import com.motorph.service.AccessControlService;
+import com.motorph.service.AuthService;
+import javax.swing.*;
+
 /**
- *
+ * The Main Window of the application.
+ * It acts as a container that swaps between the Login Panel and Dashboard Panel.
  * @author ACER
  */
-public class MainFrame extends javax.swing.JFrame {
+public class MainFrame extends JFrame {
     
-    private static final java.util.logging.Logger logger = java.util.logging.Logger.getLogger(MainFrame.class.getName());
+    // Services needed by the panels
+    private AuthService authService;
+
+    public MainFrame() {
+        // 1. Initialize Services (Dependency Injection)
+        // We create them here and pass them down to the panels
+        this.authService = new AuthService(new CsvUserAccountRepository());
+
+        // 2. Setup the Main Window
+        setTitle("MotorPH Payroll System");
+        setSize(800, 600); // Default size
+        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        setLocationRelativeTo(null); // Center on screen
+        
+        // 3. Start with the Login Screen
+        showLoginPanel();
+    }
 
     /**
-     * Creates new form MainFrame
+     * Switches the current view to the Login Panel.
      */
-    public MainFrame() {
-        initComponents();
+    public void showLoginPanel() {
+        // Create the Login Panel and pass the AuthService to it
+        LoginView loginPanel = new LoginView(authService);
+        
+        // Clear old content and add the new panel
+        setContentPane(loginPanel);
+        revalidate();
+        repaint();
     }
+
+    /**
+     * Switches the current view to the Main Dashboard.
+     * Called by LoginView when login is successful.
+     * @param user The logged-in user.
+     */
+public void showDashboard(UserAccount user) {
+        // Create the Access Control Service
+        AccessControlService accessService = new AccessControlService();
+
+        // --- DECISION TREE ---
+        
+        if (accessService.checkAccess(user, "ItDashboardView")) {
+             // JOptionPane.showMessageDialog(this, "Opening IT Dashboard...");
+             // setContentPane(new ItDashboardView()); 
+             System.out.println("Opening IT Dashboard");
+             
+        } else if (accessService.checkAccess(user, "ManagerDashboardView")) {
+             // setContentPane(new ManagerDashboardView(user));
+             System.out.println("Opening Manager Dashboard");
+
+        } else if (accessService.checkAccess(user, "PayrollDashboardView")) {
+             // setContentPane(new PayrollDashboardView());
+             System.out.println("Opening Payroll Dashboard");
+
+        } else {
+             // Default for everyone else (Regular Employees)
+             // setContentPane(new EmployeePortalView(user));
+             System.out.println("Opening Employee Portal");
+        }
+
+        revalidate();
+        repaint();
+    }
+
+    // --- APPLICATION ENTRY POINT ---
+    public static void main(String[] args) {
+        // Use SwingUtilities to ensure thread safety
+        SwingUtilities.invokeLater(() -> {
+            new MainFrame().setVisible(true);
+        });
+    }
+}
 
     /**
      * This method is called from within the constructor to initialize the form.

@@ -4,10 +4,16 @@
  */
 package com.motorph.repository;
 
+import com.motorph.domain.models.EmployeeProfile;
+
 /**
  *
  * @author ACER
  */
 public interface EmployeeRepository {
+    // Existing method
+    EmployeeProfile findByEmployeeNumber(int employeeNumber);
     
+    // --- NEW: Add this line ---
+    void create(EmployeeProfile emp);
 }
