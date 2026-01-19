@@ -8,10 +8,6 @@ package com.motorph.domain.enums;
  *
  * @author OngoJ
  */
-public enum Role {
-    EMPLOYEE,
-    HR,
-    IT,
-    MANAGER,
-    PAYROLL
+public enum LeaveStatus {
+    
 }

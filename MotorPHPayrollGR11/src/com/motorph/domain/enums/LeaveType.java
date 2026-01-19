@@ -6,12 +6,8 @@ package com.motorph.domain.enums;
 
 /**
  *
- * @author OngoJ
+ * @author ACER
  */
-public enum Role {
-    EMPLOYEE,
-    HR,
-    IT,
-    MANAGER,
-    PAYROLL
+public enum LeaveType {
+    
 }

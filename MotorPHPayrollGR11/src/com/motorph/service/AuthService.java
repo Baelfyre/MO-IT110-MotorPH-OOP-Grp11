@@ -5,10 +5,10 @@
 package com.motorph.service;
 
 import com.motorph.domain.models.AuditLogEntry;
-import com.motorph.domain.models.UserAccount;
+import com.motorph.domain.models.User;
 import com.motorph.repository.AuditRepository;
-import com.motorph.repository.UserAccountRepository;
 import java.time.LocalDateTime;
+import com.motorph.repository.UserRepository;
 
 /**
  * Handles security and login logic. Integrated with AuditRepository to track
@@ -18,11 +18,11 @@ import java.time.LocalDateTime;
  */
 public class AuthService {
 
-    private final UserAccountRepository userRepo;
+    private final UserRepository userRepo;
     private final AuditRepository auditRepo; // Add this
 
     // Update Constructor to accept AuditRepository
-    public AuthService(UserAccountRepository userRepo, AuditRepository auditRepo) {
+    public AuthService(UserRepository userRepo) {
         this.userRepo = userRepo;
         this.auditRepo = auditRepo;
     }
@@ -30,10 +30,10 @@ public class AuthService {
     /**
      * Verifies credentials and logs the attempt.
      *
-     * @return UserAccount if successful, null if failed.
+     * @return User if successful, null if failed.
      */
-    public UserAccount authenticate(String username, String password) {
-        UserAccount user = userRepo.findByUsername(username);
+    public User authenticate(String username, String password) {
+        User user = userRepo.findByUsername(username);
 
         // 1. Check if User Exists
         if (user == null) {

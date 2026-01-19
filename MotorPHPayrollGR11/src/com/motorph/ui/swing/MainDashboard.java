@@ -8,14 +8,14 @@ package com.motorph.ui.swing;
  *
  * @author ACER
  */
-public class LoginView extends javax.swing.JFrame {
+public class MainDashboard extends javax.swing.JFrame {
     
-    private static final java.util.logging.Logger logger = java.util.logging.Logger.getLogger(LoginView.class.getName());
+    private static final java.util.logging.Logger logger = java.util.logging.Logger.getLogger(MainDashboard.class.getName());
 
     /**
-     * Creates new form LoginView
+     * Creates new form MainDashboard
      */
-    public LoginView() {
+    public MainDashboard() {
         initComponents();
     }
 
@@ -66,7 +66,7 @@ public class LoginView extends javax.swing.JFrame {
         //</editor-fold>
 
         /* Create and display the form */
-        java.awt.EventQueue.invokeLater(() -> new LoginView().setVisible(true));
+        java.awt.EventQueue.invokeLater(() -> new MainDashboard().setVisible(true));
     }
 
     // Variables declaration - do not modify//GEN-BEGIN:variables

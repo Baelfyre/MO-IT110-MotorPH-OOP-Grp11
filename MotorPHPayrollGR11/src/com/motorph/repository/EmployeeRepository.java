@@ -4,7 +4,7 @@
  */
 package com.motorph.repository;
 
-import com.motorph.domain.models.EmployeeProfile;
+import com.motorph.domain.models.Employee;
 
 /**
  *
@@ -12,8 +12,8 @@ import com.motorph.domain.models.EmployeeProfile;
  */
 public interface EmployeeRepository {
     // Existing method
-    EmployeeProfile findByEmployeeNumber(int employeeNumber);
+    Employee findByEmployeeNumber(int employeeNumber);
     
     // --- NEW: Add this line ---
-    void create(EmployeeProfile emp);
+    void create(Employee emp);
 }

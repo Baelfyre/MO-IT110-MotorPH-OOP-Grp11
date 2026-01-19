@@ -4,7 +4,7 @@
  */
 package com.motorph.repository.csv;
 
-import com.motorph.domain.models.EmployeeProfile;
+import com.motorph.domain.models.Employee;
 import com.motorph.repository.EmployeeRepository;
 import java.io.*;
 import java.time.LocalDate;
@@ -21,7 +21,7 @@ public class CsvEmployeeRepository implements EmployeeRepository {
     private static final DateTimeFormatter DATE_FMT = DateTimeFormatter.ofPattern("M/d/yyyy");
 
     @Override
-    public EmployeeProfile findByEmployeeNumber(int employeeNumber) {
+    public Employee findByEmployeeNumber(int employeeNumber) {
         try (BufferedReader br = new BufferedReader(new FileReader(DataPaths.EMPLOYEE_CSV))) {
             String line;
             br.readLine(); // Skip Header
@@ -58,7 +58,7 @@ public class CsvEmployeeRepository implements EmployeeRepository {
                             double grossSemi = parseCurrency(data[17]);
                             double hourly = parseCurrency(data[18]);
 
-                            return new EmployeeProfile(id, last, first, bday, address, phone, sss, phil,
+                            return new Employee(id, last, first, bday, address, phone, sss, phil,
                                     tin, pagibig, status, pos, supervisor,
                                     basic, rice, phoneAllow, clothing, grossSemi, hourly);
                         }
@@ -75,7 +75,7 @@ public class CsvEmployeeRepository implements EmployeeRepository {
     }
 
     @Override
-    public void create(EmployeeProfile emp) {
+    public void create(Employee emp) {
         try (BufferedWriter bw = new BufferedWriter(new FileWriter(DataPaths.EMPLOYEE_CSV, true))) {
             String bdayStr = (emp.getBirthday() != null) ? emp.getBirthday().format(DATE_FMT) : "";
 

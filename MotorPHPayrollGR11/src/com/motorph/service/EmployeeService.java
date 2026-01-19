@@ -4,7 +4,7 @@
  */
 package com.motorph.service;
 
-import com.motorph.domain.models.EmployeeProfile;
+import com.motorph.domain.models.Employee;
 import com.motorph.repository.EmployeeRepository;
 
 /**
@@ -28,11 +28,11 @@ public class EmployeeService {
      * @param empId The employee number.
      * @return The EmployeeProfile object, or null if not found.
      */
-    public EmployeeProfile getEmployee(int empId) {
+    public Employee getEmployee(int empId) {
         if (empId <= 0) {
             return null;
         }
-        EmployeeProfile emp = employeeRepo.findByEmployeeNumber(empId);
+        Employee emp = employeeRepo.findByEmployeeNumber(empId);
         if (emp == null) {
             // Optional: log to your CsvAuditRepository here
             System.out.println("Audit: Profile access failed for ID " + empId);
@@ -56,7 +56,7 @@ public class EmployeeService {
      * @param emp The employee profile.
      * @return String "LastName, FirstName"
      */
-    public String formatName(EmployeeProfile emp) {
+    public String formatName(Employee emp) {
         if (emp == null) {
             return "Unknown";
         }
