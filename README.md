@@ -19,7 +19,6 @@ This repository follows a layered, object-oriented architecture aligned with the
 
 - **Regulatory Compliance**: payroll deductions and statutory contributions are computed using government reference tables (SSS Circular 2024-006-derived table, PhilHealth, Pag-IBIG, and withholding tax tables).
 - **Data Security (RBAC)**: access to features and sensitive payroll data is restricted by user roles (**Employee, HR, IT, Manager, Payroll**) through centralized access control.
-- **Reporting**: payroll outputs support generation of management reports such as the **Monthly Payroll Summary Report** (e.g., totals per department for SSS and tax).
 
 All ticketing modules have been removed to keep the scope focused on payroll compliance, role-based access, and reporting.
 
