@@ -6,7 +6,7 @@ package com.motorph.domain.enums;
 
 /**
  *
- * @author ACER
+ * @author OngoJ
  */
 public enum Role {
     EMPLOYEE,

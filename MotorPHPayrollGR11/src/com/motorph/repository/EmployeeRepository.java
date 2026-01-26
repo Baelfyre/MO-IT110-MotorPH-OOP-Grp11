@@ -4,16 +4,22 @@
  */
 package com.motorph.repository;
 
-import com.motorph.domain.models.EmployeeProfile;
+import com.motorph.domain.models.Employee;
+import java.util.List;
 
 /**
- *
- * @author ACER
+ * The CONTRACT.
+ * Defines WHAT we can do, but not HOW we do it.
  */
 public interface EmployeeRepository {
-    // Existing method
-    EmployeeProfile findByEmployeeNumber(int employeeNumber);
     
-    // --- NEW: Add this line ---
-    void create(EmployeeProfile emp);
+    // Method 1: Find all employees
+    List<Employee> findAll();
+
+    // Method 2: Find one employee by ID
+    // (Ensure this is named 'findById', NOT 'findByEmployeeNumber')
+    Employee findById(int id);
+
+    // Method 3: Save a new employee
+    void create(Employee emp);
 }

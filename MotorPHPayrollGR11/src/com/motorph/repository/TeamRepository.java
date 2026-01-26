@@ -4,7 +4,7 @@
  */
 package com.motorph.repository;
 
-import com.motorph.domain.models.EmployeeProfile;
+import com.motorph.domain.models.Employee;
 import java.util.List;
 
 /**
@@ -18,5 +18,5 @@ public interface TeamRepository {
      * @param supervisorName The name of the supervisor (e.g., "Lim, Antonio").
      * @return A list of EmployeeProfile objects belonging to that team.
      */
-    List<EmployeeProfile> findSubordinates(String supervisorName);
+    List<Employee> findSubordinates(String supervisorName);
 }

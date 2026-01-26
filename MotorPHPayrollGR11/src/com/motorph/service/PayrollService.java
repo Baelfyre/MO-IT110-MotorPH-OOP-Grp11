@@ -42,7 +42,7 @@ public class PayrollService {
     }
 
     public Payslip generatePayslip(int empId, PayPeriod period, int processedByUserId) {
-        EmployeeProfile emp = empRepo.findByEmployeeNumber(empId);
+        Employee emp = empRepo.findByEmployeeNumber(empId);
         if (emp == null) return null;
 
         List<TimeEntry> entries = timeEntryRepo.findByEmployeeAndPeriod(empId, period);

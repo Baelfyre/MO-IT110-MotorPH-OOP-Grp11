@@ -4,11 +4,8 @@
  */
 package com.motorph.service;
 
-import com.motorph.domain.models.AuditLogEntry;
-import com.motorph.domain.models.UserAccount;
-import com.motorph.repository.AuditRepository;
-import com.motorph.repository.UserAccountRepository;
-import java.time.LocalDateTime;
+import com.motorph.domain.models.User;
+import com.motorph.repository.UserRepository;
 
 /**
  * Handles security and login logic. Integrated with AuditRepository to track
@@ -18,52 +15,46 @@ import java.time.LocalDateTime;
  */
 public class AuthService {
 
-    private final UserAccountRepository userRepo;
-    private final AuditRepository auditRepo; // Add this
+    private final UserRepository userRepo;
+    private int failedAttempts = 0;
+    private static final int MAX_ATTEMPTS = 3;
+    private User currentUser; // We need this to store who logged in
 
-    // Update Constructor to accept AuditRepository
-    public AuthService(UserAccountRepository userRepo, AuditRepository auditRepo) {
+    // CORRECT CONSTRUCTOR - This fixes the "variable not initialized" error
+    public AuthService(UserRepository userRepo) {
         this.userRepo = userRepo;
-        this.auditRepo = auditRepo;
     }
 
-    /**
-     * Verifies credentials and logs the attempt.
-     *
-     * @return UserAccount if successful, null if failed.
-     */
-    public UserAccount authenticate(String username, String password) {
-        UserAccount user = userRepo.findByUsername(username);
+    public boolean login(String username, String password) {
+        User user = userRepo.findByUsername(username);
 
-        // 1. Check if User Exists
         if (user == null) {
-            log(username, "LOGIN_FAILED", "User ID not found");
-            return null;
+            return false;
         }
 
-        // 2. Check Password
-        if (user.verifyPassword(password)) {
-            // 3. Check Lock Status
-            if (user.isLocked()) {
-                System.out.println("Login attempted on locked account: " + username);
-                log(username, "LOGIN_DENIED", "Account is Locked");
-                return null;
-            }
+        if (user.isLocked()) {
+            return false;
+        }
 
-            // SUCCESS
-            log(username, "LOGIN_SUCCESS", "User logged in successfully");
-            return user;
+        if (user.verifyPassword(password)) {
+            this.currentUser = user; // Store the user so MainDashboard can get it
+            failedAttempts = 0;
+            return true;
         } else {
-            // WRONG PASSWORD
-            log(username, "LOGIN_FAILED", "Invalid Password");
-            return null;
+            failedAttempts++;
+            if (failedAttempts >= MAX_ATTEMPTS) {
+                userRepo.updateLockStatus(username, true);
+            }
+            return false;
         }
     }
 
-    // Helper to keep code clean
-    private void log(String user, String action, String details) {
-        if (auditRepo != null) {
-            auditRepo.save(new AuditLogEntry(LocalDateTime.now(), user, action, details));
-        }
+    // Add this getter so LoginView can pass the user to the Dashboard
+    public User getCurrentUser() {
+        return currentUser;
+    }
+
+    public boolean isAccountNowLocked() {
+        return failedAttempts >= MAX_ATTEMPTS;
     }
 }
