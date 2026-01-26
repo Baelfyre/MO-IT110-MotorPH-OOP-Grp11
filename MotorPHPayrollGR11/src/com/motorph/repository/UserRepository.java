@@ -20,4 +20,5 @@ public interface UserRepository {
     void save(User account, String firstName, String lastName, String dept);
 
     void updatePassword(String username, String newHashedPassword);
+    void updateLockStatus(String username, boolean isLocked);
 }

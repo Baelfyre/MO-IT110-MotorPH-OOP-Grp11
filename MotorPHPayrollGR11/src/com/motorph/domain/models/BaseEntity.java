@@ -6,8 +6,20 @@ package com.motorph.domain.models;
 
 /**
  *
- * @author ACER
+ * @author OngoJ
  */
 public abstract class BaseEntity {
-    
+
+    protected int id;
+
+    public int getId() {
+        return id;
+    }
+
+    public void setId(int id) {
+        this.id = id;
+    }
+
+    // Every child MUST implement this so we can save to CSV easily
+    public abstract String toCsvRow();
 }

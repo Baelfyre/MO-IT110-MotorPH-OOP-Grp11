@@ -16,41 +16,42 @@ import java.time.LocalDate;
  */
 public class Employee {
 
-    // --- Columns 0-5: Personal Info ---
-    private final int employeeNumber;       // Col 0
-    private final String lastName;          // Col 1
-    private final String firstName;         // Col 2
-    private final LocalDate birthday;       // Col 3
-    private final String address;           // Col 4
-    private final String phoneNumber;       // Col 5
+    // --- Columns 0-5 ---
+    private final int employeeNumber;       // 0
+    private final String lastName;          // 1
+    private final String firstName;         // 2
+    private final LocalDate birthday;       // 3
+    private final String address;           // 4
+    private final String phoneNumber;       // 5
 
-    // --- Columns 6-9: Gov IDs ---
-    private final String sssNumber;         // Col 6
-    private final String philHealthNumber;  // Col 7
-    private final String tinNumber;         // Col 8
-    private final String pagIbigNumber;     // Col 9
+    // --- Columns 6-9 ---
+    private final String sssNumber;         // 6
+    private final String philHealthNumber;  // 7
+    private final String tinNumber;         // 8
+    private final String pagIbigNumber;     // 9
 
-    // --- Columns 10-12: Job Details ---
-    private final String status;            // Col 10
-    private final String position;          // Col 11
-    private final String immediateSupervisor; // Col 12
+    // --- Columns 10-12 ---
+    private final String status;            // 10
+    private final String position;          // 11
+    private final String immediateSupervisor; // 12
 
-    // --- Columns 13-18: Compensation ---
-    private final double basicSalary;           // Col 13
-    private final double  riceAllowance;         // Col 14
-    private final double  phoneAllowance;        // Col 15
-    private final double  clothingAllowance;     // Col 16
-    private final double  grossSemiMonthlyRate;  // Col 17
-    private final double  hourlyRate;            // Col 18
-    private final double  leaveCredits;          // Col 19
+    // --- Columns 13-19 ---
+    private final double basicSalary;           // 13
+    private final double riceAllowance;         // 14
+    private final double phoneAllowance;        // 15
+    private final double clothingAllowance;     // 16
+    private final double grossSemiMonthlyRate;  // 17
+    private final double hourlyRate;            // 18
+    private final int leaveCredits;             // 19 <--- NEW FIELD
 
-    // --- CONSTRUCTOR ---
+    // --- CONSTRUCTOR (Updated for 20 columns) ---
     public Employee(int employeeNumber, String lastName, String firstName, LocalDate birthday,
             String address, String phoneNumber, String sssNumber, String philHealthNumber,
             String tinNumber, String pagIbigNumber, String status, String position,
             String immediateSupervisor, double basicSalary, double riceAllowance,
             double phoneAllowance, double clothingAllowance, double grossSemiMonthlyRate,
-            double hourlyRate, double leaveCredits) {
+            double hourlyRate, int leaveCredits) {
+
         this.employeeNumber = employeeNumber;
         this.lastName = lastName;
         this.firstName = firstName;
@@ -73,7 +74,11 @@ public class Employee {
         this.leaveCredits = leaveCredits;
     }
 
-    // --- GETTERS (Aligned with your Repository calls) ---
+    // --- GETTERS ---
+    public int getId() {
+        return employeeNumber;
+    } // Alias
+
     public int getEmployeeNumber() {
         return employeeNumber;
     }
@@ -98,7 +103,6 @@ public class Employee {
         return phoneNumber;
     }
 
-    // These specific names fix your errors:
     public String getSssNumber() {
         return sssNumber;
     }
@@ -131,7 +135,7 @@ public class Employee {
         return basicSalary;
     }
 
-    public double getriceAllowance() {
+    public double getRiceAllowance() {
         return riceAllowance;
     }
 
@@ -151,8 +155,47 @@ public class Employee {
         return hourlyRate;
     }
 
-    public double leaveCredits() {
+    public int getLeaveCredits() {
         return leaveCredits;
+    } // <--- NEW GETTER
+
+    /**
+     * Updated CSV serializer to include leaveCredits
+     */
+    public String toCsvRow() {
+        String dateStr = (birthday != null)
+                ? birthday.format(java.time.format.DateTimeFormatter.ofPattern("M/d/yyyy")) : "";
+
+        return employeeNumber + ","
+                + escape(lastName) + ","
+                + escape(firstName) + ","
+                + dateStr + ","
+                + escape(address) + ","
+                + escape(phoneNumber) + ","
+                + escape(sssNumber) + ","
+                + escape(philHealthNumber) + ","
+                + escape(tinNumber) + ","
+                + escape(pagIbigNumber) + ","
+                + escape(status) + ","
+                + escape(position) + ","
+                + escape(immediateSupervisor) + ","
+                + // Quote numbers to handle commas (e.g. "90,000")
+                "\"" + String.format("%,.2f", basicSalary) + "\","
+                + "\"" + String.format("%,.2f", riceAllowance) + "\","
+                + "\"" + String.format("%,.2f", phoneAllowance) + "\","
+                + "\"" + String.format("%,.2f", clothingAllowance) + "\","
+                + "\"" + String.format("%,.2f", grossSemiMonthlyRate) + "\","
+                + String.format("%.2f", hourlyRate) + ","
+                + leaveCredits;
     }
-    // Setters can be added if needed for updates
+
+    private String escape(String data) {
+        if (data == null) {
+            return "";
+        }
+        if (data.contains(",")) {
+            return "\"" + data + "\"";
+        }
+        return data;
+    }
 }

@@ -5,61 +5,89 @@
 package com.motorph.service;
 
 import com.motorph.domain.models.Employee;
+import com.motorph.domain.enums.Role;
 import com.motorph.repository.EmployeeRepository;
+import com.motorph.repository.csv.CsvEmployeeRepository;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 /**
- * Service for managing Employee Profiles. Handles retrieval and validation of
- * employee data.
+ * Service for managing Employee Profiles. 
+ * Handles retrieval, caching, role determination, and hierarchy checks.
  *
  * @author ACER
  */
 public class EmployeeService {
 
-    private EmployeeRepository employeeRepo;
+    private final EmployeeRepository employeeRepo;
+    
+    // Key: ID (Int), Value: Employee
+    private final Map<Integer, Employee> employeeCache = new HashMap<>();
+    
+    // Key: Supervisor Name (String "Garcia, Manuel III"), Value: List of Subordinates
+    private final Map<String, List<Employee>> supervisorMap = new HashMap<>();
 
-    // Constructor Injection
-    public EmployeeService(EmployeeRepository employeeRepo) {
-        this.employeeRepo = employeeRepo;
+    public EmployeeService() {
+        this.employeeRepo = new CsvEmployeeRepository();
+        refreshCache();
+    }
+
+    public void refreshCache() {
+        List<Employee> allEmployees = employeeRepo.findAll();
+        employeeCache.clear();
+        supervisorMap.clear();
+
+        for (Employee emp : allEmployees) {
+            employeeCache.put(emp.getId(), emp);
+
+            String supervisorName = emp.getImmediateSupervisor();
+            if (supervisorName != null && !supervisorName.trim().isEmpty()) {
+                supervisorMap.computeIfAbsent(supervisorName.trim(), k -> new ArrayList<>()).add(emp);
+            }
+        }
     }
 
     /**
-     * Retrieves an employee profile by ID.
-     *
-     * @param empId The employee number.
-     * @return The EmployeeProfile object, or null if not found.
+     * UPDATED LOGIC: 
+     * 1. Finds the logged-in user by ID (e.g., 10001).
+     * 2. Constructs their full name (e.g., "Garcia, Manuel III").
+     * 3. Checks if that NAME exists as a key in the supervisorMap.
      */
+    public boolean isSupervisor(String loggedInEmployeeId) {
+        try {
+            int id = Integer.parseInt(loggedInEmployeeId);
+            Employee user = employeeCache.get(id);
+            
+            if (user != null) {
+                // Construct name exactly as it appears in CSV Column 12
+                String fullName = user.getLastName() + ", " + user.getFirstName();
+                return supervisorMap.containsKey(fullName);
+            }
+        } catch (NumberFormatException e) {
+            // Invalid ID format
+        }
+        return false;
+    }
+
+    public List<Employee> getSubordinates(String supervisorName) {
+        return supervisorMap.getOrDefault(supervisorName, new ArrayList<>());
+    }
+
+    public Role determineRoleFromPosition(String position) {
+        if (position == null) return Role.EMPLOYEE;
+        String cleanPosition = position.trim(); 
+
+        // Specific Roles based on CSV data
+        if (cleanPosition.contains("HR")) return Role.HR;
+        if (cleanPosition.contains("Payroll") || cleanPosition.contains("Finance")) return Role.PAYROLL;
+        if (cleanPosition.equals("IT Operations and Systems")) return Role.IT;
+        
+        return Role.EMPLOYEE;
+    }
+
     public Employee getEmployee(int empId) {
-        if (empId <= 0) {
-            return null;
-        }
-        Employee emp = employeeRepo.findByEmployeeNumber(empId);
-        if (emp == null) {
-            // Optional: log to your CsvAuditRepository here
-            System.out.println("Audit: Profile access failed for ID " + empId);
-        }
-        return emp;
-    }
-
-    /**
-     * Checks if an employee exists in the system.
-     *
-     * @param empId The employee number to check.
-     * @return true if found, false otherwise.
-     */
-    public boolean exists(int empId) {
-        return getEmployee(empId) != null;
-    }
-
-    /**
-     * Helper to get the full name format.
-     *
-     * @param emp The employee profile.
-     * @return String "LastName, FirstName"
-     */
-    public String formatName(Employee emp) {
-        if (emp == null) {
-            return "Unknown";
-        }
-        return emp.getLastName() + ", " + emp.getFirstName();
+        return employeeCache.get(empId);
     }
 }

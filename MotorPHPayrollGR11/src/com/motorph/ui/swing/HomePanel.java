@@ -4,17 +4,23 @@
  */
 package com.motorph.ui.swing;
 
+import com.motorph.domain.models.User;
+
 /**
  *
  * @author ACER
  */
-public class EmployeePanel extends javax.swing.JPanel {
+public class HomePanel extends javax.swing.JPanel {
 
     /**
      * Creates new form EmployeePanel
      */
-    public EmployeePanel() {
+    public HomePanel() {
         initComponents();
+    }
+
+    HomePanel(User currentUser) {
+        throw new UnsupportedOperationException("Not supported yet."); // Generated from nbfs://nbhost/SystemFileSystem/Templates/Classes/Code/GeneratedMethodBody
     }
 
     /**
@@ -30,15 +36,16 @@ public class EmployeePanel extends javax.swing.JPanel {
         this.setLayout(layout);
         layout.setHorizontalGroup(
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGap(0, 400, Short.MAX_VALUE)
+            .addGap(0, 651, Short.MAX_VALUE)
         );
         layout.setVerticalGroup(
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGap(0, 300, Short.MAX_VALUE)
+            .addGap(0, 531, Short.MAX_VALUE)
         );
     }// </editor-fold>//GEN-END:initComponents
 
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
     // End of variables declaration//GEN-END:variables
+}
 }

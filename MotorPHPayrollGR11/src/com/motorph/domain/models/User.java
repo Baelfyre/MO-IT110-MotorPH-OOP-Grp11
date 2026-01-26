@@ -9,34 +9,45 @@ import com.motorph.utils.PasswordUtil;
 
 /**
  * Represents a user's login credentials and access rights. Maps to
- * data_LogIn.csv
+ * data_LogIn_Hashed.csv
  *
  * @author ACER
  */
-public class User {
-    
+public class User extends BaseEntity {
+
     private String username;
-    private String passwordHash; 
+    private String passwordHash;
     private Role role;
     private boolean isLocked;
 
-    public User(String username, String passwordHash, Role role, boolean isLocked) {
+    public User(int id, String username, String passwordHash, Role role, boolean isLocked) {
+        this.id = id;
         this.username = username;
         this.passwordHash = passwordHash;
         this.role = role;
         this.isLocked = isLocked;
     }
 
-    /**
-     * Uses the PasswordUtil to verify credentials securely.
-     */
     public boolean verifyPassword(String inputPass) {
-        // Delegate logic to the Utility (OOP Encapsulation)
         return PasswordUtil.checkPassword(inputPass, this.passwordHash);
     }
-    
+
     // Getters
-    public String getUsername() { return username; }
-    public Role getRole() { return role; }
-    public boolean isLocked() { return isLocked; }
+    public String getUsername() {
+        return username;
+    }
+
+    public Role getRole() {
+        return role;
+    }
+
+    public boolean isLocked() {
+        return isLocked;
+    }
+
+    @Override
+    public String toCsvRow() {
+        // Standardized format: id,username,passwordHash,role,isLocked
+        return id + "," + username + "," + passwordHash + "," + role + "," + isLocked;
+    }
 }

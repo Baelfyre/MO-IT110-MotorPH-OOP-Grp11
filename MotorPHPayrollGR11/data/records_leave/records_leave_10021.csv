@@ -1,10 +1,10 @@
-Employee #,Date,Log In,Log Out,First Name,Last Name
-10021,1/22/2024,8:00 AM,5:00 PM,Darlene,Lazaro
-10021,12/20/2024,8:00 AM,5:00 PM,Darlene,Lazaro
-10021,9/17/2024,8:00 AM,5:00 PM,Darlene,Lazaro
-10021,12/14/2024,8:00 AM,5:00 PM,Darlene,Lazaro
-10021,11/8/2024,8:00 AM,5:00 PM,Darlene,Lazaro
-10021,12/15/2024,8:00 AM,5:00 PM,Darlene,Lazaro
-10021,3/17/2024,8:00 AM,5:00 PM,Darlene,Lazaro
-10021,2/20/2024,8:00 AM,5:00 PM,Darlene,Lazaro
-10021,4/12/2024,8:00 AM,5:00 PM,Darlene,Lazaro
+Leave_ID,Employee #,Date,Start_Time,End_Time,First Name,Last Name
+10021-45313,10021,1/22/2024,8:00 AM,5:00 PM,Darlene,Lazaro
+10021-45646,10021,12/20/2024,8:00 AM,5:00 PM,Darlene,Lazaro
+10021-45552,10021,9/17/2024,8:00 AM,5:00 PM,Darlene,Lazaro
+10021-45640,10021,12/14/2024,8:00 AM,5:00 PM,Darlene,Lazaro
+10021-45604,10021,11/8/2024,8:00 AM,5:00 PM,Darlene,Lazaro
+10021-45641,10021,12/15/2024,8:00 AM,5:00 PM,Darlene,Lazaro
+10021-45368,10021,3/17/2024,8:00 AM,5:00 PM,Darlene,Lazaro
+10021-45342,10021,2/20/2024,8:00 AM,5:00 PM,Darlene,Lazaro
+10021-45394,10021,4/12/2024,8:00 AM,5:00 PM,Darlene,Lazaro
