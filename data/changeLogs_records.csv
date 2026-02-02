@@ -1,0 +1,3 @@
+Audit_ID,Target_Table,Record_ID,Performed_By,Timestamp,Old_Value,New_Value
+
+AUD-1769998175794,PAYROLL,TX-10002-240701-240730,10001,2026-02-01 19:09:35,,Generated Payslip: TX-10002-240701-240730

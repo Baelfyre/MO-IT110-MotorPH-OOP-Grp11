@@ -1,0 +1,6 @@
+Log_ID,Timestamp,User,Action,Details
+1,2026-02-01 22:36:30,99999,IT_LOCK_OK,Locked user: 10000
+2,2026-02-01 22:36:30,99999,IT_UNLOCK_OK,Unlocked user: 10000
+3,2026-02-01 22:36:30,99999,IT_RESET_PASSWORD_OK,Reset password (default) for user: 10000
+4,2026-02-01 22:36:30,99999,IT_RESET_PASSWORD_OK,Reset password (custom) for user: 10000
+5,2026-02-01 22:36:30,99999,IT_UNLOCK_OK,Unlocked user: 10000
