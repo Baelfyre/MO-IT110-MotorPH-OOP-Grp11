@@ -12,132 +12,93 @@ Built in Java using layered architecture (Domain, Repository, Service, UI) with 
 - Sean Gil Quiben
 
 ---
+# MO-IT110-MotorPH-OOP-Grp11
 
-## Project Architecture (Aligned with MotorPH BRS)
-
-This repository follows a layered, object-oriented architecture aligned with the MotorPH **Business Requirement Specification (BRS)** and Information Management principles. The design prioritizes:
-
-- **Regulatory Compliance**: payroll deductions and statutory contributions are computed using government reference tables (SSS Circular 2024-006-derived table, PhilHealth, Pag-IBIG, and withholding tax tables).
-- **Data Security (RBAC)**: access to features and sensitive payroll data is restricted by user roles (**Employee, HR, IT, Manager, Payroll**) through centralized access control.
-- **Reporting**: payroll outputs support generation of management reports such as the **Monthly Payroll Summary Report** (e.g., totals per department for SSS and tax).
-
-All ticketing modules have been removed to keep the scope focused on payroll compliance, role-based access, and reporting.
+MotorPH Payroll and Employee Management System (OOP) for **MO-IT110**.  
+Built in Java using layered architecture (Domain, Repository, Service, UI) with CSV-backed persistence and role-based screens.
 
 ---
 
-## Package Overview
-
-### 1) `com.motorph.domain.enum`
-_Defining constants to ensure data integrity._
-
-- **`Role`**: Defines system roles (**Employee, HR, IT, Manager, Payroll**) to enforce role-based access across dashboards and services.
-- **`ApprovalStatus`**: Standardizes workflow states (**Pending, Approved, Rejected**) used for timecard approval and validation.
+## Members
+- Juan Carlos Manalastas
+- James Lynelle Ongo
+- Jason Bryan Tan
+- Sean Gil Quiben
 
 ---
 
-### 2) `com.motorph.domain.models`
-_Rich domain models designed to support payroll computation, compliance, and reporting._
+## Recalibrated Project Architecture - Package Overview
 
-- **`EmployeeProfile`**: Master employee record. Stores personal details, salary base, and **department** (used for Summary Report grouping).
-- **`UserAccount`**: Links to `EmployeeProfile`. Stores credentials and assigned `Role` to support RBAC security (including lockout status if implemented).
-- **`PayPeriod`**: Represents payroll cut-off windows (start/end dates) used to group time entries, timecards, and payslips consistently.
-- **`Timecard`**: **Aggregate root.** Contains a list of `TimeEntry` records for a pay period/week and is the unit submitted for manager approval.
-- **`TimeEntry`**: One day log (Time In/Time Out). Includes checks for **workday vs weekend** and supports holiday tagging.
-- **`Holiday`** *(New)*: Stores holiday dates and type (Regular/Special) to automate holiday tagging and pay eligibility rules (including double-pay logic if required).
-- **`Payslip`** *(Refactored Composite)*: Represents payroll results for an employee and pay period. Structured to match the payslip layout using:
-  - **`Earnings`** (Rate, Days Worked, Overtime)
-  - **`Benefits`** (Rice, Clothing, Phone)
-  - **`Deductions`** (SSS, PhilHealth, **Pag-IBIG**, Withholding Tax)
-- **`AuditLogEntry`**: Records security-relevant actions and key system events (e.g., failed logins, payroll runs/overrides, approvals) for traceability.
-- **`DtrChangeLogEntry`**: Captures edits made to DTR/time records (what changed, who changed it, and when) for audit and accountability.
+### 1) `com.motorph`
+**Purpose:** Application entry point and bootstrap.
+
+- **`SwingApp.java` (Main Class):** Primary entry point. Initializes repositories and services, then launches `LoginView`.
 
 ---
 
-### 3) `com.motorph.repository`
-_Interfaces defining contracts for data persistence._
+### 2) `com.motorph.domain.enums`
+**Purpose:** System-wide constants to enforce data integrity and consistent workflows.
 
-- **`EmployeeRepository`**: Read/write operations for employee master data.
-- **`PayslipRepository`**: Stores generated payslips (supports historical retrieval for Monthly Payroll Summary and reporting).
-- **`TimeEntryRepository`**: Stores and queries daily attendance logs used to compute timecards and hours.
-- **`UserAccountRepository`**: Stores and retrieves user accounts for authentication and access control.
-- **`HolidayRepository`** *(New)*: Retrieves holiday reference data used for holiday tagging and pay eligibility.
-- **`AuditRepository`**: Stores and retrieves audit log records (`AuditLogEntry`) used for security monitoring and traceability.
-
-> If your persistence design treats timecards as first-class stored records (separate from raw time entries), add:
-> - **`TimecardRepository`**: Stores and retrieves `Timecard` aggregates for approval workflows and payroll processing.
+- **`Role.java` (Enum):** Defines system roles (`ADMIN`, `HR`, `SUPERVISOR`, `EMPLOYEE`) for role-based access control.
+- **`LeaveStatus.java` (Enum):** Standardizes leave workflow states (`PENDING`, `APPROVED`, `REJECTED`).
+- **`LeaveType.java` (Enum):** Defines leave categories (`SICK`, `VACATION`, `EMERGENCY`).
 
 ---
 
-### 4) `com.motorph.repository.csv`
-_CSV-based implementations responsible for file I/O and storage paths._
+### 3) `com.motorph.domain.models`
+**Purpose:** Rich domain models (with inheritance support) for payroll computation and compliance.
 
-- **`CsvEmployeeRepository`**: CSV persistence for employee profiles.
-- **`CsvPayslipRepository`**: CSV persistence for generated payslips (final payroll outputs).
-- **`CsvTimeEntryRepository`**: CSV persistence for daily time logs.
-- **`CsvUserAccountRepository`**: CSV persistence for user credentials and role assignments.
-- **`CsvHolidayRepository`** *(New)*: Loads holiday reference data from the holiday calendar CSV.
-- **`CsvAuditRepository`**: CSV persistence for audit logs (failed logins, approvals, payroll actions).
-- **`DataPaths`** *(Updated)*: Centralized configuration of CSV file paths, including:
-  - **Master Data**
-    - `data_Employee.csv`
-    - `data_Login.csv` (user accounts)
-    - `data_HolidayCalendar.csv`
-    - `data_Supervisor.csv` (if used for manager/team mapping)
-  - **Records / Outputs**
-    - `records_dtr/` (per-employee DTR logs)
-    - `records_payroll/` (per-employee payroll run records)
-    - `records_payslips/` (generated payslip outputs)
-  - **Change Logs**
-    - `changeLogs_DTR.csv`
-    - `changeLogs_EmpDataChangeLogs.csv`
-    - `changeLogs_Payroll.csv`
-  - **Compliance Tables (Government Reference Tables)**
-    - `gov_SSS_Table.csv`
-    - `gov_Philhealth_Table.csv`
-    - `gov_Pagibig_Table.csv`
-    - `gov_Tax_Table.csv`
+- **`BaseEntity.java` (Abstract Class):** Parent template defining shared `id` and the abstract `toCsvRow()` method for all records.
+- **`Employee.java` (Class):** Master employee record storing personal details, salary base, and leave credits.
+- **`User.java` (Class):** Stores credentials and assigned `Role` for authentication.
+- **`LeaveRequest.java` (Class):** Tracks leave applications and approval status.
+- **`TimeEntry.java` (Class):** Represents a single daily attendance log (clock-in/out).
+- **`LogEntry.java` (Class):** Blueprint for unified audit trail (timestamp, user, action, details).
+- **`Payslip.java` (Class):** Helper object to hold and display computed payroll results.
 
-> Note: Government tables should be treated as read-only reference datasets during runtime.
+---
+
+### 4) `com.motorph.repository` and `com.motorph.repository.csv`
+**Purpose:** Persistence layer using abstraction to standardize CSV file I/O.
+
+- **`AbstractCsvRepository.java` (Abstract Class):** Encapsulates core logic for reading and writing any CSV file.
+- **`CsvEmployeeRepository.java` (Class):** Manages persistence for employee profiles.
+- **`CsvUserRepository.java` (Class):** Handles login account data.
+- **`CsvTimeRepository.java` (Class):** Stores and retrieves daily attendance logs.
+- **`CsvLeaveRepository.java` (Class):** Manages leave request records.
+- **`CsvLogRepository.java` (Class):** Handles the unified `changeLogs_records.csv` file.
+- **`DataPaths.java` (Class):** Centralized configuration for all CSV file paths.
 
 ---
 
 ### 5) `com.motorph.service`
-_Business logic layer for compliance, security, payroll computation, approvals, and reporting._
+**Purpose:** Business logic layer for compliance, security, and feature execution.
 
-- **`AuthService`**: Authenticates users and performs lockout checks. Logs failed attempts via `AuditRepository` to mitigate unauthorized access risks.
-- **`AccessControlService`** *(New)*: RBAC “gatekeeper” that enforces role permissions before allowing access to restricted dashboards/features.
-- **`EmployeeService`**: Manages `EmployeeProfile` updates (salary adjustments, position/department changes) and logs sensitive changes when applicable.
-- **`TimeEntryService`**: Validates and processes time entries and prepares them for aggregation into a timecard.
-- **`TimecardApprovalService`**: Handles submit/approve/reject flows for timecards (ties into `ApprovalStatus`) and logs approval actions to audit when applicable.
-- **`TimeCardService`** *(Renamed/Scoped)*: Validates time logs and cross-references `HolidayRepository` to tag holidays and compute correct hour classifications (regular/overtime/holiday).
-- **`PayrollService`** *(Core)*: Orchestrates payroll processing flow (approved timecard → gross → deductions → net → payslip persistence). Delegates deduction calculations to a strategy implementation.
-- **`ReportGenerationService`** *(New)*: Aggregates payslip data to generate the **Monthly Payroll Summary Matrix** (e.g., total SSS and total tax per department).
-- **`UserMaintenanceService`**: IT admin operations such as unlocking accounts and resetting passwords (with audit logging for security-relevant actions).
+- **`AuthService.java` (Class):** Authenticates users and resolves assigned roles.
+- **`EmployeeService.java` (Class):** Handles employee CRUD operations.
+- **`PayrollService.java` (Class):** Orchestrates salary computation flow.
+- **`LeaveService.java` (Class):** Processes leave filing and supervisor approval logic.
+- **`TimeService.java` (Class):** Manages clock-in and clock-out rules.
+- **`LogService.java` (Class):** Unified logging engine used across services for traceability.
 
 ---
 
 ### 6) `com.motorph.service.strategy`
-_Compliance layer using the Strategy Pattern to support regulatory updates (Open/Closed Principle)._
+**Purpose:** Compliance layer using the Strategy Pattern to support regulatory updates.
 
-- **`DeductionStrategy`**: Interface defining deduction computation contracts:
-  - `calculateSSS()`
-  - `calculatePhilHealth()`
-  - `calculatePagibig()`
-  - `calculateTax()`
-- **`DeductionStrategy2025`**: Concrete strategy that applies the current reference tables (SSS Circular 2024-006-derived table, PhilHealth, Pag-IBIG, and withholding tax rules) to ensure compliant and maintainable payroll deductions.
+- **`DeductionStrategy.java` (Interface):** Contract for deduction calculations.
+- **`PayDeductionStrategy.java` (Class):** Concrete implementation for current tax and contribution rules.
 
 ---
 
 ### 7) `com.motorph.ui.swing`
-_Swing UI layer aligned with system stakeholders and RBAC routing._
+**Purpose:** Swing UI layer organized into role-based dashboards and feature panels.
 
-- **`SwingApp`**: Application entry point. Initializes services and injects `DeductionStrategy2025` into payroll processing.
-- **`LoginView`**: Secure login screen calling `AuthService`.
-- **`HomeView`** *(Router)*: Redirects users to the correct dashboard based on `Role`.
-- **`EmployeeDashboardView`** *(New)*: Employee self-service for Time In/Out and viewing personal payslips.
-- **`ManagerDashboardView`**: Timecard review and approval (shows `ApprovalStatus.PENDING`; allows Approve/Reject).
-- **`HrDashboardView`**: HR management view for editing employee profile data.
-- **`ItDashboardView`**: IT tools for account maintenance via `UserMaintenanceService` (unlock/reset).
-- **`PayrollDashboardView`**: Payroll processing and reporting dashboard; triggers payslip generation and opens Summary Report view/output.
-- **`PayView`**: Payslip presentation view matching the payslip structure (Earnings/Benefits/Deductions).
-- **`ProfileView`**: Employee profile view (read-only for employees; editable for HR).
+- **`LoginView.java` (JFrame Form):** Secure login screen that calls `AuthService`.
+- **`MainDashboard.java` (JFrame Form):** Primary container that swaps views based on role and user actions.
+- **`BasePanel.java` (Abstract Class):** Parent template for all feature panels.
+- **`EmployeePanel.java` (JPanel Form):** Self-service for clock-in/out and leave requests.
+- **`SupervisorPanel.java` (JPanel Form):** Team overview and leave approvals.
+- **`HrPanel.java` (JPanel Form):** HR interface for employee management (CRUD).
+- **`PayrollPanel.java` (JPanel Form):** Payroll processing UI and results display.
+
