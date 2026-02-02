@@ -1,21 +1,7 @@
-# MO-IT110-MotorPH-OOP-Grp11
+# MO-IT110 MotorPH Payroll and Employee Management System (OOP) | Group 11
 
-MotorPH Payroll and Employee Management System (OOP) for **MO-IT110**.  
-Built in Java using layered architecture (Domain, Repository, Service, UI) with CSV-backed persistence and role-based screens.
-
----
-
-## Members
-- Juan Carlos Manalastas
-- James Lynelle Ongo
-- Jason Bryan Tan
-- Sean Gil Quiben
-
----
-# MO-IT110-MotorPH-OOP-Grp11
-
-MotorPH Payroll and Employee Management System (OOP) for **MO-IT110**.  
-Built in Java using layered architecture (Domain, Repository, Service, UI) with CSV-backed persistence and role-based screens.
+Java payroll and employee management prototype for **MO-IT110 (Object-oriented Programming)**.  
+Architecture uses **Domain + Repository + Service + Ops (use-case layer) + Swing UI**, with **CSV-backed persistence** under the `/data` folder.
 
 ---
 
@@ -27,78 +13,196 @@ Built in Java using layered architecture (Domain, Repository, Service, UI) with 
 
 ---
 
-## Recalibrated Project Architecture - Package Overview
+## Architectural Layout
 
-### 1) `com.motorph`
-**Purpose:** Application entry point and bootstrap.
+### Layering
+- **Domain** (`com.motorph.domain.*`)  
+  Core business objects and enums used across the system.
+- **Repository** (`com.motorph.repository.*`, `com.motorph.repository.csv.*`)  
+  Persistence contracts and CSV implementations (file I/O).
+- **Service** (`com.motorph.service.*`)  
+  Business rules (payroll computation, attendance, leave usage, auth).
+- **Ops (Use-case layer)** (`com.motorph.ops.*`)  
+  Feature-based operations that coordinate services and repositories.  
+  This keeps UI code thin and centralizes workflows per module.
+- **UI** (`com.motorph.ui.swing.*`, `com.motorph.ui.resources.*`)  
+  Swing screens and panels with role-based routing.
 
-- **`SwingApp.java` (Main Class):** Primary entry point. Initializes repositories and services, then launches `LoginView`.
-
----
-
-### 2) `com.motorph.domain.enums`
-**Purpose:** System-wide constants to enforce data integrity and consistent workflows.
-
-- **`Role.java` (Enum):** Defines system roles (`ADMIN`, `HR`, `SUPERVISOR`, `EMPLOYEE`) for role-based access control.
-- **`LeaveStatus.java` (Enum):** Standardizes leave workflow states (`PENDING`, `APPROVED`, `REJECTED`).
-- **`LeaveType.java` (Enum):** Defines leave categories (`SICK`, `VACATION`, `EMERGENCY`).
-
----
-
-### 3) `com.motorph.domain.models`
-**Purpose:** Rich domain models (with inheritance support) for payroll computation and compliance.
-
-- **`BaseEntity.java` (Abstract Class):** Parent template defining shared `id` and the abstract `toCsvRow()` method for all records.
-- **`Employee.java` (Class):** Master employee record storing personal details, salary base, and leave credits.
-- **`User.java` (Class):** Stores credentials and assigned `Role` for authentication.
-- **`LeaveRequest.java` (Class):** Tracks leave applications and approval status.
-- **`TimeEntry.java` (Class):** Represents a single daily attendance log (clock-in/out).
-- **`LogEntry.java` (Class):** Blueprint for unified audit trail (timestamp, user, action, details).
-- **`Payslip.java` (Class):** Helper object to hold and display computed payroll results.
+### Core Behaviors Implemented
+- **Role-based access control** via `Role` and UI routing logic.
+- **Semi-monthly pay periods** (1–15, 16–end-of-month) via `PayPeriod`.
+- **DTR approval gate before payroll run** via `ApprovalStatus` + payroll approval tracking.
+- **Payslip snapshots** stored per employee per pay period in CSV.
+- **Statutory deductions** computed via a strategy abstraction (`DeductionStrategy`).
 
 ---
 
-### 4) `com.motorph.repository` and `com.motorph.repository.csv`
-**Purpose:** Persistence layer using abstraction to standardize CSV file I/O.
+## Package and Class Overview
 
-- **`AbstractCsvRepository.java` (Abstract Class):** Encapsulates core logic for reading and writing any CSV file.
-- **`CsvEmployeeRepository.java` (Class):** Manages persistence for employee profiles.
-- **`CsvUserRepository.java` (Class):** Handles login account data.
-- **`CsvTimeRepository.java` (Class):** Stores and retrieves daily attendance logs.
-- **`CsvLeaveRepository.java` (Class):** Manages leave request records.
-- **`CsvLogRepository.java` (Class):** Handles the unified `changeLogs_records.csv` file.
-- **`DataPaths.java` (Class):** Centralized configuration for all CSV file paths.
+## 1) `com.motorph.domain.enums`
+Enums used for consistency and workflow state.
+- `Role` - Defines roles (EMPLOYEE, HR, IT, MANAGER, PAYROLL)
+- `ApprovalStatus` - Workflow state (PENDING, APPROVED, REJECTED)
+- `LeaveType` - Leave classification
+- `LeaveStatus` - Leave workflow state
 
 ---
 
-### 5) `com.motorph.service`
-**Purpose:** Business logic layer for compliance, security, and feature execution.
-
-- **`AuthService.java` (Class):** Authenticates users and resolves assigned roles.
-- **`EmployeeService.java` (Class):** Handles employee CRUD operations.
-- **`PayrollService.java` (Class):** Orchestrates salary computation flow.
-- **`LeaveService.java` (Class):** Processes leave filing and supervisor approval logic.
-- **`TimeService.java` (Class):** Manages clock-in and clock-out rules.
-- **`LogService.java` (Class):** Unified logging engine used across services for traceability.
-
----
-
-### 6) `com.motorph.service.strategy`
-**Purpose:** Compliance layer using the Strategy Pattern to support regulatory updates.
-
-- **`DeductionStrategy.java` (Interface):** Contract for deduction calculations.
-- **`PayDeductionStrategy.java` (Class):** Concrete implementation for current tax and contribution rules.
+## 2) `com.motorph.domain.models`
+Domain entities and value objects.
+- `BaseEntity` - Shared base fields for entities that need IDs
+- `Employee` - Master employee profile (personal and employment fields)
+- `User` - Login identity (username, password value, role, lock status)
+- `PayPeriod` - Immutable value object for pay period boundaries and period keys
+- `PayPeriodFactory` - Helpers for generating pay periods
+- `TimeEntry` - Daily attendance log (date, time in, time out)
+- `Timecard` - Timecard wrapper (used as a unit of time tracking)
+- `Payslip` - Payroll result snapshot (earnings, deductions, net pay, metadata)
+- `LeaveRequest` - Leave request record (date and time range)
+- `LeaveCredits` - Leave credit balances and tracking fields
+- `LogEntry` - System log entry model used by logging persistence
 
 ---
 
-### 7) `com.motorph.ui.swing`
-**Purpose:** Swing UI layer organized into role-based dashboards and feature panels.
+## 3) `com.motorph.repository`
+Persistence contracts (interfaces). These define WHAT can be stored or retrieved.
+- `EmployeeRepository` - Employee master data access
+- `UserRepository` - User credential and lock status access
+- `TimeEntryRepository` - Attendance/DTR access
+- `PayslipRepository` - Payslip persistence and retrieval
+- `PayrollApprovalRepository` - DTR approval and payroll approval tracking per period
+- `AuditRepository` - Audit-style change logging
+- `LogRepository` - System log persistence
+- `LeaveRepository` - Leave request persistence and leave usage computation
+- `LeaveCreditsRepository` - Leave credits persistence
+- `PayrollRecordRepository` - Contract placeholder for payroll record tracking (not required if using `PayrollApprovalRepository`)
+- `TeamRepository` - Contract placeholder for supervisor-team mapping
 
-- **`LoginView.java` (JFrame Form):** Secure login screen that calls `AuthService`.
-- **`MainDashboard.java` (JFrame Form):** Primary container that swaps views based on role and user actions.
-- **`BasePanel.java` (Abstract Class):** Parent template for all feature panels.
-- **`EmployeePanel.java` (JPanel Form):** Self-service for clock-in/out and leave requests.
-- **`SupervisorPanel.java` (JPanel Form):** Team overview and leave approvals.
-- **`HrPanel.java` (JPanel Form):** HR interface for employee management (CRUD).
-- **`PayrollPanel.java` (JPanel Form):** Payroll processing UI and results display.
+---
 
+## 4) `com.motorph.repository.csv`
+CSV implementations responsible for file I/O and naming conventions.
+- `DataPaths` - Centralized file and folder paths, plus defaults
+- `AbstractCsvRepository` - Shared CSV helpers (read/write utilities)
+- `CsvEmployeeRepository` - Employee CSV implementation
+- `CsvUserRepository` - User CSV implementation (credentials, roles, lock status)
+- `CsvTimeRepository` - DTR repository using `records_dtr_{empId}.csv`
+- `CsvPayslipRepository` - Payslip snapshots using `records_payslips_{empId}_{periodKey}.csv`
+- `CsvPayrollApprovalRepository` - Approval tracker using `records_payroll_{empId}.csv`
+- `CsvLeaveRepository` - Leave repository using `records_leave_{empId}.csv`
+- `CsvLeaveCreditsRepository` - Leave credits CSV implementation
+- `CsvAuditRepository` - Audit log persistence
+- `CsvLogRepository` - System log persistence
+
+---
+
+## 5) `com.motorph.service`
+Business logic layer.
+- `AuthService` - Authentication and lockout logic
+- `EmployeeService` - Employee caching, supervisor checks, role inference helpers
+- `TimeService` - Time-in/time-out rules and workday filtering
+- `PayrollService` - Payroll computation and payslip generation workflow
+- `LeaveService` - Leave-hours computation rules for payroll usage
+- `LeaveCreditsService` - Remaining credits and year-to-date computations
+- `LogService` - Writes system action logs through `LogRepository`
+
+---
+
+## 6) `com.motorph.service.strategy`
+Strategy abstraction for deductions.
+- `DeductionStrategy` - Deduction computation contract
+- `PayDeductionStrategy` - Concrete implementation using the `/data/gov_*.csv` reference tables
+
+---
+
+## 7) `com.motorph.ops`
+Use-case boundary layer (feature-based module operations).  
+Each module exposes an interface and a coordinating implementation.
+- `ops.auth`
+  - `AuthOps`, `AuthOpsImpl` - Login and session-oriented flows
+- `ops.time`
+  - `TimeOps`, `TimeOpsImpl` - Employee time-in/time-out flows and attendance operations
+- `ops.leave`
+  - `LeaveOps`, `LeaveOpsImpl` - Leave requests and credit usage flows
+- `ops.approval`
+  - `DtrApprovalOps`, `DtrApprovalOpsImpl` - Approve/reject DTR per pay period
+- `ops.payroll`
+  - `PayrollOps`, `PayrollOpsImpl` - Payroll execution (single employee or batch), period resolution
+  - `PayrollRunResult` - Batch processing result model
+- `ops.payslip`
+  - `PayslipOps`, `PayslipOpsImpl` - Payslip retrieval (latest or by period)
+- `ops.supervisor`
+  - `SupervisorOps`, `SupervisorOpsImpl` - Supervisor-side summaries and views
+  - `SupervisorDtrSummary` - Supervisor summary model
+- `ops.hr`
+  - `HROps`, `HROpsImpl` - Employee create, update, archive flows
+- `ops.it`
+  - `ItOps`, `ItOpsImpl` - Password resets and lock/unlock operations
+
+---
+
+## 8) `com.motorph.ui.swing` and `com.motorph.ui.resources`
+Swing UI screens and assets.
+- `LoginView` - UI entry point (contains `main`)
+- `MainDashboard` - Role-based routing and sidebar visibility
+- `BasePanel` - Base UI panel structure
+- `HomePanel` - Employee self-service (profile, time logs, payslip access)
+- `SupervisorPanel` - Supervisor functions and summaries
+- `HrPanel` - HR employee management UI
+- `PayrollPanel` - Payroll processing UI
+- `LeavePanel` - Leave request UI
+- `ui.resources/images/*` - Logo and UI images
+
+---
+
+## 9) `com.motorph.utils`
+- `PasswordUtil` - SHA-256 hashing helper (utility class)
+
+---
+
+## 10) `com.motorph.test`
+Console-based test runners and utilities.
+- `BackEndTester` - End-to-end backend test runner (pay periods, DTR seeding, payslip generation)
+- `BackEndPayrollTester` - Payroll-focused runner
+- `BackEndAuthTester` - Auth-focused runner
+- `BackEndItOpsTester` - IT ops runner (lock/unlock, password reset)
+- `PasswordMigrator` - CSV password migration helper (creates a secure output CSV)
+
+---
+
+## Data Folder Layout (as defined in `DataPaths`)
+Expected structure under `./data/`:
+
+- Core files
+  - `data_Employee.csv`
+  - `data_Legacy_LogIn.csv`
+  - `data_LeaveCredits.csv`
+  - `data_HolidayCalendar.csv`
+- Reference tables
+  - `gov_SSS_Table.csv`
+  - `gov_Philhealth_Table.csv`
+  - `gov_Pagibig_Table.csv`
+  - `gov_Tax_Table.csv`
+- Logs
+  - `changeLogs_records.csv`
+  - `changeLogs_DTR.csv`
+  - `changeLogs_EmpDataChangeLogs.csv`
+  - `changeLogs_Payroll.csv`
+  - `system_logs.csv`
+- Record folders
+  - `records_dtr/` (creates `records_dtr_{empId}.csv`)
+  - `records_payroll/` (creates `records_payroll_{empId}.csv`)
+  - `records_payslips/` (creates `records_payslips_{empId}_{periodKey}.csv`)
+  - `records_leave/` (creates `records_leave_{empId}.csv`)
+
+---
+
+## How to Run
+- **Run Swing UI**: `com.motorph.ui.swing.LoginView` (has `main`)
+- **Run backend tests**: `com.motorph.test.BackEndTester`
+
+---
+
+## Notes
+- File paths and folder names are centralized in `com.motorph.repository.csv.DataPaths`.
+- Government reference tables (`gov_*.csv`) are intended as read-only inputs during runtime.
