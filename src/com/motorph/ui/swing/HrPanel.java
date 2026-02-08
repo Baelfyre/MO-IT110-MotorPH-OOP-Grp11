@@ -4,16 +4,30 @@
  */
 package com.motorph.ui.swing;
 
+import com.motorph.domain.models.User;
+
 /**
  *
  * @author ACER
  */
 public class HrPanel extends javax.swing.JPanel {
 
-    /**
-     * Creates new form HrPanel
-     */
+    // Annotation: Store logged-in user for permission-aware actions.
+    private User currentUser;
+
     public HrPanel() {
+        initComponents();
+
+        if (currentUser != null) {
+            // Example: show role somewhere or use it to control buttons later
+            System.out.println("Logged in role: " + currentUser.getRole());
+        }
+
+    }
+
+    // Annotation: Overloaded constructor used by MainDashboard CardLayout.
+    public HrPanel(User currentUser) {
+        this.currentUser = currentUser;
         initComponents();
     }
 

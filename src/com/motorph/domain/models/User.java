@@ -7,33 +7,40 @@ package com.motorph.domain.models;
 import com.motorph.domain.enums.Role;
 
 /**
- * Represents a user's login credentials and access rights. Maps to
- * data_LogIn_Hashed.csv
+ * Represents a user's login credentials and access rights.
+ *
+ * Current project mode uses the legacy login CSV (data_Legacy_LogIn.csv), so
+ * the stored password is treated as plain text. *
  *
  * @author ACER
  */
+
 public class User extends BaseEntity {
 
     private final String username;
-    private final String passwordHash;
+    private final String password;
     private final Role role;
     private final boolean isLocked;
 
-    public User(int id, String username, String passwordHash, Role role, boolean isLocked) {
+    public User(int id, String username, String password, Role role, boolean isLocked) {
         this.id = id;
         this.username = username;
-        this.passwordHash = passwordHash;
+        this.password = password;
         this.role = role;
         this.isLocked = isLocked;
     }
 
     public boolean verifyPassword(String inputPass) {
-        return inputPass != null && inputPass.equals(this.passwordHash);
+        return inputPass != null && inputPass.equals(this.password);
     }
 
     // Getters
     public String getUsername() {
         return username;
+    }
+
+    public String getPassword() {
+        return password;
     }
 
     public Role getRole() {
@@ -46,7 +53,7 @@ public class User extends BaseEntity {
 
     @Override
     public String toCsvRow() {
-        // Standardized format: id,username,passwordHash,role,isLocked
-        return id + "," + username + "," + passwordHash + "," + role + "," + isLocked;
+        // Standardized format: id,username,password,role,isLocked
+        return id + "," + username + "," + password + "," + role + "," + isLocked;
     }
 }
