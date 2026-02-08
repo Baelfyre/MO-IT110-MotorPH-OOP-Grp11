@@ -16,12 +16,12 @@ public interface UserRepository {
 
     User findByUsername(String username);
 
-    // NEW METHODS
     void save(User account, String firstName, String lastName, String dept);
 
-    void updatePassword(String username, String newHashedPassword);
+    // Legacy mode: password is stored as plain text in data_Legacy_LogIn.csv.
+    void updatePassword(String username, String newPassword);
+
     void updateLockStatus(String username, boolean isLocked);
 
-    public boolean deleteByUsername(String username);
- 
+    boolean deleteByUsername(String username);
 }

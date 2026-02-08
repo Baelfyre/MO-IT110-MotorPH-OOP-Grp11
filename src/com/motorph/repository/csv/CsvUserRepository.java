@@ -15,10 +15,8 @@ import java.util.List;
 /**
  * Legacy login CSV repository.
  *
- * Expected CSV format (6 columns): Username,Password,First Name, Last
- * Name,Department,Lock Out Status
- *
- * Source of path: DataPaths.LOGIN_CSV Source: DataPaths.java LOGIN_CSV constant
+ * Expected CSV format (6 columns):
+ * Username,Password,Employee_ID,Employee_Name,Department,Lock_Out_Status
  */
 public class CsvUserRepository implements UserRepository {
 
@@ -71,9 +69,8 @@ public class CsvUserRepository implements UserRepository {
 
                 Role role = determineRoleFromDepartment(department);
 
-                int id = safeParseInt(fileUsername, 0);
+                int id = safeParseInt(data[2].trim(), safeParseInt(fileUsername, 0));
 
-                // Note: User constructor still uses "passwordHash" field name, but in legacy mode it holds plain text
                 return new User(id, fileUsername, passwordPlain, role, isLocked);
             }
 
@@ -90,25 +87,19 @@ public class CsvUserRepository implements UserRepository {
             return;
         }
 
-        // We reuse the existing User.toCsvRow() to extract username and password without needing extra getters.
-        // User.toCsvRow() format is: id,username,passwordHash,role,isLocked
-        String[] parts = account.toCsvRow().split(",", -1);
-        if (parts.length < 5) {
-            System.err.println("Cannot save user. Invalid User.toCsvRow() format.");
-            return;
-        }
-
-        String username = parts[1].trim();
-        String password = parts[2].trim();
+        String username = safeCsv(account.getUsername());
+        String password = safeCsv(account.getPassword());
         String lockOut = account.isLocked() ? "Yes" : "No";
 
-        // Legacy CSV row format:
-        // Username,Password,First Name, Last Name,Department,Lock Out Status
+        String employeeId = String.valueOf(account.getId() > 0 ? account.getId() : safeParseInt(username, 0));
+        String employeeName = buildEmployeeName(firstName, lastName);
+
+        // Username,Password,Employee_ID,Employee_Name,Department,Lock_Out_Status
         String row = String.join(",",
                 username,
                 password,
-                safeCsv(firstName),
-                safeCsv(lastName),
+                safeCsv(employeeId),
+                safeCsv(employeeName),
                 safeCsv(dept),
                 lockOut
         );
@@ -121,7 +112,7 @@ public class CsvUserRepository implements UserRepository {
     }
 
     @Override
-    public void updatePassword(String username, String newPasswordPlain) {
+    public void updatePassword(String username, String newPassword) {
         if (username == null || username.trim().isEmpty()) {
             return;
         }
@@ -135,7 +126,7 @@ public class CsvUserRepository implements UserRepository {
             while ((line = br.readLine()) != null) {
                 if (!headerHandled) {
                     headerHandled = true;
-                    lines.add(line); // keep header as is
+                    lines.add(line); // keep header
                     continue;
                 }
 
@@ -151,8 +142,7 @@ public class CsvUserRepository implements UserRepository {
                 }
 
                 if (data[0].trim().equalsIgnoreCase(username.trim())) {
-                    // Legacy password column is index 1
-                    data[1] = newPasswordPlain == null ? "" : newPasswordPlain.trim();
+                    data[1] = newPassword == null ? "" : newPassword.trim();
                     line = String.join(",", data);
                 }
 
@@ -188,7 +178,7 @@ public class CsvUserRepository implements UserRepository {
             while ((line = br.readLine()) != null) {
                 if (!headerHandled) {
                     headerHandled = true;
-                    lines.add(line); // keep header as is
+                    lines.add(line); // keep header
                     continue;
                 }
 
@@ -204,7 +194,6 @@ public class CsvUserRepository implements UserRepository {
                 }
 
                 if (data[0].trim().equalsIgnoreCase(username.trim())) {
-                    // Legacy lock status column is index 5: Yes / No
                     data[5] = isLocked ? "Yes" : "No";
                     line = String.join(",", data);
                 }
@@ -233,13 +222,14 @@ public class CsvUserRepository implements UserRepository {
 
         String d = department.trim().toUpperCase();
 
-        // Matches your existing role intent for HR and Payroll related departments.
-        // Source reference for similar mapping: EmployeeService.determineRoleFromPosition(...)
         if (d.contains("HR")) {
             return Role.HR;
         }
         if (d.contains("PAYROLL") || d.contains("FINANCE") || d.contains("ACCOUNTING")) {
             return Role.PAYROLL;
+        }
+        if (d.contains("MANAGER") || d.contains("MANAGEMENT")) {
+            return Role.MANAGER;
         }
         if (d.equals("IT OPERATIONS AND SYSTEMS") || d.contains("IT ")) {
             return Role.IT;
@@ -257,9 +247,26 @@ public class CsvUserRepository implements UserRepository {
     }
 
     private String safeCsv(String value) {
-        // Your data does not currently contain commas in these fields.
-        // Source: data_Legacy_LogIn.csv sample rows
+        // Avoid commas because CSV parsing is split-based.
         return value == null ? "" : value.trim();
+    }
+
+    private String buildEmployeeName(String firstName, String lastName) {
+        String fn = safeCsv(firstName);
+        String ln = safeCsv(lastName);
+
+        if (fn.isEmpty() && ln.isEmpty()) {
+            return "";
+        }
+        if (ln.isEmpty()) {
+            return fn;
+        }
+        if (fn.isEmpty()) {
+            return ln;
+        }
+
+        // Format: Last, First
+        return ln + ", " + fn;
     }
 
     @Override
@@ -268,7 +275,7 @@ public class CsvUserRepository implements UserRepository {
             return false;
         }
 
-        java.nio.file.Path path = java.nio.file.Paths.get(com.motorph.repository.csv.DataPaths.LOGIN_CSV);
+        java.nio.file.Path path = java.nio.file.Paths.get(DataPaths.LOGIN_CSV);
 
         if (!java.nio.file.Files.exists(path)) {
             return false;
@@ -336,5 +343,4 @@ public class CsvUserRepository implements UserRepository {
         }
         return v;
     }
-
 }

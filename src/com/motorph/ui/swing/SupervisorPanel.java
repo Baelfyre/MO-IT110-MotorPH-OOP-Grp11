@@ -16,6 +16,12 @@ public class SupervisorPanel extends javax.swing.JPanel {
 
     public SupervisorPanel() {
         initComponents();
+
+        if (currentUser != null) {
+            // Example: show role somewhere or use it to control buttons later
+            System.out.println("Logged in role: " + currentUser.getRole());
+        }
+
     }
 
     // Annotation: Accept logged-in user context for supervisor-scoped actions.
