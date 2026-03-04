@@ -809,7 +809,7 @@ public class MainDashboard extends javax.swing.JFrame {
                 details.append(String.format("%-18s PHP %,.2f\n", "Basic Salary:", emp.getBasicSalary()));
                 details.append(String.format("%-18s PHP %,.2f\n", "Hourly Rate:", emp.getHourlyRate()));
                 
-                // Format allowances nicely
+                // Format allowances
                 details.append(String.format("%-18s Rice (PHP %,.2f) | Phone (PHP %,.2f) | Clothing (PHP %,.2f)\n", 
                         "Allowances:", 
                         emp.getRiceAllowance(), 
