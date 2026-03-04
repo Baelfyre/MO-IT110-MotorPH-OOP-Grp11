@@ -789,6 +789,36 @@ public class MainDashboard extends javax.swing.JFrame {
                 jTextField5.setEditable(false);
                 jTextField6.setEditable(false);
                 jTextField7.setEditable(false);
+                
+                // Use a Monospaced font so the columns align perfectly
+                jTextArea1.setFont(new java.awt.Font("Monospaced", java.awt.Font.PLAIN, 12));
+                
+                StringBuilder details = new StringBuilder();
+                
+                // Section 1: Government IDs
+                details.append("GOVERNMENT IDENTIFICATION\n");
+                details.append("--------------------------------------------------\n");
+                details.append(String.format("%-18s %s\n", "SSS No:", emp.getSssNumber()));
+                details.append(String.format("%-18s %s\n", "PhilHealth No:", emp.getPhilHealthNumber()));
+                details.append(String.format("%-18s %s\n", "TIN:", emp.getTinNumber()));
+                details.append(String.format("%-18s %s\n\n", "Pag-IBIG No:", emp.getPagIbigNumber()));
+
+                // Section 2: Basic Compensation Summary
+                details.append("COMPENSATION OVERVIEW\n");
+                details.append("--------------------------------------------------\n");
+                details.append(String.format("%-18s PHP %,.2f\n", "Basic Salary:", emp.getBasicSalary()));
+                details.append(String.format("%-18s PHP %,.2f\n", "Hourly Rate:", emp.getHourlyRate()));
+                
+                // Format allowances nicely
+                details.append(String.format("%-18s Rice (PHP %,.2f) | Phone (PHP %,.2f) | Clothing (PHP %,.2f)\n", 
+                        "Allowances:", 
+                        emp.getRiceAllowance(), 
+                        emp.getPhoneAllowance(), 
+                        emp.getClothingAllowance()));
+
+                // Set the text and lock the text area
+                jTextArea1.setText(details.toString());
+                jTextArea1.setEditable(false);
             }
         } catch (NumberFormatException e) {
             System.err.println("Could not parse user ID for dashboard: " + e.getMessage());
