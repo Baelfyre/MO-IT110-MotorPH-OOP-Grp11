@@ -16,6 +16,7 @@ import javax.swing.text.AttributeSet;
 import javax.swing.text.DocumentFilter;
 import javax.swing.text.DocumentFilter.FilterBypass;
 import com.motorph.ops.time.TimeOps;
+import com.motorph.ops.hr.HROps;
 
 /**
  *
@@ -31,14 +32,16 @@ public class LoginPanel extends javax.swing.JFrame {
     private final AuthOps authOps;
     private final EmployeeService employeeService;
     private final TimeOps timeOps;
+    private final HROps hrOps;
 
     /**
      * Creates new form LoginView
      */
-    public LoginPanel(AuthOps authOps, EmployeeService employeeService, TimeOps timeOps) {
+    public LoginPanel(AuthOps authOps, EmployeeService employeeService, TimeOps timeOps, HROps hrOps) {
         this.authOps = authOps;
         this.employeeService = employeeService;
         this.timeOps = timeOps;
+        this.hrOps = hrOps;
 
         initComponents();
         setSize(400, 600);
@@ -66,7 +69,7 @@ public class LoginPanel extends javax.swing.JFrame {
 
         if (loggedInUser != null) {
             // Success: Pass the user AND the pre-configured service to the dashboard
-            new MainDashboard(loggedInUser, employeeService, authOps, timeOps).setVisible(true);
+            new MainDashboard(loggedInUser, employeeService, authOps, timeOps, hrOps).setVisible(true);
             this.dispose();
         } else {
             // Failure: Show Error

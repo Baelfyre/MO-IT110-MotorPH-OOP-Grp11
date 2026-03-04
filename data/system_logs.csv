@@ -14,3 +14,11 @@ Log_ID,Timestamp,User,Action,Details
 13,2026-03-05 03:06:53,10000,LOGIN_SUCCESS,User logged in successfully.
 14,2026-03-05 03:06:58,10000,TIME_IN_OK,Time-in recorded.
 15,2026-03-05 03:07:00,10000,TIME_OUT_OK,Time-out recorded.
+16,2026-03-05 03:36:31,10000,LOGIN_SUCCESS,User logged in successfully.
+17,2026-03-05 03:36:41,10000,TIME_IN_DENIED,Time-in rejected by rule.
+18,2026-03-05 03:36:46,10000,TIME_OUT_DENIED,Time-out rejected by rule.
+19,2026-03-05 03:59:35,10000,LOGIN_SUCCESS,User logged in successfully.
+20,2026-03-05 04:06:11,10001,LOGIN_SUCCESS,User logged in successfully.
+21,2026-03-05 04:06:30,10001,TIME_IN_OK,Time-in recorded.
+22,2026-03-05 04:06:33,10001,TIME_OUT_OK,Time-out recorded.
+23,2026-03-05 04:06:36,10001,TIME_IN_DENIED,Time-in rejected by rule.

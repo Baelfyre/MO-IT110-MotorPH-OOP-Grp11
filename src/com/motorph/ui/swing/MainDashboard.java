@@ -19,7 +19,7 @@ import com.motorph.ui.swing.UiHelper.UiThemeHelper;
 import com.motorph.ops.auth.AuthOps;         // Import AuthOps
 import com.motorph.ops.auth.AuthOpsImpl;
 import com.motorph.ops.time.TimeOps;
-
+import com.motorph.ops.hr.HROps;
 
 /**
  *
@@ -34,12 +34,14 @@ public class MainDashboard extends javax.swing.JFrame {
     private JPanel mainContentPanel;
     private Timer clockTimer;
     private final TimeOps timeOps;
+    private final HROps hrOps;
 
-    public MainDashboard(User loggedInUser, EmployeeService employeeService, AuthOps authOps, TimeOps timeOps) {
+    public MainDashboard(User loggedInUser, EmployeeService employeeService, AuthOps authOps, TimeOps timeOps, HROps hrOps) {
         this.currentUser = loggedInUser;
         this.employeeService = employeeService; 
         this.authOps = authOps;
         this.timeOps = timeOps;
+        this.hrOps = hrOps;
         
         initComponents();
 
@@ -96,7 +98,7 @@ public class MainDashboard extends javax.swing.JFrame {
 
         // Load the panels
         // Annotation: Add working panels as cards.
-        mainContentPanel.add(new UpdateProfile(currentUser), "HOME");
+        mainContentPanel.add(new UpdateProfile(currentUser, employeeService, hrOps), "HOME");
         mainContentPanel.add(new HrPanel(currentUser), "HR");
         mainContentPanel.add(new PayrollPanel(currentUser), "PAYROLL");
         mainContentPanel.add(new TimekeepingPanel(currentUser), "ATTENDANCE");
@@ -666,7 +668,7 @@ public class MainDashboard extends javax.swing.JFrame {
 
     private void jButton6ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButton6ActionPerformed
         // Logout
-        new LoginPanel(authOps, employeeService, timeOps).setVisible(true);
+        new LoginPanel(authOps, employeeService, timeOps, hrOps).setVisible(true);
         dispose();
     }//GEN-LAST:event_jButton6ActionPerformed
 

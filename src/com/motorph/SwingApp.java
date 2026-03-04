@@ -96,7 +96,7 @@ public class SwingApp {
             com.motorph.ui.swing.UiHelper.UiThemeHelper.useNimbus();
             
             // Pass the successfully wired backend directly into the UI
-            com.motorph.ui.swing.LoginPanel login = new com.motorph.ui.swing.LoginPanel(authOps, employeeService, timeOps);
+            com.motorph.ui.swing.LoginPanel login = new com.motorph.ui.swing.LoginPanel(authOps, employeeService, timeOps, hrOps);
             login.setVisible(true);
         });
         // UI wiring goes here (later)

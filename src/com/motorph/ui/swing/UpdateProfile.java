@@ -13,6 +13,10 @@ import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.Date;
 
+import com.motorph.domain.models.Employee;
+import com.motorph.service.EmployeeService;
+import com.motorph.ops.hr.HROps;
+
 /**
  *
  * @author ACER
@@ -50,9 +54,14 @@ public class UpdateProfile extends JPanel {
     private final JTextField txtHourlyRate = new JTextField(12);
     
     private final User currentUser;
+    private final EmployeeService employeeService;
+    private final HROps hrOps;
+    private Employee currentEmployee;
 
-    public UpdateProfile(User currentUser) {
+    public UpdateProfile(User currentUser, EmployeeService employeeService, HROps hrOps) {
         this.currentUser = currentUser; // Save the user
+        this.employeeService = employeeService;
+        this.hrOps = hrOps;
         
         // 1. Tell this panel to use a BorderLayout so it fills the screen
         this.setLayout(new BorderLayout());
@@ -166,6 +175,8 @@ public class UpdateProfile extends JPanel {
         btnUpdate.addActionListener(e -> onUpdate());
     
        this.add(content, BorderLayout.CENTER);
+       
+       loadEmployeeData();
     }
 
    
@@ -196,11 +207,78 @@ public class UpdateProfile extends JPanel {
         txtHourlyRate.setText("");
     }
 
-    // Annotation: Reads values from UI and performs validation before saving through service layer.
+    // Reads the CSV through the service and fills the text fields
+    private void loadEmployeeData() {
+        int empId = Integer.parseInt(currentUser.getUsername());
+        currentEmployee = employeeService.getEmployee(empId);
+
+        if (currentEmployee != null) {
+            txtEmpNo.setText(String.valueOf(currentEmployee.getId()));
+            txtLastName.setText(currentEmployee.getLastName());
+            txtFirstName.setText(currentEmployee.getFirstName());
+            txtAddress.setText(currentEmployee.getAddress());
+            setBirthdayFromLocalDate(currentEmployee.getBirthday());
+
+            txtSSS.setText(currentEmployee.getSssNumber());
+            txtPagibig.setText(currentEmployee.getPagIbigNumber());
+            txtTIN.setText(currentEmployee.getTinNumber());
+            txtPhilHealth.setText(currentEmployee.getPhilHealthNumber());
+            txtPhone.setText(currentEmployee.getPhoneNumber());
+
+            cbStatus.setSelectedItem(currentEmployee.getStatus());
+            cbPosition.setSelectedItem(currentEmployee.getPosition());
+            cbSupervisor.setSelectedItem(currentEmployee.getImmediateSupervisor());
+
+            txtBasicSalary.setText(String.valueOf(currentEmployee.getBasicSalary()));
+            txtRiceSubsidy.setText(String.valueOf(currentEmployee.getRiceAllowance()));
+            txtPhoneAllowance.setText(String.valueOf(currentEmployee.getPhoneAllowance()));
+            txtClothingAllowance.setText(String.valueOf(currentEmployee.getClothingAllowance()));
+
+            txtGrossSemiMonthly.setText(String.valueOf(currentEmployee.getGrossSemiMonthlyRate()));
+            txtHourlyRate.setText(String.valueOf(currentEmployee.getHourlyRate()));
+        }
+    }
+    
+    // Gathers text field data, updates the model, and saves to CSV
     private void onUpdate() {
-        LocalDate birthday = getBirthdayAsLocalDate();
-        // Add validation and service calls here.
-        // Example: if (birthday == null) show error dialog.
+        if (currentEmployee == null) return;
+
+        try {
+            // Update the Employee object
+            currentEmployee.setLastName(txtLastName.getText().trim());
+            currentEmployee.setFirstName(txtFirstName.getText().trim());
+            currentEmployee.setAddress(txtAddress.getText().trim());
+            currentEmployee.setBirthday(getBirthdayAsLocalDate());
+
+            currentEmployee.setSssNumber(txtSSS.getText().trim());
+            currentEmployee.setPagIbigNumber(txtPagibig.getText().trim());
+            currentEmployee.setTinNumber(txtTIN.getText().trim());
+            currentEmployee.setPhilHealthNumber(txtPhilHealth.getText().trim());
+            currentEmployee.setPhoneNumber(txtPhone.getText().trim());
+
+            // Get ComboBox selections safely
+            if (cbStatus.getSelectedItem() != null) currentEmployee.setStatus(cbStatus.getSelectedItem().toString());
+            if (cbPosition.getSelectedItem() != null) currentEmployee.setPosition(cbPosition.getSelectedItem().toString());
+            if (cbSupervisor.getSelectedItem() != null) currentEmployee.setImmediateSupervisor(cbSupervisor.getSelectedItem().toString());
+
+            // Update Compensation
+            currentEmployee.setBasicSalary(Double.parseDouble(txtBasicSalary.getText().trim()));
+            currentEmployee.setRiceAllowance(Double.parseDouble(txtRiceSubsidy.getText().trim()));
+            currentEmployee.setPhoneAllowance(Double.parseDouble(txtPhoneAllowance.getText().trim()));
+            currentEmployee.setClothingAllowance(Double.parseDouble(txtClothingAllowance.getText().trim()));
+
+            // Call HROps to save back to CSV!
+            int performerId = Integer.parseInt(currentUser.getUsername());
+            boolean success = hrOps.updateEmployee(currentEmployee, performerId);
+
+            if (success) {
+                JOptionPane.showMessageDialog(this, "Profile updated successfully!", "Success", JOptionPane.INFORMATION_MESSAGE);
+            } else {
+                JOptionPane.showMessageDialog(this, "Failed to update profile.", "Error", JOptionPane.ERROR_MESSAGE);
+            }
+        } catch (Exception ex) {
+            JOptionPane.showMessageDialog(this, "Error saving profile: Check your number formats.\n" + ex.getMessage(), "Input Error", JOptionPane.ERROR_MESSAGE);
+        }
     }
 
     // Annotation: Converts the selected calendar date to LocalDate for the model layer.
