@@ -4,6 +4,7 @@
  */
 package com.motorph.ui.swing;
 
+
 import com.motorph.domain.models.User;
 import com.motorph.domain.enums.Role;
 import com.motorph.service.EmployeeService;
@@ -15,27 +16,33 @@ import java.time.format.DateTimeFormatter;
 import javax.swing.Timer;
 import com.motorph.ui.swing.UiHelper.UiThemeHelper;
 
+import com.motorph.ops.auth.AuthOps;         // Import AuthOps
+import com.motorph.ops.auth.AuthOpsImpl;
+
+
 /**
  *
  * @author ACER
  */
 public class MainDashboard extends javax.swing.JFrame {
 
-    private static final java.util.logging.Logger logger = java.util.logging.Logger.getLogger(MainDashboard.class.getName());
-
     private final User currentUser;
-    private final EmployeeService employeeService = new EmployeeService(); // To check supervisor status
+    private final EmployeeService employeeService; // Replaced the inline 'new' assignment
+    private final AuthOps authOps;
     private CardLayout cardLayout;
     private JPanel mainContentPanel;
     private Timer clockTimer;
 
-    public MainDashboard(User loggedInUser) {
+    public MainDashboard(User loggedInUser, EmployeeService employeeService, AuthOps authOps) {
         this.currentUser = loggedInUser;
+        this.employeeService = employeeService; // Store the injected service
+        this.authOps = authOps;
+        
         initComponents();
 
-        setResizable(false);                 // disables resize and maximize
-        setExtendedState(javax.swing.JFrame.NORMAL); // forces normal state
-        setLocationRelativeTo(null);         // center on screen
+        setResizable(false);
+        setExtendedState(javax.swing.JFrame.NORMAL);
+        setLocationRelativeTo(null);
 
         startClock();
         initCustomLayout();
@@ -640,7 +647,7 @@ public class MainDashboard extends javax.swing.JFrame {
 
     private void jButton6ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButton6ActionPerformed
         // Logout
-        new LoginPanel().setVisible(true);
+        new LoginPanel(authOps, employeeService).setVisible(true);
         dispose();
     }//GEN-LAST:event_jButton6ActionPerformed
 
@@ -668,29 +675,7 @@ public class MainDashboard extends javax.swing.JFrame {
     /**
      * @param args the command line arguments
      */
-    public static void main(String args[]) {
-        /* Set the Nimbus look and feel */
-        //<editor-fold defaultstate="collapsed" desc=" Look and feel setting code (optional) ">
-        /* If Nimbus (introduced in Java SE 6) is not available, stay with the default look and feel.
-         * For details see http://download.oracle.com/javase/tutorial/uiswing/lookandfeel/plaf.html 
-         */
-        try {
-            for (javax.swing.UIManager.LookAndFeelInfo info : javax.swing.UIManager.getInstalledLookAndFeels()) {
-                if ("Nimbus".equals(info.getName())) {
-                    javax.swing.UIManager.setLookAndFeel(info.getClassName());
-                    break;
-                }
-            }
-        } catch (ReflectiveOperationException | javax.swing.UnsupportedLookAndFeelException ex) {
-            logger.log(java.util.logging.Level.SEVERE, null, ex);
-        }
-        //</editor-fold>
-
-        /* Create and display the form */
-        // Main entry is LoginPanel. MainDashboard requires an authenticated user.
-        UiThemeHelper.useNimbus();
-        java.awt.EventQueue.invokeLater(() -> new com.motorph.ui.swing.LoginPanel().setVisible(true));
-    }
+   
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JButton jButton10;

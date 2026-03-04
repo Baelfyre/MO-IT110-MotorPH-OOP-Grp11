@@ -18,7 +18,7 @@ import java.util.Date;
  * @author ACER
  */
 
-public class UpdateProfile extends JFrame {
+public class UpdateProfile extends JPanel {
 
     // Text fields
     private final JTextField txtEmpNo = new JTextField(10);
@@ -48,10 +48,14 @@ public class UpdateProfile extends JFrame {
     // Computed fields
     private final JTextField txtGrossSemiMonthly = new JTextField(12);
     private final JTextField txtHourlyRate = new JTextField(12);
+    
+    private final User currentUser;
 
-    public UpdateProfile() {
-        super("Update Profile — ID 10000");
-        setDefaultCloseOperation(WindowConstants.DISPOSE_ON_CLOSE);
+    public UpdateProfile(User currentUser) {
+        this.currentUser = currentUser; // Save the user
+        
+        // 1. Tell this panel to use a BorderLayout so it fills the screen
+        this.setLayout(new BorderLayout());
 
         JPanel content = new JPanel(new GridBagLayout());
         content.setBorder(new EmptyBorder(18, 18, 18, 18));
@@ -143,10 +147,8 @@ public class UpdateProfile extends JFrame {
 
         // Buttons row
         JPanel buttons = new JPanel(new FlowLayout(FlowLayout.CENTER, 12, 0));
-        JButton btnBack = new JButton("Back");
         JButton btnClear = new JButton("Clear");
         JButton btnUpdate = new JButton("Update");
-        buttons.add(btnBack);
         buttons.add(btnClear);
         buttons.add(btnUpdate);
 
@@ -161,17 +163,12 @@ public class UpdateProfile extends JFrame {
 
         // Basic wiring (placeholder)
         btnClear.addActionListener(e -> clearForm());
-        btnBack.addActionListener(e -> dispose());
         btnUpdate.addActionListener(e -> onUpdate());
-
-        setContentPane(content);
-        pack();
-        setLocationRelativeTo(null);
+    
+       this.add(content, BorderLayout.CENTER);
     }
 
-    UpdateProfile(User currentUser) {
-        throw new UnsupportedOperationException("Not supported yet."); // Generated from nbfs://nbhost/SystemFileSystem/Templates/Classes/Code/GeneratedMethodBody
-    }
+   
 
     // Annotation: Clears all input fields and resets drop-down selections.
     private void clearForm() {
@@ -255,9 +252,5 @@ public class UpdateProfile extends JFrame {
         c.gridwidth = span;
         c.weightx = 1;
         p.add(field, c);
-    }
-
-    public static void main(String[] args) {
-        SwingUtilities.invokeLater(() -> new UpdateProfile().setVisible(true));
     }
 }

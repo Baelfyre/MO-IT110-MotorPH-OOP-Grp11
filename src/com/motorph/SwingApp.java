@@ -42,6 +42,9 @@ import com.motorph.service.TimeService;
 import com.motorph.service.strategy.DeductionStrategy;
 import com.motorph.service.strategy.PayDeductionStrategy;
 
+import com.motorph.ops.auth.AuthOps;         // Import AuthOps
+import com.motorph.ops.auth.AuthOpsImpl;     // Import AuthOpsImpl
+
 /**
  * The starting point. It initializes all repositories and services, then opens
  * the LoginView.
@@ -83,7 +86,19 @@ public class SwingApp {
         );
         HROps hrOps = new HROpsImpl(empRepo, employeeService, userRepo, logService);
         ItOps itOps = new ItOpsImpl(userRepo, logService);
-
+        
+        //Initialize the AuthOps layer
+        AuthOps authOps = new AuthOpsImpl(authService, logService);
+        
+        // --- FINAL UI WIRING ---
+        java.awt.EventQueue.invokeLater(() -> {
+            // Ensure Nimbus Theme is set globally before launching UI
+            com.motorph.ui.swing.UiHelper.UiThemeHelper.useNimbus();
+            
+            // Pass the successfully wired backend directly into the UI
+            com.motorph.ui.swing.LoginPanel login = new com.motorph.ui.swing.LoginPanel(authOps, employeeService);
+            login.setVisible(true);
+        });
         // UI wiring goes here (later)
         // LoginView login = new LoginView(authService, ...);
         // login.setVisible(true);

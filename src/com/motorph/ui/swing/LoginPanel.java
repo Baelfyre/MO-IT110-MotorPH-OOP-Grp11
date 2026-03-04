@@ -6,11 +6,10 @@ package com.motorph.ui.swing;
 
 import com.motorph.ui.swing.UiHelper.UiThemeHelper;
 import com.motorph.domain.models.User;
-import com.motorph.repository.UserRepository;
-import com.motorph.repository.csv.CsvUserRepository;
-import com.motorph.service.AuthService;
-import java.awt.Color; // Import needed for Ghost Text color
-import java.awt.event.FocusAdapter; // Import for Focus Listener
+import com.motorph.ops.auth.AuthOps;
+import com.motorph.service.EmployeeService;
+import java.awt.Color;
+import java.awt.event.FocusAdapter;
 import java.awt.event.FocusEvent;
 import javax.swing.JOptionPane;
 import javax.swing.text.AttributeSet;
@@ -27,59 +26,49 @@ public class LoginPanel extends javax.swing.JFrame {
     private static final String USER_PLACEHOLDER = "EMPLOYEE ID";
     private static final String PASS_PLACEHOLDER = "PASSWORD";
 
-    // --- 1. CONNECT TO BACKEND (CORRECTED) ---
-    private final UserRepository userRepo;
-    private final AuthService authService;
-
-    private static final java.util.logging.Logger logger = java.util.logging.Logger.getLogger(LoginPanel.class.getName());
+    // Dependencies injected via constructor
+    private final AuthOps authOps;
+    private final EmployeeService employeeService;
 
     /**
      * Creates new form LoginView
      */
-    public LoginPanel() {
-        // --- 2. INIT SERVICE (CORRECTED) ---
-        // We initialize the Repository first, then the Service
-        this.userRepo = new CsvUserRepository();
-        this.authService = new AuthService(userRepo);
+    public LoginPanel(AuthOps authOps, EmployeeService employeeService) {
+        this.authOps = authOps;
+        this.employeeService = employeeService;
 
-        // --- 3. BUILD UI ---
         initComponents();
-        setSize(400, 600);                      // fixed startup size
-        setResizable(false);                    // prevents manual maximize
-        setExtendedState(javax.swing.JFrame.NORMAL); // forces normal state
-        setLocationRelativeTo(null); // Centers window on screen
+        setSize(400, 600);
+        setResizable(false);
+        setExtendedState(javax.swing.JFrame.NORMAL);
+        setLocationRelativeTo(null);
 
-        // --- 4. APPLY FEATURES ---
         setupNumberOnlyFilter();
         setupGhostText();
 
-        // Fix: Ensure focus is not on the text field immediately so "USERNAME" is visible
         this.requestFocusInWindow();
     }
-
     // --- LOGIC: PERFORM LOGIN ---
     private void performLogin() {
         String username = jTextField1.getText().trim();
         String password = new String(jPasswordField1.getPassword());
 
-        // Check if fields are empty or still show the placeholder
         if (username.equals(USER_PLACEHOLDER) || password.equals(PASS_PLACEHOLDER) || username.isEmpty() || password.isEmpty()) {
             JOptionPane.showMessageDialog(this, "Please enter both username and password.", "Missing Info", JOptionPane.WARNING_MESSAGE);
             return;
         }
 
-        // CALL SERVICE (Using AuthService)
-        if (authService.login(username, password)) {
-            // Success: Get the user and open Dashboard
-            User loggedInUser = authService.getCurrentUser();
-            new MainDashboard(loggedInUser).setVisible(true);
+        // Delegate to the Ops layer
+        User loggedInUser = authOps.login(username, password);
+
+        if (loggedInUser != null) {
+            // Success: Pass the user AND the pre-configured service to the dashboard
+            new MainDashboard(loggedInUser, employeeService,authOps).setVisible(true);
             this.dispose();
         } else {
             // Failure: Show Error
             JOptionPane.showMessageDialog(this, "Invalid credentials.", "Login Error", JOptionPane.ERROR_MESSAGE);
             jPasswordField1.setText("");
-
-            // Reset placeholder if needed
             jPasswordField1.setForeground(Color.GRAY);
             jPasswordField1.setEchoChar((char) 0);
             jPasswordField1.setText(PASS_PLACEHOLDER);
@@ -312,12 +301,7 @@ public class LoginPanel extends javax.swing.JFrame {
     /**
      * @param args the command line arguments
      */
-    public static void main(String[] args) {
-        // Annotation: Apply Nimbus globally for the whole application.
-        UiThemeHelper.useNimbus();
-
-        java.awt.EventQueue.invokeLater(() -> new LoginPanel().setVisible(true));
-    }
+    
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JButton jButton1;
     private javax.swing.JLabel jLabel1;
