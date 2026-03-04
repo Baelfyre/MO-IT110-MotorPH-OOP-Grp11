@@ -228,27 +228,26 @@ public class BackEndTester {
             return;
         }
 
-        Employee testEmp = new Employee(
-                TEST_EMP_ID,
-                "Tester",
-                "Backend",
-                LocalDate.of(2000, 1, 1),
-                "Test Address",
-                "09000000000",
-                "SSS-TEST",
-                "PH-TEST",
-                "TIN-TEST",
-                "PAGIBIG-TEST",
-                "Regular",
-                "QA",
-                "N/A",
-                20000.00,  // basic salary (monthly)
-                1000.00,   // rice allowance (monthly)
-                500.00,    // phone allowance (monthly)
-                500.00,    // clothing allowance (monthly)
-                11000.00,  // gross semi-monthly rate (informational)
-                100.00     // hourly rate
-        );
+        Employee testEmp = new com.motorph.domain.models.RegularEmployee(TEST_EMP_ID, "Tester", "Backend");
+        testEmp.setBirthday(LocalDate.of(2000, 1, 1));
+        testEmp.setAddress("Test Address");
+        testEmp.setPhoneNumber("09000000000");
+
+        testEmp.setSssNumber("SSS-TEST");
+        testEmp.setPhilHealthNumber("PH-TEST");
+        testEmp.setTinNumber("TIN-TEST");
+        testEmp.setPagIbigNumber("PAGIBIG-TEST");
+
+        testEmp.setStatus("Regular");
+        testEmp.setPosition("QA");
+        testEmp.setImmediateSupervisor("N/A");
+
+        testEmp.setBasicSalary(20000.00);
+        testEmp.setRiceAllowance(1000.00);
+        testEmp.setPhoneAllowance(500.00);
+        testEmp.setClothingAllowance(500.00);
+        testEmp.setGrossSemiMonthlyRate(11000.00);
+        testEmp.setHourlyRate(100.00);
 
         empRepo.create(testEmp);
         Employee saved = empRepo.findById(TEST_EMP_ID);

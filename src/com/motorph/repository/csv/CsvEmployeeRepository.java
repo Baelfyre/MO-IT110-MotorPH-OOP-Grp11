@@ -254,14 +254,34 @@ public class CsvEmployeeRepository implements EmployeeRepository {
             double hourly = parseCurrency(data[18]);
 
             // data[19] is legacy leaveCredits, intentionally ignored
-            return new Employee(
-                    id, last, first, bday,
-                    address, phone,
-                    sss, phil, tin, pagibig,
-                    status, pos, supervisor,
-                    basic, rice, phoneAllow, clothing,
-                    grossSemi, hourly
-            );
+            Employee emp;
+            if ("PROBATIONARY".equalsIgnoreCase(status)) {
+                emp = new com.motorph.domain.models.ProbationaryEmployee(id, last, first);
+            } else {
+                emp = new com.motorph.domain.models.RegularEmployee(id, last, first);
+            }
+
+            emp.setBirthday(bday);
+            emp.setAddress(address);
+            emp.setPhoneNumber(phone);
+
+            emp.setSssNumber(sss);
+            emp.setPhilHealthNumber(phil);
+            emp.setTinNumber(tin);
+            emp.setPagIbigNumber(pagibig);
+
+            emp.setStatus(status);
+            emp.setPosition(pos);
+            emp.setImmediateSupervisor(supervisor);
+
+            emp.setBasicSalary(basic);
+            emp.setRiceAllowance(rice);
+            emp.setPhoneAllowance(phoneAllow);
+            emp.setClothingAllowance(clothing);
+            emp.setGrossSemiMonthlyRate(grossSemi);
+            emp.setHourlyRate(hourly);
+
+            return emp;
         } catch (Exception e) {
             return null;
         }

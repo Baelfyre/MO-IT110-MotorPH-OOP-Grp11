@@ -5,6 +5,7 @@
 package com.motorph.repository;
 
 import com.motorph.domain.models.User;
+import java.util.List;
 
 /**
  * Interface for accessing user authentication data. Used by AuthService to
@@ -24,4 +25,7 @@ public interface UserRepository {
     void updateLockStatus(String username, boolean isLocked);
 
     boolean deleteByUsername(String username);
+
+    // Annotation: Needed by IT panel to list all user accounts from CSV.
+    List<User> findAll();
 }

@@ -229,7 +229,7 @@ public class CsvUserRepository implements UserRepository {
             return Role.PAYROLL;
         }
         if (d.contains("MANAGER") || d.contains("MANAGEMENT")) {
-            return Role.MANAGER;
+            return Role.SUPERVISOR;
         }
         if (d.equals("IT OPERATIONS AND SYSTEMS") || d.contains("IT ")) {
             return Role.IT;
@@ -330,6 +330,49 @@ public class CsvUserRepository implements UserRepository {
         } catch (Exception e) {
             return false;
         }
+    }
+
+    @Override
+    public List<User> findAll() {
+        List<User> out = new ArrayList<>();
+
+        try (BufferedReader br = new BufferedReader(new FileReader(FILE_PATH))) {
+            String line;
+            boolean headerChecked = false;
+
+            while ((line = br.readLine()) != null) {
+                if (line.trim().isEmpty()) {
+                    continue;
+                }
+
+                String[] data = line.split(",", -1);
+
+                if (!headerChecked) {
+                    headerChecked = true;
+                    if (data.length > 0 && "Username".equalsIgnoreCase(data[0].trim())) {
+                        continue;
+                    }
+                }
+
+                if (data.length < 6) {
+                    continue;
+                }
+
+                String username = data[0].trim();
+                String password = data[1].trim();
+                int id = safeParseInt(data[2].trim(), safeParseInt(username, 0));
+                String dept = data[4].trim();
+                boolean locked = data[5].trim().equalsIgnoreCase("Yes");
+
+                Role role = determineRoleFromDepartment(dept);
+                out.add(new User(id, username, password, role, locked));
+            }
+
+        } catch (IOException e) {
+            return out;
+        }
+
+        return out;
     }
 
     private String unquote(String s) {

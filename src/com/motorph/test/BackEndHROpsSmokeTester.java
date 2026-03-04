@@ -93,7 +93,7 @@ public class BackEndHROpsSmokeTester {
                 assertEquals("username equals EmpID", String.valueOf(empId1), createdUser.getUsername());
                 assertEquals("password equals default password", DataPaths.DEFAULT_PASSWORD, getPasswordUnsafe(createdUser));
                 assertTrue("lock status default is not locked", !createdUser.isLocked());
-                assertEquals("role derived from position contains HR", Role.HR, createdUser.getRole());
+                assertTrue("role derived from position contains HR", createdUser.getRoles().contains(Role.HR));
             }
 
             int empRowsAfterCreate = countDataRows(DataPaths.EMPLOYEE_CSV);
@@ -186,27 +186,34 @@ public class BackEndHROpsSmokeTester {
     // Employee builder
     // ----------------------------
     private static Employee buildTestEmployee(int empId, String status, String position) {
-        return new Employee(
-                empId,
-                "Smoke",
-                "Test",
-                LocalDate.of(2000, 1, 1),
-                "N/A",
-                "0000000000",
-                "SSS-TEST",
-                "PH-TEST",
-                "TIN-TEST",
-                "PAGIBIG-TEST",
-                status,
-                position,
-                "N/A",
-                0.00,
-                0.00,
-                0.00,
-                0.00,
-                0.00,
-                0.00
-        );
+        Employee emp;
+        if ("PROBATIONARY".equalsIgnoreCase(status)) {
+            emp = new com.motorph.domain.models.ProbationaryEmployee(empId, "Smoke", "Test");
+        } else {
+            emp = new com.motorph.domain.models.RegularEmployee(empId, "Smoke", "Test");
+        }
+
+        emp.setBirthday(LocalDate.of(2000, 1, 1));
+        emp.setAddress("N/A");
+        emp.setPhoneNumber("0000000000");
+
+        emp.setSssNumber("SSS-TEST");
+        emp.setPhilHealthNumber("PH-TEST");
+        emp.setTinNumber("TIN-TEST");
+        emp.setPagIbigNumber("PAGIBIG-TEST");
+
+        emp.setStatus(status);
+        emp.setPosition(position);
+        emp.setImmediateSupervisor("N/A");
+
+        emp.setBasicSalary(0.00);
+        emp.setRiceAllowance(0.00);
+        emp.setPhoneAllowance(0.00);
+        emp.setClothingAllowance(0.00);
+        emp.setGrossSemiMonthlyRate(0.00);
+        emp.setHourlyRate(0.00);
+
+        return emp;
     }
 
     // ----------------------------

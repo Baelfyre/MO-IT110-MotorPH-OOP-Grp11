@@ -2,10 +2,11 @@
  * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
  * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Interface.java to edit this template
  */
-
 package com.motorph.ops.leave;
 
 import com.motorph.domain.models.PayPeriod;
+import com.motorph.domain.models.LeaveRequest;
+import java.util.List;
 import java.time.LocalDate;
 import java.time.LocalTime;
 
@@ -24,4 +25,7 @@ public interface LeaveOps {
     double getLeaveRemainingYtd(int empId, PayPeriod period);
 
     boolean syncLeaveTakenYtd(int empId, PayPeriod period);
+    
+    // Annotation: Returns leave rows for display in the Leave panel.
+    List<LeaveRequest> listLeaveRequests(int empId, PayPeriod period);
 }

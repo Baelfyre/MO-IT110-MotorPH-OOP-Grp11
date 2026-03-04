@@ -42,15 +42,40 @@ import com.motorph.service.TimeService;
 import com.motorph.service.strategy.DeductionStrategy;
 import com.motorph.service.strategy.PayDeductionStrategy;
 
+import com.motorph.ui.swing.LoginPanel;
+import com.motorph.ui.swing.UiHelper.UiThemeHelper;
+
+import javax.swing.JOptionPane;
+import javax.swing.SwingUtilities;
+
 /**
  * The starting point. It initializes all repositories and services, then opens
  * the LoginView.
  *
  * @author OngoJ
  */
-public class SwingApp {
+public class MotorPGPayrollG11 {
 
     public static void main(String[] args) {
+
+        // Annotation: Apply LookAndFeel before creating Swing components.
+        UiThemeHelper.useNimbus();
+
+        // Annotation: Create UI on the Swing event dispatch thread.
+        SwingUtilities.invokeLater(() -> {
+            try {
+                LoginPanel login = new LoginPanel();
+                login.setVisible(true);
+            } catch (Throwable t) {
+                t.printStackTrace();
+                JOptionPane.showMessageDialog(
+                        null,
+                        "Startup failed:\n" + t,
+                        "Startup Error",
+                        JOptionPane.ERROR_MESSAGE
+                );
+            }
+        });
 
 // Repositories
         TimeEntryRepository timeRepo = new CsvTimeRepository();
