@@ -14,14 +14,15 @@ public abstract class BaseEntity {
 
     protected int id;
 
-    public int getId() {
-        return id;
-    }
+    protected BaseEntity() { }
 
-    public void setId(int id) {
+    protected BaseEntity(int id) {
         this.id = id;
     }
 
-    // Every child MUST implement this so we can save to CSV easily
+    public int getId() { return id; }
+
+    public void setId(int id) { this.id = id; }
+
     public abstract String toCsvRow();
 }

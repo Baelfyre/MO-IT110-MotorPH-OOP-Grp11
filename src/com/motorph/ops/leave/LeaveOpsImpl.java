@@ -84,6 +84,14 @@ public class LeaveOpsImpl implements LeaveOps {
     }
 
     @Override
+    public java.util.List<LeaveRequest> listLeaveRequests(int empId, PayPeriod period) {
+        if (period == null) {
+            return leaveRepo.findByEmployee(empId);
+        }
+        return leaveRepo.findByEmployeeAndPeriod(empId, period);
+    }
+
+    @Override
     public double getLeaveUsedThisPeriod(int empId, PayPeriod period) {
         return leaveRepo.getLeaveHoursUsed(empId, period);
     }

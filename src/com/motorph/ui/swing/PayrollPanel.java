@@ -17,12 +17,6 @@ public class PayrollPanel extends javax.swing.JPanel {
 
     public PayrollPanel() {
         initComponents();
-
-        if (currentUser != null) {
-            // Example: show role somewhere or use it to control buttons later
-            System.out.println("Logged in role: " + currentUser.getRole());
-        }
-
     }
 
     // Annotation: Overloaded constructor used by MainDashboard CardLayout.

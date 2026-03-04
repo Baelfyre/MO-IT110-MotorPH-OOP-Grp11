@@ -1,71 +1,83 @@
-/*
- * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
- * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
- */
 package com.motorph.repository.csv;
 
 import com.motorph.domain.models.LeaveCredits;
 import com.motorph.repository.LeaveCreditsRepository;
 
 import java.io.BufferedReader;
-import java.io.BufferedWriter;
 import java.io.FileReader;
 import java.io.FileWriter;
-import java.io.IOException;
-import java.util.*;
+import java.io.PrintWriter;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
- * CSV-backed implementation of LeaveCreditsRepository. Reads employee leave
- * credits and cumulative leave taken in hours.
  *
- * Expected header columns: Employee #, Last Name, First Name, Leave Credits,
- * Leave Taken
- *
- * The parser tolerates extra empty trailing columns.
- *
- * @author ACER
+ * @author OngoJ.
  */
 public class CsvLeaveCreditsRepository implements LeaveCreditsRepository {
 
-    private static final String CSV_SPLIT_REGEX = ",(?=(?:[^\"]*\"[^\"]*\")*[^\"]*$)";
+    private static final String FILE_PATH = DataPaths.LEAVE_CREDITS_CSV;
 
     @Override
     public List<LeaveCredits> findAll() {
-        List<LeaveCredits> list = new ArrayList<>();
+        List<LeaveCredits> out = new ArrayList<>();
 
-        try (BufferedReader br = new BufferedReader(new FileReader(DataPaths.LEAVE_CREDITS_CSV))) {
-            String header = br.readLine();
-            if (header == null) {
-                return list;
-            }
+        Path p = Paths.get(FILE_PATH);
+        if (!Files.exists(p)) {
+            return out;
+        }
 
-            HeaderIndex idx = resolveHeaderIndex(header);
-
+        try (BufferedReader br = new BufferedReader(new FileReader(FILE_PATH, StandardCharsets.UTF_8))) {
             String line;
+            boolean headerChecked = false;
+
             while ((line = br.readLine()) != null) {
                 if (line.trim().isEmpty()) {
                     continue;
                 }
 
-                String[] data = line.split(CSV_SPLIT_REGEX, -1);
+                String[] d = line.split(",", -1);
 
-                LeaveCredits record = parseRow(data, idx);
-                if (record != null) {
-                    list.add(record);
+                if (!headerChecked) {
+                    headerChecked = true;
+                    if (d.length > 0 && d[0].trim().toLowerCase().startsWith("employee")) {
+                        continue;
+                    }
                 }
+
+                if (d.length < 4) {
+                    continue;
+                }
+
+                int empId = safeParseInt(d[0], 0);
+                String last = safe(d, 1);
+                String first = safe(d, 2);
+                double credits = safeParseDouble(d[3], 0.0);
+                double taken = (d.length >= 5) ? safeParseDouble(d[4], 0.0) : 0.0;
+
+                if (empId <= 0) {
+                    continue;
+                }
+
+                out.add(new LeaveCredits(empId, last, first, credits, taken));
             }
-        } catch (IOException e) {
-            e.printStackTrace();
+
+        } catch (Exception e) {
+            return out;
         }
 
-        return list;
+        return out;
     }
 
     @Override
     public LeaveCredits findByEmpId(int empId) {
-        for (LeaveCredits lc : findAll()) {
-            if (lc.getEmployeeNumber() == empId) {
-                return lc;
+        for (LeaveCredits c : findAll()) {
+            if (c.getEmployeeNumber() == empId) {
+                return c;
             }
         }
         return null;
@@ -73,150 +85,109 @@ public class CsvLeaveCreditsRepository implements LeaveCreditsRepository {
 
     @Override
     public boolean updateLeaveTaken(int empId, double leaveTakenHours) {
-        List<LeaveCredits> all = findAll();
-        if (all.isEmpty()) {
+        Path p = Paths.get(FILE_PATH);
+        if (!Files.exists(p)) {
             return false;
         }
 
-        boolean updated = false;
-        List<LeaveCredits> rewritten = new ArrayList<>();
-
-        for (LeaveCredits lc : all) {
-            if (lc.getEmployeeNumber() == empId) {
-                rewritten.add(new LeaveCredits(
-                        lc.getEmployeeNumber(),
-                        lc.getLastName(),
-                        lc.getFirstName(),
-                        lc.getLeaveCreditsHours(),
-                        leaveTakenHours
-                ));
-                updated = true;
-            } else {
-                rewritten.add(lc);
-            }
-        }
-
-        if (!updated) {
-            return false;
-        }
-
-        return writeAll(rewritten);
-    }
-
-    private LeaveCredits parseRow(String[] data, HeaderIndex idx) {
         try {
-            int empId = (int) parseNumber(get(data, idx.empId));
-            String last = clean(get(data, idx.lastName));
-            String first = clean(get(data, idx.firstName));
-
-            double credits = parseNumber(get(data, idx.leaveCredits));
-
-            double taken = 0.0;
-            if (idx.leaveTaken >= 0) {
-                taken = parseNumber(get(data, idx.leaveTaken));
+            List<String> lines = Files.readAllLines(p, StandardCharsets.UTF_8);
+            if (lines.isEmpty()) {
+                return false;
             }
 
-            return new LeaveCredits(empId, last, first, credits, taken);
-        } catch (Exception e) {
-            return null;
-        }
-    }
+            String header = lines.get(0);
+            List<String> out = new ArrayList<>();
+            out.add(header);
 
-    private boolean writeAll(List<LeaveCredits> list) {
-        try (BufferedWriter bw = new BufferedWriter(new FileWriter(DataPaths.LEAVE_CREDITS_CSV, false))) {
-            bw.write("Employee #,Last Name,First Name,Leave Credits,Leave Taken");
-            bw.newLine();
+            boolean updated = false;
 
-            for (LeaveCredits lc : list) {
-                String row = lc.getEmployeeNumber() + ","
-                        + escape(lc.getLastName()) + ","
-                        + escape(lc.getFirstName()) + ","
-                        + formatHours(lc.getLeaveCreditsHours()) + ","
-                        + formatHours(lc.getLeaveTakenHours());
-                bw.write(row);
-                bw.newLine();
+            for (int i = 1; i < lines.size(); i++) {
+                String line = lines.get(i);
+                if (line == null || line.trim().isEmpty()) {
+                    continue;
+                }
+
+                String[] d = line.split(",", -1);
+                if (d.length < 4) {
+                    out.add(line);
+                    continue;
+                }
+
+                int rowId = safeParseInt(d[0], -1);
+                if (rowId == empId) {
+                    String takenStr = formatDouble(Math.max(0.0, leaveTakenHours));
+
+                    // Ensure 5 columns
+                    if (d.length < 5) {
+                        String[] nd = new String[5];
+                        nd[0] = safe(d, 0);
+                        nd[1] = safe(d, 1);
+                        nd[2] = safe(d, 2);
+                        nd[3] = safe(d, 3);
+                        nd[4] = takenStr;
+                        out.add(String.join(",", nd));
+                    } else {
+                        d[4] = takenStr;
+                        out.add(String.join(",", d));
+                    }
+
+                    updated = true;
+                    continue;
+                }
+
+                out.add(line);
             }
+
+            if (!updated) {
+                return false;
+            }
+
+            try (PrintWriter pw = new PrintWriter(new FileWriter(FILE_PATH, StandardCharsets.UTF_8, false))) {
+                for (String l : out) {
+                    pw.println(l);
+                }
+            }
+
             return true;
-        } catch (IOException e) {
-            e.printStackTrace();
+
+        } catch (Exception e) {
             return false;
         }
     }
 
-    private HeaderIndex resolveHeaderIndex(String headerLine) {
-        String[] cols = headerLine.split(CSV_SPLIT_REGEX, -1);
-        Map<String, Integer> map = new HashMap<>();
+    private String safe(String[] d, int idx) {
+        if (d == null || idx < 0 || idx >= d.length) {
+            return "";
+        }
+        return d[idx] == null ? "" : d[idx].trim();
+    }
 
-        for (int i = 0; i < cols.length; i++) {
-            String key = normalize(cols[i]);
-            if (!key.isEmpty()) {
-                map.put(key, i);
+    private int safeParseInt(String raw, int fallback) {
+        try {
+            return Integer.parseInt(raw.trim());
+        } catch (Exception e) {
+            return fallback;
+        }
+    }
+
+    private double safeParseDouble(String raw, double fallback) {
+        try {
+            String v = raw == null ? "" : raw.trim();
+            if (v.isEmpty()) {
+                return fallback;
             }
+            return Double.parseDouble(v.replace(",", ""));
+        } catch (Exception e) {
+            return fallback;
         }
-
-        int empId = map.getOrDefault("employee #", 0);
-        int last = map.getOrDefault("last name", 1);
-        int first = map.getOrDefault("first name", 2);
-        int credits = map.getOrDefault("leave credits", 3);
-        int taken = map.getOrDefault("leave taken", -1);
-
-        return new HeaderIndex(empId, last, first, credits, taken);
     }
 
-    private String normalize(String raw) {
-        if (raw == null) {
-            return "";
+    private String formatDouble(double v) {
+        long rounded = Math.round(v);
+        if (Math.abs(v - rounded) < 0.0000001) {
+            return Long.toString(rounded);
         }
-        return raw.replace("\"", "").trim().toLowerCase().replaceAll("\\s+", " ");
-    }
-
-    private String get(String[] data, int idx) {
-        if (idx < 0 || idx >= data.length) {
-            return "";
-        }
-        return data[idx];
-    }
-
-    private String clean(String input) {
-        return input == null ? "" : input.replace("\"", "").trim();
-    }
-
-    private double parseNumber(String input) {
-        String v = clean(input).replace(",", "");
-        if (v.isEmpty()) {
-            return 0.0;
-        }
-        return Double.parseDouble(v);
-    }
-
-    private String escape(String data) {
-        if (data == null) {
-            return "";
-        }
-        if (data.contains(",")) {
-            return "\"" + data + "\"";
-        }
-        return data;
-    }
-
-    private String formatHours(double hours) {
-        return String.format("%.2f", hours);
-    }
-
-    private static class HeaderIndex {
-
-        final int empId;
-        final int lastName;
-        final int firstName;
-        final int leaveCredits;
-        final int leaveTaken;
-
-        HeaderIndex(int empId, int lastName, int firstName, int leaveCredits, int leaveTaken) {
-            this.empId = empId;
-            this.lastName = lastName;
-            this.firstName = firstName;
-            this.leaveCredits = leaveCredits;
-            this.leaveTaken = leaveTaken;
-        }
+        return String.format(java.util.Locale.US, "%.2f", v);
     }
 }

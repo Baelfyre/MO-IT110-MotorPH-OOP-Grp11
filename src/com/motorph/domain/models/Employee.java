@@ -5,204 +5,336 @@
 package com.motorph.domain.models;
 
 import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
+import java.util.Locale;
 
 /**
- * Master record of an employee containing identity, government IDs, and
- * compensation-related fields. The data structure maps to the employee master
- * dataset and excludes leave balance state, which is handled by a separate
- * LeaveCredits module.
  *
- @author ACER
+ * @author OngoJ.
  */
-public class Employee {
+public abstract class Employee {
 
-    // --- Identity and contact fields ---
-    private final int employeeNumber;        // Employee #
-    private final String lastName;           // Last Name
-    private final String firstName;          // First Name
-    private final LocalDate birthday;        // Birthday
-    private final String address;            // Address
-    private final String phoneNumber;        // Phone Number
+    private int employeeNumber;
+    private String lastName;
+    private String firstName;
 
-    // --- Government identifiers ---
-    private final String sssNumber;          // SSS #
-    private final String philHealthNumber;   // Philhealth #
-    private final String tinNumber;          // TIN #
-    private final String pagIbigNumber;      // Pag-ibig #
+    private EmployeeDetails employeeDetails;
+    private Position position;
+    private Compensation compensation;
 
-    // --- Employment details ---
-    private final String status;             // Status
-    private final String position;           // Position
-    private final String immediateSupervisor;// Immediate Supervisor
-
-    // --- Compensation profile ---
-    private final double basicSalary;        // Basic Salary
-    private final double riceAllowance;      // Rice Subsidy
-    private final double phoneAllowance;     // Phone Allowance
-    private final double clothingAllowance;  // Clothing Allowance
-    private final double grossSemiMonthlyRate; // Gross Semi-monthly Rate
-    private final double hourlyRate;         // Hourly Rate
-
-    public Employee(
-            int employeeNumber,
-            String lastName,
-            String firstName,
-            LocalDate birthday,
-            String address,
-            String phoneNumber,
-            String sssNumber,
-            String philHealthNumber,
-            String tinNumber,
-            String pagIbigNumber,
-            String status,
-            String position,
-            String immediateSupervisor,
-            double basicSalary,
-            double riceAllowance,
-            double phoneAllowance,
-            double clothingAllowance,
-            double grossSemiMonthlyRate,
-            double hourlyRate
-    ) {
-        this.employeeNumber = employeeNumber;
-        this.lastName = lastName;
-        this.firstName = firstName;
-        this.birthday = birthday;
-        this.address = address;
-        this.phoneNumber = phoneNumber;
-        this.sssNumber = sssNumber;
-        this.philHealthNumber = philHealthNumber;
-        this.tinNumber = tinNumber;
-        this.pagIbigNumber = pagIbigNumber;
-        this.status = status;
-        this.position = position;
-        this.immediateSupervisor = immediateSupervisor;
-        this.basicSalary = basicSalary;
-        this.riceAllowance = riceAllowance;
-        this.phoneAllowance = phoneAllowance;
-        this.clothingAllowance = clothingAllowance;
-        this.grossSemiMonthlyRate = grossSemiMonthlyRate;
-        this.hourlyRate = hourlyRate;
+    protected Employee(int employeeNumber, String lastName, String firstName) {
+        setEmployeeNumber(employeeNumber);
+        setLastName(lastName);
+        setFirstName(firstName);
+        this.employeeDetails = new EmployeeDetails();
+        this.position = new Position();
+        this.compensation = new Compensation();
     }
 
+    public abstract double calculateLeaveCredits();
+
+    // Annotation: Legacy compatibility getter used by repositories and Ops.
     public int getId() {
         return employeeNumber;
+    }
+
+    // Annotation: Legacy compatibility setter used by repositories and Ops.
+    public void setId(int id) {
+        setEmployeeNumber(id);
     }
 
     public int getEmployeeNumber() {
         return employeeNumber;
     }
 
+    public void setEmployeeNumber(int employeeNumber) {
+        if (employeeNumber <= 0) {
+            throw new IllegalArgumentException("Employee number must be > 0.");
+        }
+        this.employeeNumber = employeeNumber;
+    }
+
     public String getLastName() {
         return lastName;
+    }
+
+    public void setLastName(String lastName) {
+        this.lastName = safe(lastName);
     }
 
     public String getFirstName() {
         return firstName;
     }
 
-    public LocalDate getBirthday() {
-        return birthday;
+    public void setFirstName(String firstName) {
+        this.firstName = safe(firstName);
     }
 
-    public String getAddress() {
-        return address;
+    public EmployeeDetails getEmployeeDetails() {
+        return employeeDetails;
     }
 
-    public String getPhoneNumber() {
-        return phoneNumber;
+    public void setEmployeeDetails(EmployeeDetails employeeDetails) {
+        this.employeeDetails = (employeeDetails == null) ? new EmployeeDetails() : employeeDetails;
     }
 
-    public String getSssNumber() {
-        return sssNumber;
-    }
-
-    public String getPhilHealthNumber() {
-        return philHealthNumber;
-    }
-
-    public String getTinNumber() {
-        return tinNumber;
-    }
-
-    public String getPagIbigNumber() {
-        return pagIbigNumber;
-    }
-
-    public String getStatus() {
-        return status;
-    }
-
+    // Annotation: Returns position title for UI, Ops, and CSV.
     public String getPosition() {
+        return (position == null) ? "" : safe(position.getJobTitle());
+    }
+
+    // Annotation: Accessor for the Position value object.
+    public Position getPositionObj() {
         return position;
     }
 
-    public String getImmediateSupervisor() {
-        return immediateSupervisor;
+    // Annotation: Legacy setter that accepts job title from CSV/UI.
+    public void setPosition(String jobTitle) {
+        if (this.position == null) {
+            this.position = new Position();
+        }
+        this.position.setJobTitle(jobTitle);
     }
 
+    public void setPosition(Position position) {
+        this.position = (position == null) ? new Position() : position;
+    }
+
+    public Compensation getCompensation() {
+        return compensation;
+    }
+
+    public void setCompensation(Compensation compensation) {
+        this.compensation = (compensation == null) ? new Compensation() : compensation;
+    }
+
+    // -----------------------------
+    // Legacy compatibility accessors
+    // -----------------------------
+
+    // Annotation: Status stored in Position.employmentStatus.
+    public String getStatus() {
+        return (position == null) ? "" : safe(position.getEmploymentStatus());
+    }
+
+    // Annotation: Status stored in Position.employmentStatus.
+    public void setStatus(String status) {
+        if (this.position == null) {
+            this.position = new Position();
+        }
+        this.position.setEmploymentStatus(status);
+    }
+
+    // Annotation: Immediate supervisor stored in Position.immediateSupervisor.
+    public String getImmediateSupervisor() {
+        return (position == null) ? "" : safe(position.getImmediateSupervisor());
+    }
+
+    // Annotation: Immediate supervisor stored in Position.immediateSupervisor.
+    public void setImmediateSupervisor(String supervisor) {
+        if (this.position == null) {
+            this.position = new Position();
+        }
+        this.position.setImmediateSupervisor(supervisor);
+    }
+
+    // Annotation: Delegates to EmployeeDetails.
+    public LocalDate getBirthday() {
+        return (employeeDetails == null) ? null : employeeDetails.getBirthday();
+    }
+
+    // Annotation: Delegates to EmployeeDetails.
+    public void setBirthday(LocalDate birthday) {
+        if (this.employeeDetails == null) {
+            this.employeeDetails = new EmployeeDetails();
+        }
+        this.employeeDetails.setBirthday(birthday);
+    }
+
+    public String getAddress() {
+        return (employeeDetails == null) ? "" : safe(employeeDetails.getAddress());
+    }
+
+    public void setAddress(String address) {
+        if (this.employeeDetails == null) {
+            this.employeeDetails = new EmployeeDetails();
+        }
+        this.employeeDetails.setAddress(address);
+    }
+
+    public String getPhoneNumber() {
+        return (employeeDetails == null) ? "" : safe(employeeDetails.getPhoneNumber());
+    }
+
+    public void setPhoneNumber(String phoneNumber) {
+        if (this.employeeDetails == null) {
+            this.employeeDetails = new EmployeeDetails();
+        }
+        this.employeeDetails.setPhoneNumber(phoneNumber);
+    }
+
+    public String getSssNumber() {
+        return (employeeDetails == null) ? "" : safe(employeeDetails.getSssNumber());
+    }
+
+    public void setSssNumber(String sssNumber) {
+        if (this.employeeDetails == null) {
+            this.employeeDetails = new EmployeeDetails();
+        }
+        this.employeeDetails.setSssNumber(sssNumber);
+    }
+
+    public String getPhilHealthNumber() {
+        return (employeeDetails == null) ? "" : safe(employeeDetails.getPhilHealthNumber());
+    }
+
+    public void setPhilHealthNumber(String philHealthNumber) {
+        if (this.employeeDetails == null) {
+            this.employeeDetails = new EmployeeDetails();
+        }
+        this.employeeDetails.setPhilHealthNumber(philHealthNumber);
+    }
+
+    public String getTinNumber() {
+        return (employeeDetails == null) ? "" : safe(employeeDetails.getTinNumber());
+    }
+
+    public void setTinNumber(String tinNumber) {
+        if (this.employeeDetails == null) {
+            this.employeeDetails = new EmployeeDetails();
+        }
+        this.employeeDetails.setTinNumber(tinNumber);
+    }
+
+    public String getPagIbigNumber() {
+        return (employeeDetails == null) ? "" : safe(employeeDetails.getPagIbigNumber());
+    }
+
+    public void setPagIbigNumber(String pagIbigNumber) {
+        if (this.employeeDetails == null) {
+            this.employeeDetails = new EmployeeDetails();
+        }
+        this.employeeDetails.setPagIbigNumber(pagIbigNumber);
+    }
+
+    // Annotation: Compensation wrappers using legacy field names.
     public double getBasicSalary() {
-        return basicSalary;
+        return (compensation == null) ? 0.0 : compensation.getBasicSalary();
+    }
+
+    public void setBasicSalary(double basicSalary) {
+        if (this.compensation == null) {
+            this.compensation = new Compensation();
+        }
+        this.compensation.setBasicSalary(basicSalary);
     }
 
     public double getRiceAllowance() {
-        return riceAllowance;
+        return (compensation == null) ? 0.0 : compensation.getRiceSubsidy();
+    }
+
+    public void setRiceAllowance(double riceAllowance) {
+        if (this.compensation == null) {
+            this.compensation = new Compensation();
+        }
+        this.compensation.setRiceSubsidy(riceAllowance);
     }
 
     public double getPhoneAllowance() {
-        return phoneAllowance;
+        return (compensation == null) ? 0.0 : compensation.getPhoneAllowance();
+    }
+
+    public void setPhoneAllowance(double phoneAllowance) {
+        if (this.compensation == null) {
+            this.compensation = new Compensation();
+        }
+        this.compensation.setPhoneAllowance(phoneAllowance);
     }
 
     public double getClothingAllowance() {
-        return clothingAllowance;
+        return (compensation == null) ? 0.0 : compensation.getClothingAllowance();
+    }
+
+    public void setClothingAllowance(double clothingAllowance) {
+        if (this.compensation == null) {
+            this.compensation = new Compensation();
+        }
+        this.compensation.setClothingAllowance(clothingAllowance);
     }
 
     public double getGrossSemiMonthlyRate() {
-        return grossSemiMonthlyRate;
+        return (compensation == null) ? 0.0 : compensation.getGrossSemiMonthlyRate();
+    }
+
+    public void setGrossSemiMonthlyRate(double grossSemiMonthlyRate) {
+        if (this.compensation == null) {
+            this.compensation = new Compensation();
+        }
+        this.compensation.setGrossSemiMonthlyRate(grossSemiMonthlyRate);
     }
 
     public double getHourlyRate() {
-        return hourlyRate;
+        return (compensation == null) ? 0.0 : compensation.getHourlyRate();
     }
 
-    /**
-     * CSV serialization for the employee master dataset. Leave balance fields
-     * are intentionally excluded because they are tracked in the LeaveCredits
-     * module.
-     */
+    public void setHourlyRate(double hourlyRate) {
+        if (this.compensation == null) {
+            this.compensation = new Compensation();
+        }
+        this.compensation.setHourlyRate(hourlyRate);
+    }
+
+    // Annotation: Serializes the employee in the same column order as data_Employee.csv.
     public String toCsvRow() {
-        String dateStr = (birthday != null)
-                ? birthday.format(java.time.format.DateTimeFormatter.ofPattern("M/d/yyyy"))
-                : "";
+        DateTimeFormatter df = DateTimeFormatter.ofPattern("M/d/yyyy", Locale.US);
+        String bday = (getBirthday() == null) ? "" : getBirthday().format(df);
 
-        return employeeNumber + ","
-                + escape(lastName) + ","
-                + escape(firstName) + ","
-                + dateStr + ","
-                + escape(address) + ","
-                + escape(phoneNumber) + ","
-                + escape(sssNumber) + ","
-                + escape(philHealthNumber) + ","
-                + escape(tinNumber) + ","
-                + escape(pagIbigNumber) + ","
-                + escape(status) + ","
-                + escape(position) + ","
-                + escape(immediateSupervisor) + ","
-                + "\"" + String.format("%,.2f", basicSalary) + "\","
-                + "\"" + String.format("%,.2f", riceAllowance) + "\","
-                + "\"" + String.format("%,.2f", phoneAllowance) + "\","
-                + "\"" + String.format("%,.2f", clothingAllowance) + "\","
-                + "\"" + String.format("%,.2f", grossSemiMonthlyRate) + "\","
-                + String.format("%.2f", hourlyRate);
+        return String.join(",",
+                String.valueOf(getEmployeeNumber()),
+                escape(getLastName()),
+                escape(getFirstName()),
+                escape(bday),
+                escape(getAddress()),
+                escape(getPhoneNumber()),
+                escape(getSssNumber()),
+                escape(getPhilHealthNumber()),
+                escape(getTinNumber()),
+                escape(getPagIbigNumber()),
+                escape(getStatus()),
+                escape(getPosition()),
+                escape(getImmediateSupervisor()),
+                fmt(getBasicSalary()),
+                fmt(getRiceAllowance()),
+                fmt(getPhoneAllowance()),
+                fmt(getClothingAllowance()),
+                fmt(getGrossSemiMonthlyRate()),
+                fmt(getHourlyRate())
+        );
     }
 
-    private String escape(String data) {
-        if (data == null) {
+    private String escape(String v) {
+        if (v == null) {
             return "";
         }
-        if (data.contains(",")) {
-            return "\"" + data + "\"";
+        String s = v.replace("\"", "\"\"");
+        if (s.contains(",") || s.contains("\"") || s.contains("\n")) {
+            return "\"" + s + "\"";
         }
-        return data;
+        return s;
+    }
+
+    private String fmt(double v) {
+        if (Double.isNaN(v) || Double.isInfinite(v)) {
+            return "0";
+        }
+        long rounded = Math.round(v);
+        if (Math.abs(v - rounded) < 0.0000001) {
+            return Long.toString(rounded);
+        }
+        return String.format(Locale.US, "%.2f", v);
+    }
+
+    private String safe(String s) {
+        return s == null ? "" : s.trim();
     }
 }

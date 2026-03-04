@@ -115,7 +115,7 @@ public class HROpsImpl implements HROps {
                 "HR_CREATE_OK",
                 "Created employee profile and login. EmpID=" + empId
                 + ", Username=" + username
-                + ", Role=" + login.getRole()
+                + ", Roles=" + login.getRoles()
                 + ", Position=" + emp.getPosition()
         );
 

@@ -1,188 +1,178 @@
-/*
- * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
- * Click nbfs://nbhost/SystemFileSystem/Templates/GUIForms/JPanel.java to edit this template
- */
 package com.motorph.ui.swing;
 
+import com.motorph.domain.enums.Role;
 import com.motorph.domain.models.User;
-import java.awt.BorderLayout;
-import java.awt.FlowLayout;
-import javax.swing.JButton;
-import javax.swing.JLabel;
-import javax.swing.JOptionPane;
-import javax.swing.JPanel;
-import javax.swing.JScrollPane;
-import javax.swing.JTable;
-import javax.swing.ListSelectionModel;
+import com.motorph.ops.it.ItOps;
+import com.motorph.ops.it.ItOpsImpl;
+import com.motorph.repository.UserRepository;
+import com.motorph.repository.csv.CsvUserRepository;
+import com.motorph.service.LogService;
+
+import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
+import java.awt.*;
+import java.util.List;
 
 /**
  *
- * @author ACER
+ * @author OngoJ.
  */
-public class ITPanel extends javax.swing.JPanel {
+public class ITPanel extends JPanel {
 
-    // Annotation: Store logged-in user context for role-based access control.
     private final User currentUser;
 
-    // Annotation: Table model for user accounts.
-    private DefaultTableModel model;
+    private final UserRepository userRepo;
+    private final ItOps itOps;
 
-    // Annotation: UI components created outside Form Editor block.
-    private JTable table;
-
-    private JButton btnLoad;
-    private JButton btnResetDefault;
-    private JButton btnResetCustom;
-    private JButton btnToggleLock;
-
-    /**
-     * Creates new form ITPanel (Form Editor compatible).
-     */
-    public ITPanel() {
-        this(null);
-    }
-
-    // Annotation: Preferred constructor for CardLayout screens.
-    public ITPanel(User currentUser) {
-        initComponents();
-        this.currentUser = currentUser;
-        buildCustomUi();
-        if (currentUser != null) {
-            // Example: show role somewhere or use it to control buttons later
-            System.out.println("Logged in role: " + currentUser.getRole());
+    private final DefaultTableModel model = new DefaultTableModel(
+            new Object[]{"Username", "EmpID", "Roles", "Locked"}, 0
+    ) {
+        @Override
+        public boolean isCellEditable(int row, int col) {
+            return false;
         }
+    };
 
+    private final JTable tbl = new JTable(model);
+
+    private final JButton btnRefresh = new JButton("Refresh");
+    private final JButton btnLock = new JButton("Lock");
+    private final JButton btnUnlock = new JButton("Unlock");
+    private final JButton btnResetDefault = new JButton("Reset Default Password");
+    private final JButton btnResetCustom = new JButton("Reset Custom Password");
+
+    public ITPanel(User currentUser) {
+        this.currentUser = currentUser;
+        this.userRepo = new CsvUserRepository();
+        this.itOps = new ItOpsImpl(userRepo, new LogService());
+
+        buildUi();
+        applyPermissions();
+        loadUsers();
     }
 
-    // Annotation: Build actual UI outside guarded code so Form Editor does not overwrite it.
-    private void buildCustomUi() {
-        removeAll();
-        setLayout(new BorderLayout());
+    private void buildUi() {
+        setLayout(new BorderLayout(10, 10));
 
-        JPanel top = new JPanel(new FlowLayout(FlowLayout.LEFT));
-
-        btnLoad = new JButton("Load Accounts");
-        btnResetDefault = new JButton("Reset Password Default");
-        btnResetCustom = new JButton("Reset Password Custom");
-        btnToggleLock = new JButton("Toggle Lock");
-
-        top.add(new JLabel("System Maintenance (IT)"));
-        top.add(btnLoad);
+        JPanel top = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 5));
+        top.add(btnRefresh);
+        top.add(btnLock);
+        top.add(btnUnlock);
         top.add(btnResetDefault);
         top.add(btnResetCustom);
-        top.add(btnToggleLock);
 
-        model = new DefaultTableModel(
-                new String[]{"Username", "Role", "Locked"},
-                0
-        ) {
-            @Override
-            public boolean isCellEditable(int row, int column) {
-                return false;
-            }
-        };
-
-        table = new JTable(model);
-        table.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+        tbl.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
 
         add(top, BorderLayout.NORTH);
-        add(new JScrollPane(table), BorderLayout.CENTER);
+        add(new JScrollPane(tbl), BorderLayout.CENTER);
 
-        // Annotation: Button handlers are stubs; connect to ItOps and UserRepository later.
-        btnLoad.addActionListener(e -> loadAccounts());
-        btnResetDefault.addActionListener(e -> resetPasswordDefault());
-        btnResetCustom.addActionListener(e -> resetPasswordCustom());
-        btnToggleLock.addActionListener(e -> toggleLock());
-
-        revalidate();
-        repaint();
+        btnRefresh.addActionListener(e -> loadUsers());
+        btnLock.addActionListener(e -> onSetLock(true));
+        btnUnlock.addActionListener(e -> onSetLock(false));
+        btnResetDefault.addActionListener(e -> onResetDefault());
+        btnResetCustom.addActionListener(e -> onResetCustom());
     }
 
-    // Annotation: Load accounts into the table (stub).
-    private void loadAccounts() {
+    private void applyPermissions() {
+        boolean isIT = currentUser != null && currentUser.getRoles().contains(Role.IT);
+
+        btnLock.setEnabled(isIT);
+        btnUnlock.setEnabled(isIT);
+        btnResetDefault.setEnabled(isIT);
+        btnResetCustom.setEnabled(isIT);
+
+        if (!isIT) {
+            btnLock.setVisible(false);
+            btnUnlock.setVisible(false);
+            btnResetDefault.setVisible(false);
+            btnResetCustom.setVisible(false);
+        }
+    }
+
+    private void loadUsers() {
         model.setRowCount(0);
 
-        // Annotation: Temporary rows for UI validation; replace with repository results later.
-        model.addRow(new Object[]{"10001", "HR", "No"});
-        model.addRow(new Object[]{"10002", "PAYROLL", "No"});
-        model.addRow(new Object[]{"10003", "IT", "No"});
-
-        JOptionPane.showMessageDialog(this, "Accounts loaded (demo rows). Connect repository next.");
+        List<User> users = userRepo.findAll();
+        for (User u : users) {
+            model.addRow(new Object[]{
+                    u.getUsername(),
+                    u.getId(),
+                    String.valueOf(u.getRoles()),
+                    u.isLocked() ? "Yes" : "No"
+            });
+        }
     }
 
-    // Annotation: Reset password to system default for selected user (stub).
-    private void resetPasswordDefault() {
-        int row = table.getSelectedRow();
+    private String selectedUsername() {
+        int row = tbl.getSelectedRow();
         if (row < 0) {
-            JOptionPane.showMessageDialog(this, "Select one account first.");
+            return null;
+        }
+        int modelRow = tbl.convertRowIndexToModel(row);
+        Object v = model.getValueAt(modelRow, 0);
+        return v == null ? null : String.valueOf(v).trim();
+    }
+
+    private int actorId() {
+        return currentUser == null ? 0 : currentUser.getId();
+    }
+
+    private void onSetLock(boolean lock) {
+        String username = selectedUsername();
+        if (username == null || username.isEmpty()) {
+            UiDialogs.warn(this, "Select a user first.");
             return;
         }
 
-        String username = String.valueOf(model.getValueAt(row, 0));
-        JOptionPane.showMessageDialog(this, "Default password reset (stub) for: " + username);
+        boolean ok = itOps.setLockStatus(username, lock, actorId());
+        if (ok) {
+            UiDialogs.info(this, lock ? "Account locked." : "Account unlocked.");
+            loadUsers();
+        } else {
+            UiDialogs.error(this, "Lock status update failed.");
+        }
     }
 
-    // Annotation: Reset password to a custom value for selected user (stub).
-    private void resetPasswordCustom() {
-        int row = table.getSelectedRow();
-        if (row < 0) {
-            JOptionPane.showMessageDialog(this, "Select one account first.");
+    private void onResetDefault() {
+        String username = selectedUsername();
+        if (username == null || username.isEmpty()) {
+            UiDialogs.warn(this, "Select a user first.");
             return;
         }
 
-        String username = String.valueOf(model.getValueAt(row, 0));
-        String newPass = JOptionPane.showInputDialog(this, "Enter new password for: " + username);
+        boolean ok = itOps.resetPasswordToDefault(username, actorId());
+        if (ok) {
+            UiDialogs.info(this, "Password reset to default.");
+            loadUsers();
+        } else {
+            UiDialogs.error(this, "Reset failed.");
+        }
+    }
 
+    private void onResetCustom() {
+        String username = selectedUsername();
+        if (username == null || username.isEmpty()) {
+            UiDialogs.warn(this, "Select a user first.");
+            return;
+        }
+
+        String newPass = JOptionPane.showInputDialog(this, "Enter new password:");
         if (newPass == null) {
-            return; // cancel
-        }
-
-        if (newPass.trim().isEmpty()) {
-            JOptionPane.showMessageDialog(this, "Password must not be empty.");
             return;
         }
 
-        JOptionPane.showMessageDialog(this, "Custom password reset (stub) for: " + username);
-    }
-
-    // Annotation: Toggle lock status Yes/No for selected user (stub).
-    private void toggleLock() {
-        int row = table.getSelectedRow();
-        if (row < 0) {
-            JOptionPane.showMessageDialog(this, "Select one account first.");
+        newPass = newPass.trim();
+        if (newPass.isEmpty()) {
+            UiDialogs.warn(this, "Password cannot be blank.");
             return;
         }
 
-        String locked = String.valueOf(model.getValueAt(row, 2));
-        String newLocked = locked.equalsIgnoreCase("Yes") ? "No" : "Yes";
-        model.setValueAt(newLocked, row, 2);
-
-        JOptionPane.showMessageDialog(this, "Lock status updated (stub).");
+        boolean ok = itOps.resetPassword(username, newPass, actorId());
+        if (ok) {
+            UiDialogs.info(this, "Password updated.");
+            loadUsers();
+        } else {
+            UiDialogs.error(this, "Reset failed.");
+        }
     }
-
-    /**
-     * This method is called from within the constructor to initialize the form.
-     * WARNING: Do NOT modify this code. The content of this method is always
-     * regenerated by the Form Editor.
-     */
-    @SuppressWarnings("unchecked")
-    // <editor-fold defaultstate="collapsed" desc="Generated Code">//GEN-BEGIN:initComponents
-    private void initComponents() {
-
-        javax.swing.GroupLayout layout = new javax.swing.GroupLayout(this);
-        this.setLayout(layout);
-        layout.setHorizontalGroup(
-            layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGap(0, 400, Short.MAX_VALUE)
-        );
-        layout.setVerticalGroup(
-            layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGap(0, 300, Short.MAX_VALUE)
-        );
-    }// </editor-fold>//GEN-END:initComponents
-
-
-    // Variables declaration - do not modify//GEN-BEGIN:variables
-    // End of variables declaration//GEN-END:variables
 }

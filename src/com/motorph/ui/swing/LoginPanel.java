@@ -4,6 +4,7 @@
  */
 package com.motorph.ui.swing;
 
+import com.motorph.ui.swing.UiHelper.UiThemeHelper;
 import com.motorph.domain.models.User;
 import com.motorph.repository.UserRepository;
 import com.motorph.repository.csv.CsvUserRepository;
@@ -20,7 +21,7 @@ import javax.swing.text.DocumentFilter.FilterBypass;
  *
  * @author ACER
  */
-public class LoginView extends javax.swing.JFrame {
+public class LoginPanel extends javax.swing.JFrame {
 
     // Placeholder text kept as constants to align input validation and filters.
     private static final String USER_PLACEHOLDER = "EMPLOYEE ID";
@@ -29,26 +30,29 @@ public class LoginView extends javax.swing.JFrame {
     // --- 1. CONNECT TO BACKEND (CORRECTED) ---
     private final UserRepository userRepo;
     private final AuthService authService;
-    
-    private static final java.util.logging.Logger logger = java.util.logging.Logger.getLogger(LoginView.class.getName());
+
+    private static final java.util.logging.Logger logger = java.util.logging.Logger.getLogger(LoginPanel.class.getName());
 
     /**
      * Creates new form LoginView
      */
-    public LoginView() {
+    public LoginPanel() {
         // --- 2. INIT SERVICE (CORRECTED) ---
         // We initialize the Repository first, then the Service
         this.userRepo = new CsvUserRepository();
         this.authService = new AuthService(userRepo);
-        
+
         // --- 3. BUILD UI ---
-        initComponents(); 
+        initComponents();
+        setSize(400, 600);                      // fixed startup size
+        setResizable(false);                    // prevents manual maximize
+        setExtendedState(javax.swing.JFrame.NORMAL); // forces normal state
         setLocationRelativeTo(null); // Centers window on screen
-        
+
         // --- 4. APPLY FEATURES ---
         setupNumberOnlyFilter();
         setupGhostText();
-        
+
         // Fix: Ensure focus is not on the text field immediately so "USERNAME" is visible
         this.requestFocusInWindow();
     }
@@ -74,7 +78,7 @@ public class LoginView extends javax.swing.JFrame {
             // Failure: Show Error
             JOptionPane.showMessageDialog(this, "Invalid credentials.", "Login Error", JOptionPane.ERROR_MESSAGE);
             jPasswordField1.setText("");
-            
+
             // Reset placeholder if needed
             jPasswordField1.setForeground(Color.GRAY);
             jPasswordField1.setEchoChar((char) 0);
@@ -95,6 +99,7 @@ public class LoginView extends javax.swing.JFrame {
                     jTextField1.setForeground(Color.BLACK);
                 }
             }
+
             @Override
             public void focusLost(FocusEvent e) {
                 if (jTextField1.getText().isEmpty()) {
@@ -119,6 +124,7 @@ public class LoginView extends javax.swing.JFrame {
                     jPasswordField1.setEchoChar('\u2022');
                 }
             }
+
             @Override
             public void focusLost(FocusEvent e) {
                 if (new String(jPasswordField1.getPassword()).isEmpty()) {
@@ -131,7 +137,6 @@ public class LoginView extends javax.swing.JFrame {
     }
     // --- UI FEATURE: NUMBER FILTER ---
 
-
     // --- UI FEATURE: NUMBER FILTER ---
     private void setupNumberOnlyFilter() {
         ((javax.swing.text.AbstractDocument) jTextField1.getDocument()).setDocumentFilter(new DocumentFilter() {
@@ -142,6 +147,7 @@ public class LoginView extends javax.swing.JFrame {
                     super.insertString(fb, offset, string, attr);
                 }
             }
+
             @Override
             public void replace(FilterBypass fb, int offset, int length, String text, AttributeSet attrs) throws javax.swing.text.BadLocationException {
                 // Allow digits only, plus placeholder writes.
@@ -171,14 +177,34 @@ public class LoginView extends javax.swing.JFrame {
         jButton1 = new javax.swing.JButton();
 
         setDefaultCloseOperation(javax.swing.WindowConstants.EXIT_ON_CLOSE);
-        setMaximumSize(new java.awt.Dimension(400, 600));
         setMinimumSize(new java.awt.Dimension(400, 600));
-        setPreferredSize(new java.awt.Dimension(400, 600));
 
         jLabel1.setFont(new java.awt.Font("Segoe UI", 1, 24)); // NOI18N
         jLabel1.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
         jLabel1.setIcon(new javax.swing.ImageIcon(getClass().getResource("/com/motorph/ui/resources/images/Logo2.png"))); // NOI18N
         jLabel1.setBorder(javax.swing.BorderFactory.createBevelBorder(javax.swing.border.BevelBorder.RAISED));
+        jLabel1.setHorizontalTextPosition(javax.swing.SwingConstants.CENTER);
+        jLabel1.setMaximumSize(new java.awt.Dimension(100, 350));
+        jLabel1.setMinimumSize(new java.awt.Dimension(100, 350));
+        jLabel1.setOpaque(true);
+        jLabel1.setPreferredSize(new java.awt.Dimension(100, 350));
+        java.net.URL url = getClass().getResource(
+            "/com/motorph/ui/resources/images/Logo2.png"
+        );
+        if (url != null) {
+            javax.swing.ImageIcon icon = new javax.swing.ImageIcon(url);
+            java.awt.Image img = icon.getImage();
+
+            int w = jLabel1.getWidth();
+            int h = jLabel1.getHeight();
+
+            if (w > 0 && h > 0) {
+                java.awt.Image scaled = img.getScaledInstance(
+                    w, h, java.awt.Image.SCALE_SMOOTH
+                );
+                jLabel1.setIcon(new javax.swing.ImageIcon(scaled));
+            }
+        }
         getContentPane().add(jLabel1, java.awt.BorderLayout.PAGE_START);
 
         jPanel1.setLayout(new java.awt.GridBagLayout());
@@ -199,7 +225,7 @@ public class LoginView extends javax.swing.JFrame {
         jTextField1.setHorizontalAlignment(javax.swing.JTextField.CENTER);
         jTextField1.setText("USERNAME");
         jTextField1.setToolTipText("");
-        jTextField1.setBorder(new javax.swing.border.MatteBorder(null));
+        jTextField1.setBorder(new javax.swing.border.SoftBevelBorder(javax.swing.border.BevelBorder.LOWERED));
         jTextField1.setMargin(new java.awt.Insets(3, 7, 3, 7));
         jTextField1.setMaximumSize(new java.awt.Dimension(75, 25));
         jTextField1.setMinimumSize(new java.awt.Dimension(75, 25));
@@ -214,13 +240,15 @@ public class LoginView extends javax.swing.JFrame {
         gridBagConstraints.insets = new java.awt.Insets(3, 7, 3, 7);
         jPanel1.add(jTextField1, gridBagConstraints);
 
+        jLabel4.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
         jLabel4.setIcon(new javax.swing.ImageIcon(getClass().getResource("/com/motorph/ui/resources/images/Password.png"))); // NOI18N
         jLabel4.setBorder(javax.swing.BorderFactory.createBevelBorder(javax.swing.border.BevelBorder.RAISED));
         jLabel4.setCursor(new java.awt.Cursor(java.awt.Cursor.DEFAULT_CURSOR));
-        jLabel4.setHorizontalTextPosition(javax.swing.SwingConstants.LEADING);
+        jLabel4.setHorizontalTextPosition(javax.swing.SwingConstants.CENTER);
         jLabel4.setMaximumSize(new java.awt.Dimension(30, 30));
         jLabel4.setMinimumSize(new java.awt.Dimension(30, 30));
         jLabel4.setPreferredSize(new java.awt.Dimension(30, 30));
+        jLabel4.setVerticalTextPosition(javax.swing.SwingConstants.TOP);
         gridBagConstraints = new java.awt.GridBagConstraints();
         gridBagConstraints.gridx = 0;
         gridBagConstraints.gridy = 1;
@@ -233,12 +261,12 @@ public class LoginView extends javax.swing.JFrame {
         jPasswordField1.setHorizontalAlignment(javax.swing.JTextField.CENTER);
         jPasswordField1.setText("PASSWORD");
         jPasswordField1.setToolTipText("");
-        jPasswordField1.setBorder(new javax.swing.border.MatteBorder(null));
+        jPasswordField1.setBorder(new javax.swing.border.SoftBevelBorder(javax.swing.border.BevelBorder.LOWERED));
+        jPasswordField1.setCursor(new java.awt.Cursor(java.awt.Cursor.TEXT_CURSOR));
         jPasswordField1.setMargin(new java.awt.Insets(3, 7, 3, 7));
         jPasswordField1.setMaximumSize(new java.awt.Dimension(75, 25));
         jPasswordField1.setMinimumSize(new java.awt.Dimension(75, 25));
-        jPasswordField1.setPreferredSize(new java.awt.Dimension(75, 25));
-        jPasswordField1.setRequestFocusEnabled(false);
+        jPasswordField1.setRequestFocusEnabled(true);
         jPasswordField1.addActionListener(this::jPasswordField1ActionPerformed);
         gridBagConstraints = new java.awt.GridBagConstraints();
         gridBagConstraints.gridx = 1;
@@ -284,21 +312,11 @@ public class LoginView extends javax.swing.JFrame {
     /**
      * @param args the command line arguments
      */
-public static void main(String args[]) {
-        try {
-            for (javax.swing.UIManager.LookAndFeelInfo info : javax.swing.UIManager.getInstalledLookAndFeels()) {
-                if ("Nimbus".equals(info.getName())) {
-                    javax.swing.UIManager.setLookAndFeel(info.getClassName());
-                    break;
-                }
-            }
-        } catch (Exception ex) {
-            logger.log(java.util.logging.Level.SEVERE, null, ex);
-        }
+    public static void main(String[] args) {
+        // Annotation: Apply Nimbus globally for the whole application.
+        UiThemeHelper.useNimbus();
 
-        java.awt.EventQueue.invokeLater(() -> {
-            new LoginView().setVisible(true);
-        });
+        java.awt.EventQueue.invokeLater(() -> new LoginPanel().setVisible(true));
     }
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JButton jButton1;

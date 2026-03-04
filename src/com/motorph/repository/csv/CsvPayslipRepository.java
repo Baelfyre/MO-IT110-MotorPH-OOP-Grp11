@@ -226,39 +226,68 @@ public class CsvPayslipRepository implements PayslipRepository {
 
     private Payslip parsePayslipRow(String row) {
         String[] data = row.split(CSV_SPLIT_REGEX, -1);
-        if (data.length < 21) {
+        // Expected columns based on HEADER: 23
+        if (data.length < 23) {
             return null;
         }
 
-        Payslip p = new Payslip();
-
-        p.setTransactionId(clean(data[1]));
-        p.setEmployeeId(parseIntSafe(data[2]));
-        p.setLastName(clean(data[3]));
-        p.setFirstName(clean(data[4]));
+        String txId = clean(data[1]);
+        int empId = parseIntSafe(data[2]);
+        String last = clean(data[3]);
+        String first = clean(data[4]);
 
         LocalDate start = parseDateSafe(clean(data[5]));
         LocalDate end = parseDateSafe(clean(data[6]));
-        if (start != null && end != null) {
-            p.setPeriod(new PayPeriod(start, end));
+        if (start == null || end == null) {
+            return null;
         }
+        PayPeriod period = new PayPeriod(start, end);
 
-        p.setBasicSalary(parseDoubleSafe(data[7]));
-        p.setRiceAllowance(parseDoubleSafe(data[8]));
-        p.setPhoneAllowance(parseDoubleSafe(data[9]));
-        p.setClothingAllowance(parseDoubleSafe(data[10]));
-        p.setHourlyRate(parseDoubleSafe(data[12]));
-        p.setTotalHoursWorked(parseDoubleSafe(data[13]));
-        p.setGrossIncome(parseDoubleSafe(data[14]));
+        double basic = parseDoubleSafe(data[7]);
+        double rice = parseDoubleSafe(data[8]);
+        double phone = parseDoubleSafe(data[9]);
+        double clothing = parseDoubleSafe(data[10]);
+        double grossSemi = parseDoubleSafe(data[11]);
+        double hourly = parseDoubleSafe(data[12]);
+        double hoursWorked = parseDoubleSafe(data[13]);
+        double grossIncome = parseDoubleSafe(data[14]);
 
-        p.setSss(parseDoubleSafe(data[15]));
-        p.setPhilHealth(parseDoubleSafe(data[16]));
-        p.setPagIbig(parseDoubleSafe(data[17]));
-        p.setWithholdingTax(parseDoubleSafe(data[18]));
-        p.setTotalDeductions(parseDoubleSafe(data[19]));
-        p.setNetPay(parseDoubleSafe(data[20]));
+        double sss = parseDoubleSafe(data[15]);
+        double phil = parseDoubleSafe(data[16]);
+        double pagibig = parseDoubleSafe(data[17]);
+        double tax = parseDoubleSafe(data[18]);
+        double totalDed = parseDoubleSafe(data[19]);
+        double net = parseDoubleSafe(data[20]);
 
-        return p;
+        int processedBy = parseIntSafe(data[21]);
+        LocalDateTime processedAt = parseDateTimeSafe(clean(data[22]));
+
+        // Late deduction and overtime pay are not stored in the CSV snapshot format.
+        return new Payslip(
+                txId,
+                empId,
+                last,
+                first,
+                period,
+                basic,
+                rice,
+                phone,
+                clothing,
+                grossSemi,
+                hourly,
+                hoursWorked,
+                0.0,
+                grossIncome,
+                0.0,
+                sss,
+                phil,
+                pagibig,
+                tax,
+                totalDed,
+                net,
+                processedBy,
+                processedAt
+        );
     }
 
     private void ensureFolder(String folderPath) {
@@ -382,6 +411,17 @@ public class CsvPayslipRepository implements PayslipRepository {
                 return null;
             }
             return LocalDate.parse(raw.trim(), DATE_FMT);
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    private LocalDateTime parseDateTimeSafe(String raw) {
+        try {
+            if (raw == null || raw.isBlank()) {
+                return null;
+            }
+            return LocalDateTime.parse(raw.trim(), PROCESSED_FMT);
         } catch (Exception e) {
             return null;
         }
