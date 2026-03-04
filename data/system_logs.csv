@@ -22,3 +22,6 @@ Log_ID,Timestamp,User,Action,Details
 21,2026-03-05 04:06:30,10001,TIME_IN_OK,Time-in recorded.
 22,2026-03-05 04:06:33,10001,TIME_OUT_OK,Time-out recorded.
 23,2026-03-05 04:06:36,10001,TIME_IN_DENIED,Time-in rejected by rule.
+24,2026-03-05 04:10:20,10000,LOGIN_SUCCESS,User logged in successfully.
+25,2026-03-05 04:10:38,10001,LOGIN_SUCCESS,User logged in successfully.
+26,2026-03-05 04:28:27,10002,LOGIN_SUCCESS,User logged in successfully.

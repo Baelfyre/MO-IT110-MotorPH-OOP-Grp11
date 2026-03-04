@@ -16,7 +16,7 @@ import java.time.format.DateTimeFormatter;
 import javax.swing.Timer;
 import com.motorph.ui.swing.UiHelper.UiThemeHelper;
 
-import com.motorph.ops.auth.AuthOps;         // Import AuthOps
+import com.motorph.ops.auth.AuthOps;         
 import com.motorph.ops.auth.AuthOpsImpl;
 import com.motorph.ops.time.TimeOps;
 import com.motorph.ops.hr.HROps;
@@ -44,6 +44,8 @@ public class MainDashboard extends javax.swing.JFrame {
         this.hrOps = hrOps;
         
         initComponents();
+        
+        loadDashboardProfile();
 
         setResizable(false);
         setExtendedState(javax.swing.JFrame.NORMAL);
@@ -746,6 +748,51 @@ public class MainDashboard extends javax.swing.JFrame {
 
         clockTimer = new Timer(1000, e -> updateDateTimeLabels());
         clockTimer.start();
+    }
+    
+    // Grabs the Employee profile and fills the Dashboard text fields
+    private void loadDashboardProfile() {
+        if (currentUser == null) return;
+
+        try {
+            int empId = Integer.parseInt(currentUser.getUsername());
+            // Fetch the employee object using the injected service
+            com.motorph.domain.models.Employee emp = employeeService.getEmployee(empId);
+
+            if (emp != null) {
+                // ID and Name
+                jTextField1.setText(String.valueOf(emp.getId()));
+                jTextField2.setText(emp.getFirstName() + " " + emp.getLastName());
+
+                // Birthday formatting
+                if (emp.getBirthday() != null) {
+                    java.time.format.DateTimeFormatter df = java.time.format.DateTimeFormatter.ofPattern("MMMM dd, yyyy");
+                    jTextField3.setText(emp.getBirthday().format(df));
+                } else {
+                    jTextField3.setText("N/A");
+                }
+
+                // Job Details
+                jTextField4.setText(emp.getPosition());
+                jTextField5.setText(emp.getStatus());
+                jTextField6.setText(emp.getImmediateSupervisor());
+                
+                // Contact
+                jTextField7.setText(emp.getPhoneNumber());
+                jLabel14.setText("Address: " + emp.getAddress());
+
+                // Lock the fields so they can't be edited directly on the dashboard
+                jTextField1.setEditable(false);
+                jTextField2.setEditable(false);
+                jTextField3.setEditable(false);
+                jTextField4.setEditable(false);
+                jTextField5.setEditable(false);
+                jTextField6.setEditable(false);
+                jTextField7.setEditable(false);
+            }
+        } catch (NumberFormatException e) {
+            System.err.println("Could not parse user ID for dashboard: " + e.getMessage());
+        }
     }
 
     private void updateDateTimeLabels() {
