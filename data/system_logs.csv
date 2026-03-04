@@ -10,3 +10,7 @@ Log_ID,Timestamp,User,Action,Details
 9,2026-03-05 02:03:07,10000,LOGIN_SUCCESS,User logged in successfully.
 10,2026-03-05 02:10:32,10000,LOGIN_SUCCESS,User logged in successfully.
 11,2026-03-05 02:13:19,10000,LOGIN_SUCCESS,User logged in successfully.
+12,2026-03-05 02:40:35,10000,LOGIN_SUCCESS,User logged in successfully.
+13,2026-03-05 03:06:53,10000,LOGIN_SUCCESS,User logged in successfully.
+14,2026-03-05 03:06:58,10000,TIME_IN_OK,Time-in recorded.
+15,2026-03-05 03:07:00,10000,TIME_OUT_OK,Time-out recorded.

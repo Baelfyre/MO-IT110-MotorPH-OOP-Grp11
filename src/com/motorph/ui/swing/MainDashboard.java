@@ -18,6 +18,7 @@ import com.motorph.ui.swing.UiHelper.UiThemeHelper;
 
 import com.motorph.ops.auth.AuthOps;         // Import AuthOps
 import com.motorph.ops.auth.AuthOpsImpl;
+import com.motorph.ops.time.TimeOps;
 
 
 /**
@@ -32,11 +33,13 @@ public class MainDashboard extends javax.swing.JFrame {
     private CardLayout cardLayout;
     private JPanel mainContentPanel;
     private Timer clockTimer;
+    private final TimeOps timeOps;
 
-    public MainDashboard(User loggedInUser, EmployeeService employeeService, AuthOps authOps) {
+    public MainDashboard(User loggedInUser, EmployeeService employeeService, AuthOps authOps, TimeOps timeOps) {
         this.currentUser = loggedInUser;
-        this.employeeService = employeeService; // Store the injected service
+        this.employeeService = employeeService; 
         this.authOps = authOps;
+        this.timeOps = timeOps;
         
         initComponents();
 
@@ -622,12 +625,28 @@ public class MainDashboard extends javax.swing.JFrame {
 
     private void jButton4ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButton4ActionPerformed
         // Clock In
-        JOptionPane.showMessageDialog(this, "Clock In triggered.");
+        int empId = Integer.parseInt(currentUser.getUsername());
+        
+        boolean success = timeOps.clockIn(empId);
+        if (success){
+            JOptionPane.showMessageDialog(this, "Clock in successful!", "Success",JOptionPane.INFORMATION_MESSAGE );
+        } else {
+            JOptionPane.showMessageDialog(this, "Clock In failed. You might already be clocked in today.", "Error", JOptionPane.ERROR_MESSAGE);
+        }
+        //JOptionPane.showMessageDialog(this, "Clock In triggered.");
     }//GEN-LAST:event_jButton4ActionPerformed
 
     private void jButton5ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButton5ActionPerformed
         // Clock Out
-        JOptionPane.showMessageDialog(this, "Clock Out triggered.");
+        int empId = Integer.parseInt(currentUser.getUsername());
+        
+        boolean success = timeOps.clockOut(empId);
+        if (success) {
+            JOptionPane.showMessageDialog(this, "Clock Out successful!", "Success", JOptionPane.INFORMATION_MESSAGE);
+        } else {
+            JOptionPane.showMessageDialog(this, "Clock Out failed. You might not be clocked in, or already clocked out.", "Error", JOptionPane.ERROR_MESSAGE);
+        }
+        //JOptionPane.showMessageDialog(this, "Clock Out triggered.");
     }//GEN-LAST:event_jButton5ActionPerformed
 
     private void jButton7ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButton7ActionPerformed
@@ -647,7 +666,7 @@ public class MainDashboard extends javax.swing.JFrame {
 
     private void jButton6ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButton6ActionPerformed
         // Logout
-        new LoginPanel(authOps, employeeService).setVisible(true);
+        new LoginPanel(authOps, employeeService, timeOps).setVisible(true);
         dispose();
     }//GEN-LAST:event_jButton6ActionPerformed
 
