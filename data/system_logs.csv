@@ -28,3 +28,23 @@ Log_ID,Timestamp,User,Action,Details
 27,2026-03-05 04:34:44,10005,LOGIN_SUCCESS,User logged in successfully.
 28,2026-03-05 04:54:48,10005,LOGIN_SUCCESS,User logged in successfully.
 29,2026-03-05 04:57:10,10005,LOGIN_SUCCESS,User logged in successfully.
+30,2026-03-05 05:02:51,10005,LOGIN_SUCCESS,User logged in successfully.
+31,2026-03-05 05:37:46,10034,LOGIN_FAILED,Invalid credentials or account locked.
+32,2026-03-05 05:38:03,10034,LOGIN_FAILED,Invalid credentials or account locked.
+33,2026-03-05 05:38:12,100034,LOGIN_FAILED,Invalid credentials or account locked.
+34,2026-03-05 05:38:24,10016,LOGIN_SUCCESS,User logged in successfully.
+35,2026-03-05 05:38:57,10033,LOGIN_SUCCESS,User logged in successfully.
+36,2026-03-05 05:39:12,10034,LOGIN_FAILED,Invalid credentials or account locked.
+37,2026-03-05 05:39:25,10034,LOGIN_FAILED,Invalid credentials or account locked.
+38,2026-03-05 05:39:40,10034,LOGIN_FAILED,Invalid credentials or account locked.
+39,2026-03-05 05:39:54,10021,LOGIN_SUCCESS,User logged in successfully.
+40,2026-03-05 05:42:26,10034,LOGIN_FAILED,Invalid credentials or account locked.
+41,2026-03-05 05:42:35,10034,LOGIN_FAILED,Invalid credentials or account locked.
+42,2026-03-05 05:42:52,10034,LOGIN_FAILED,Invalid credentials or account locked.
+43,2026-03-05 05:43:12,10034,LOGIN_FAILED,Invalid credentials or account locked.
+44,2026-03-05 05:43:32,10037,LOGIN_FAILED,Invalid credentials or account locked.
+45,2026-03-05 05:43:46,10034,LOGIN_FAILED,Invalid credentials or account locked.
+46,2026-03-05 05:50:39,10000,LOGIN_SUCCESS,User logged in successfully.
+47,2026-03-05 05:51:15,10006,LOGIN_SUCCESS,User logged in successfully.
+48,2026-03-05 05:51:33,10006,TIME_IN_OK,Time-in recorded.
+49,2026-03-05 05:51:39,10006,TIME_OUT_OK,Time-out recorded.

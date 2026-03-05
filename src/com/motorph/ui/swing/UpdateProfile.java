@@ -16,6 +16,7 @@ import java.util.Date;
 import com.motorph.domain.models.Employee;
 import com.motorph.service.EmployeeService;
 import com.motorph.ops.hr.HROps;
+import com.motorph.utils.ValidationUtil;
 
 /**
  *
@@ -239,10 +240,39 @@ public class UpdateProfile extends JPanel {
         }
     }
     
-    // Gathers text field data, updates the model, and saves to CSV
+    // Gathers text field data, runs validation, updates the model, and saves to CSV
     private void onUpdate() {
         if (currentEmployee == null) return;
 
+        // --- 1. VALIDATION CHECKS ---
+        
+        // Check Required Fields
+        if (ValidationUtil.isEmpty(txtLastName.getText()) || ValidationUtil.isEmpty(txtFirstName.getText())) {
+            JOptionPane.showMessageDialog(this, "First Name and Last Name are required.", "Validation Error", JOptionPane.WARNING_MESSAGE);
+            return; // Stop execution
+        }
+
+        // Check Number Formats (Salaries and Allowances)
+        if (!ValidationUtil.isPositiveDouble(txtBasicSalary.getText()) ||
+            !ValidationUtil.isPositiveDouble(txtRiceSubsidy.getText()) ||
+            !ValidationUtil.isPositiveDouble(txtPhoneAllowance.getText()) ||
+            !ValidationUtil.isPositiveDouble(txtClothingAllowance.getText())) {
+            JOptionPane.showMessageDialog(this, "Compensation fields (Salary, Allowances) must be valid numbers.", "Validation Error", JOptionPane.WARNING_MESSAGE);
+            return; // Stop execution
+        }
+
+        // Check Government ID Formats
+        if (!ValidationUtil.isValidSssFormat(txtSSS.getText())) {
+            JOptionPane.showMessageDialog(this, "SSS Number must follow the format XX-XXXXXXX-X.", "Validation Error", JOptionPane.WARNING_MESSAGE);
+            return; // Stop execution
+        }
+        
+        if (!ValidationUtil.isValidTinFormat(txtTIN.getText())) {
+            JOptionPane.showMessageDialog(this, "TIN must follow the format XXX-XXX-XXX-XXX.", "Validation Error", JOptionPane.WARNING_MESSAGE);
+            return; // Stop execution
+        }
+
+        // --- 2. SAFE PARSING AND SAVING ---
         try {
             // Update the Employee object
             currentEmployee.setLastName(txtLastName.getText().trim());
@@ -261,7 +291,7 @@ public class UpdateProfile extends JPanel {
             if (cbPosition.getSelectedItem() != null) currentEmployee.setPosition(cbPosition.getSelectedItem().toString());
             if (cbSupervisor.getSelectedItem() != null) currentEmployee.setImmediateSupervisor(cbSupervisor.getSelectedItem().toString());
 
-            // Update Compensation
+            // Update Compensation (Safely parsed because of our validation above!)
             currentEmployee.setBasicSalary(Double.parseDouble(txtBasicSalary.getText().trim()));
             currentEmployee.setRiceAllowance(Double.parseDouble(txtRiceSubsidy.getText().trim()));
             currentEmployee.setPhoneAllowance(Double.parseDouble(txtPhoneAllowance.getText().trim()));
@@ -277,7 +307,8 @@ public class UpdateProfile extends JPanel {
                 JOptionPane.showMessageDialog(this, "Failed to update profile.", "Error", JOptionPane.ERROR_MESSAGE);
             }
         } catch (Exception ex) {
-            JOptionPane.showMessageDialog(this, "Error saving profile: Check your number formats.\n" + ex.getMessage(), "Input Error", JOptionPane.ERROR_MESSAGE);
+            // This acts as a final safety net for unexpected errors
+            JOptionPane.showMessageDialog(this, "An unexpected error occurred: \n" + ex.getMessage(), "System Error", JOptionPane.ERROR_MESSAGE);
         }
     }
 
