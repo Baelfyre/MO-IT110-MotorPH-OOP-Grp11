@@ -271,6 +271,14 @@ public class UpdateProfile extends JPanel {
             JOptionPane.showMessageDialog(this, "TIN must follow the format XXX-XXX-XXX-XXX.", "Validation Error", JOptionPane.WARNING_MESSAGE);
             return; // Stop execution
         }
+        
+        if (!ValidationUtil.isNumbersAndDashesOnly(txtPhone.getText()) ||
+            !ValidationUtil.isNumbersAndDashesOnly(txtPagibig.getText()) ||
+            !ValidationUtil.isNumbersAndDashesOnly(txtPhilHealth.getText())) {
+            
+            JOptionPane.showMessageDialog(this, "Phone Number, Pag-IBIG, and PhilHealth must only contain numbers and dashes (no letters).", "Validation Error", JOptionPane.WARNING_MESSAGE);
+            return; // Stop execution
+        }
 
         // --- 2. SAFE PARSING AND SAVING ---
         try {
@@ -303,13 +311,19 @@ public class UpdateProfile extends JPanel {
 
             if (success) {
                 JOptionPane.showMessageDialog(this, "Profile updated successfully!", "Success", JOptionPane.INFORMATION_MESSAGE);
-            } else {
+            }
+            java.awt.Window window = javax.swing.SwingUtilities.getWindowAncestor(this);
+                if (window != null) {
+                    window.dispose();
+                } 
+            else {
                 JOptionPane.showMessageDialog(this, "Failed to update profile.", "Error", JOptionPane.ERROR_MESSAGE);
             }
         } catch (Exception ex) {
             // This acts as a final safety net for unexpected errors
             JOptionPane.showMessageDialog(this, "An unexpected error occurred: \n" + ex.getMessage(), "System Error", JOptionPane.ERROR_MESSAGE);
         }
+        
     }
 
     // Annotation: Converts the selected calendar date to LocalDate for the model layer.

@@ -58,4 +58,14 @@ public final class ValidationUtil {
         if (isEmpty(tin)) return true; 
         return tin.trim().matches("\\d{3}-\\d{3}-\\d{3}-\\d{3}");
     }
+    
+    /** Checks if a string contains only numbers, dashes, and spaces (no letters). */
+    public static boolean isNumbersAndDashesOnly(String value) {
+        // 1. If it is completely empty, it technically doesn't have letters, so let it pass!
+        if (value == null || value.trim().isEmpty()) {
+            return true; 
+        }
+        // 2. If it has text, check that it ONLY contains numbers, dashes, and spaces
+        return value.trim().matches("^[0-9\\-\\s]+$");
+    }
 }

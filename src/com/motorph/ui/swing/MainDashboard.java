@@ -57,38 +57,22 @@ public class MainDashboard extends javax.swing.JFrame {
     }
 
     private void customizeSidebar() {
-        // Null-safe fallback keeps UI stable during designer preview.
+        // Null-safe fallback
         boolean hasHR = currentUser != null && currentUser.getRoles().contains(Role.HR);
         boolean hasPayroll = currentUser != null && currentUser.getRoles().contains(Role.PAYROLL);
         boolean hasIT = currentUser != null && currentUser.getRoles().contains(Role.IT);
 
-        // 1. EVERYONE sees "Home" (My Profile, Time In/Out, Payslip)
-        // We don't hide btnHome because everyone is an employee.
-        // 2. ROLE-BASED FEATURES (Inheritance/Permissions)
-        // Only HR and IT see the HR panel entry.
-        if (!hasHR && !hasIT) {
-            jButton3.setVisible(false);
-        }
+        // 1. ROLE-BASED FEATURES 
+        // Explicitly set true OR false so they don't get stuck hidden on a UI refresh
+        jButton3.setVisible(hasHR || hasIT);       // Employee Management
+        jButton2.setVisible(hasPayroll || hasIT);  // Payroll Management
+        jButton9.setVisible(hasIT);                // System Maintenance
 
-        // Only Payroll and IT see the payroll panel entry.
-        if (!hasPayroll && !hasIT) {
-            jButton2.setVisible(false);
-        }
-
-        // Only IT sees system maintenance tools.
-        if (!hasIT) {
-            jButton9.setVisible(false);
-        }
-
-        // 3. DYNAMIC MANAGER CHECK (Polymorphism)
-        // We ask the service: "Is this person a supervisor?"
-        // This works even if the person is HR or IT.
+        // 2. DYNAMIC MANAGER CHECK
         boolean isASupervisor = (currentUser != null)
                 && employeeService.isSupervisor(currentUser.getUsername());
-
-        if (!isASupervisor) {
-            jButton7.setVisible(false);
-        }
+        
+        jButton7.setVisible(isASupervisor);        // Attendance Management
     }
 
     private void initCustomLayout() {
@@ -619,7 +603,22 @@ public class MainDashboard extends javax.swing.JFrame {
 
     private void jButton1ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButton1ActionPerformed
         // Update Profile
-        showCard("HOME");
+        // Launch Update Profile as a Popup Window
+        javax.swing.JDialog dialog = new javax.swing.JDialog(this, "Edit Profile", true); // 'true' makes it modal (locks the dashboard)
+        dialog.setDefaultCloseOperation(javax.swing.WindowConstants.DISPOSE_ON_CLOSE);
+        
+        // Add fully wired panel into this dialog
+        UpdateProfile updatePanel = new UpdateProfile(currentUser, employeeService, hrOps);
+        dialog.getContentPane().add(updatePanel);
+        
+        dialog.pack();
+        dialog.setLocationRelativeTo(this); // Centers it over the dashboard
+        dialog.setVisible(true); // The code pauses here until the user closes the popup
+        
+        // Once they close the popup, automatically refresh the dashboard to show the data
+        employeeService.refreshCache();
+        loadDashboardProfile();
+        customizeSidebar();
     }//GEN-LAST:event_jButton1ActionPerformed
 
     private void jButton3ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButton3ActionPerformed
