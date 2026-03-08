@@ -1,0 +1,2 @@
+Payslip_ID,Transaction_ID,EmployeeID,LastName,FirstName,PayPeriodStart,PayPeriodEnd,BasicSalary,RiceAllowance,PhoneAllowance,ClothingAllowance,GrossSemiMonthlyRate,HourlyRate,TotalHoursWorked,GrossIncome,SSS,PhilHealth,Pagibig,WithholdingTax,TotalDeductions,NetPay,ProcessedBy,DateProcessed,LeaveCredits,LeaveTaken,RemainingLeaveBalance
+PS-TX-10023-240601-240615,TX-10023-240601-240615,10023,Santos,Vella,6/1/2024,6/15/2024,22500.00,1500.00,500.00,500.00,11250.00,133.93,82.70,13724.90,550.00,270.74,100.00,0.00,3815.86,9909.04,10003,6/15/2024 18:00,0.00,24.00,0.00

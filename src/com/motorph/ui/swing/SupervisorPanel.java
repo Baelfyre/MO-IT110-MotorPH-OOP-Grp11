@@ -6,6 +6,8 @@ package com.motorph.ui.swing;
 
 import com.motorph.domain.models.PayPeriod;
 import com.motorph.domain.models.TimeEntry;
+import com.motorph.domain.models.LeaveRequest;
+import com.motorph.domain.enums.LeaveStatus;
 import com.motorph.domain.models.User;
 import com.motorph.ops.approval.DtrApprovalOps;
 import com.motorph.ops.approval.DtrApprovalOpsImpl;
@@ -16,6 +18,9 @@ import com.motorph.repository.*;
 import com.motorph.repository.csv.*;
 import com.motorph.service.EmployeeService;
 import com.motorph.service.LogService;
+
+import com.toedter.calendar.JDateChooser;
+import com.toedter.calendar.JTextFieldDateEditor;
 
 import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
@@ -35,7 +40,7 @@ public class SupervisorPanel extends JPanel {
     private final User currentUser;
     private final SupervisorOps supervisorOps;
 
-    private final JSpinner spAnyDate = new JSpinner(new SpinnerDateModel());
+    private final JDateChooser dcAnyDate = new JDateChooser();
     private final JLabel lblPeriod = new JLabel("Period: -");
     private PayPeriod activePeriod;
 
@@ -55,9 +60,24 @@ public class SupervisorPanel extends JPanel {
     private final JButton btnView = new JButton("View Entries");
     private final JButton btnApprove = new JButton("Approve DTR");
     private final JButton btnReject = new JButton("Reject DTR");
+    private final JButton btnLeaveApproval = new JButton("Leave Request Approval");
 
     private static final DateTimeFormatter DATE_FMT = DateTimeFormatter.ofPattern("MM/dd/yyyy", Locale.US);
     private static final DateTimeFormatter TIME_FMT = DateTimeFormatter.ofPattern("HH:mm", Locale.US);
+
+    public SupervisorPanel(User currentUser, SupervisorOps supervisorOps) {
+        this.currentUser = currentUser;
+        this.supervisorOps = supervisorOps;
+
+        buildUi();
+
+        dcAnyDate.setDateFormatString("MM/dd/yyyy");
+        if (dcAnyDate.getDateEditor() instanceof JTextFieldDateEditor editor) {
+            editor.setEditable(false);
+        }
+        dcAnyDate.setDate(new Date());
+        setActivePeriod(LocalDate.now());
+    }
 
     public SupervisorPanel(User currentUser) {
         this.currentUser = currentUser;
@@ -66,15 +86,20 @@ public class SupervisorPanel extends JPanel {
         EmployeeService employeeService = new EmployeeService(empRepo);
         TimeEntryRepository timeRepo = new CsvTimeRepository(empRepo);
         PayrollApprovalRepository approvalRepo = new CsvPayrollApprovalRepository();
+        LeaveRepository leaveRepo = new CsvLeaveRepository();
         AuditRepository auditRepo = new CsvAuditRepository();
         DtrApprovalOps dtrApprovalOps = new DtrApprovalOpsImpl(approvalRepo, auditRepo);
         LogService logService = new LogService();
 
-        this.supervisorOps = new SupervisorOpsImpl(employeeService, timeRepo, approvalRepo, dtrApprovalOps, logService);
+        this.supervisorOps = new SupervisorOpsImpl(employeeService, timeRepo, approvalRepo, leaveRepo, dtrApprovalOps, logService);
 
         buildUi();
 
-        spAnyDate.setEditor(new JSpinner.DateEditor(spAnyDate, "MM/dd/yyyy"));
+        dcAnyDate.setDateFormatString("MM/dd/yyyy");
+        if (dcAnyDate.getDateEditor() instanceof JTextFieldDateEditor editor) {
+            editor.setEditable(false);
+        }
+        dcAnyDate.setDate(new Date());
         setActivePeriod(LocalDate.now());
     }
 
@@ -83,19 +108,20 @@ public class SupervisorPanel extends JPanel {
 
         JPanel top = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 5));
         top.add(new JLabel("Any date inside period:"));
-        top.add(spAnyDate);
+        top.add(dcAnyDate);
         top.add(btnSetPeriod);
         top.add(lblPeriod);
         top.add(btnRefresh);
         top.add(btnView);
         top.add(btnApprove);
         top.add(btnReject);
+        top.add(btnLeaveApproval);
 
         add(top, BorderLayout.NORTH);
         add(new JScrollPane(tbl), BorderLayout.CENTER);
 
         btnSetPeriod.addActionListener(e -> {
-            LocalDate d = LocalDates.toLocalDate((Date) spAnyDate.getValue());
+            LocalDate d = LocalDates.toLocalDate(dcAnyDate.getDate());
             if (d == null) {
                 UiDialogs.warn(this, "Select a date.");
                 return;
@@ -107,6 +133,7 @@ public class SupervisorPanel extends JPanel {
         btnView.addActionListener(e -> onView());
         btnApprove.addActionListener(e -> onApprove());
         btnReject.addActionListener(e -> onReject());
+        btnLeaveApproval.addActionListener(e -> onLeaveApproval());
     }
 
     private int supervisorEmpId() {
@@ -193,6 +220,90 @@ public class SupervisorPanel extends JPanel {
         p.add(close);
         return p;
     }
+
+
+    private void onLeaveApproval() {
+        if (activePeriod == null) {
+            UiDialogs.warn(this, "Set a pay period first.");
+            return;
+        }
+
+        List<LeaveRequest> requests = supervisorOps.listDirectReportLeaveRequests(supervisorEmpId(), activePeriod);
+
+        DefaultTableModel tm = new DefaultTableModel(new Object[]{"Leave ID", "EmpID", "Employee", "Date", "Start", "End", "Status"}, 0) {
+            @Override
+            public boolean isCellEditable(int row, int col) {
+                return false;
+            }
+        };
+
+        for (LeaveRequest r : requests) {
+            tm.addRow(new Object[]{
+                    r.getLeaveId(),
+                    r.getEmployeeId(),
+                    r.getLastName() + ", " + r.getFirstName(),
+                    r.getDate() == null ? "" : r.getDate().format(DATE_FMT),
+                    r.getStartTime() == null ? "" : r.getStartTime().format(TIME_FMT),
+                    r.getEndTime() == null ? "" : r.getEndTime().format(TIME_FMT),
+                    r.getStatus().name()
+            });
+        }
+
+        JTable leaveTable = new JTable(tm);
+        leaveTable.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+
+        JButton btnApproveLeave = new JButton("Approve Leave");
+        JButton btnRejectLeave = new JButton("Reject Leave");
+        JButton btnClose = new JButton("Close");
+
+        final JDialog dlg = new JDialog(SwingUtilities.getWindowAncestor(this), "Leave Request Approval", Dialog.ModalityType.APPLICATION_MODAL);
+
+        btnApproveLeave.addActionListener(e -> onDecideLeave(leaveTable, tm, dlg, LeaveStatus.APPROVED));
+        btnRejectLeave.addActionListener(e -> onDecideLeave(leaveTable, tm, dlg, LeaveStatus.REJECTED));
+        btnClose.addActionListener(e -> dlg.dispose());
+
+        JPanel south = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 10));
+        south.add(btnApproveLeave);
+        south.add(btnRejectLeave);
+        south.add(btnClose);
+
+        dlg.setContentPane(SwingForm.wrapNorthCenterSouth(null, new JScrollPane(leaveTable), south));
+        dlg.setSize(850, 420);
+        dlg.setLocationRelativeTo(this);
+        dlg.setVisible(true);
+    }
+
+    private void onDecideLeave(JTable leaveTable, DefaultTableModel tm, JDialog dlg, LeaveStatus status) {
+        int viewRow = leaveTable.getSelectedRow();
+        if (viewRow < 0) {
+            UiDialogs.warn(dlg, "Select a leave request first.");
+            return;
+        }
+
+        int modelRow = leaveTable.convertRowIndexToModel(viewRow);
+        String leaveId = String.valueOf(tm.getValueAt(modelRow, 0));
+        int reportId;
+        try {
+            reportId = Integer.parseInt(String.valueOf(tm.getValueAt(modelRow, 1)));
+        } catch (NumberFormatException ex) {
+            UiDialogs.warn(dlg, "Invalid employee selected.");
+            return;
+        }
+
+        String note = JOptionPane.showInputDialog(dlg, status == LeaveStatus.APPROVED ? "Approval note (optional):" : "Rejection note (optional):", "Leave Decision", JOptionPane.PLAIN_MESSAGE);
+        if (note == null) {
+            note = "";
+        }
+
+        boolean ok = supervisorOps.decideDirectReportLeave(supervisorEmpId(), reportId, leaveId, status, note);
+        if (ok) {
+            UiDialogs.info(dlg, "Leave request " + status.name().toLowerCase() + ".");
+            tm.removeRow(modelRow);
+        } else {
+            UiDialogs.warn(dlg, "Leave decision failed. Check if the employee is a direct report.");
+        }
+    }
+
 
     private void onApprove() {
         Integer reportId = selectedReportId();

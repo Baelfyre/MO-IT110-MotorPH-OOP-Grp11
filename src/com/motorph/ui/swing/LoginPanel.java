@@ -16,6 +16,13 @@ import javax.swing.text.DocumentFilter;
 import javax.swing.text.DocumentFilter.FilterBypass;
 import com.motorph.ops.time.TimeOps;
 import com.motorph.ops.hr.HROps;
+import com.motorph.ops.payroll.PayrollOps;
+import com.motorph.ops.payslip.PayslipOps;
+import com.motorph.ops.supervisor.SupervisorOps;
+import com.motorph.ops.leave.LeaveOps;
+import com.motorph.ops.it.ItOps;
+import com.motorph.repository.csv.CsvAddressReferenceRepository;
+import com.motorph.service.LeaveCreditsService;
 
 /**
  *
@@ -24,7 +31,7 @@ import com.motorph.ops.hr.HROps;
 public class LoginPanel extends javax.swing.JFrame {
 
     // Placeholder text kept as constants to align input validation and filters.
-    private static final String USER_PLACEHOLDER = "EMPLOYEE ID";
+    private static final String USER_PLACEHOLDER = "EMPLOYEE ID OR EMAIL";
     private static final String PASS_PLACEHOLDER = "PASSWORD";
 
     // Dependencies injected via constructor
@@ -32,6 +39,13 @@ public class LoginPanel extends javax.swing.JFrame {
     private final EmployeeService employeeService;
     private final TimeOps timeOps;
     private final HROps hrOps;
+    private final PayrollOps payrollOps;
+    private final PayslipOps payslipOps;
+    private final SupervisorOps supervisorOps;
+    private final LeaveOps leaveOps;
+    private final ItOps itOps;
+    private final LeaveCreditsService leaveCreditsService;
+    private final CsvAddressReferenceRepository addressRepo;
 
     /**
      * Creates new form LoginPanel
@@ -41,10 +55,23 @@ public class LoginPanel extends javax.swing.JFrame {
      * @param hrOps
      */
     public LoginPanel(AuthOps authOps, EmployeeService employeeService, TimeOps timeOps, HROps hrOps) {
+        this(authOps, employeeService, timeOps, hrOps, null, null, null, null, null, null, null);
+    }
+
+    public LoginPanel(AuthOps authOps, EmployeeService employeeService, TimeOps timeOps, HROps hrOps,
+            PayrollOps payrollOps, PayslipOps payslipOps, SupervisorOps supervisorOps, LeaveOps leaveOps, ItOps itOps,
+            LeaveCreditsService leaveCreditsService, CsvAddressReferenceRepository addressRepo) {
         this.authOps = authOps;
         this.employeeService = employeeService;
         this.timeOps = timeOps;
         this.hrOps = hrOps;
+        this.payrollOps = payrollOps;
+        this.payslipOps = payslipOps;
+        this.supervisorOps = supervisorOps;
+        this.leaveOps = leaveOps;
+        this.itOps = itOps;
+        this.leaveCreditsService = leaveCreditsService;
+        this.addressRepo = addressRepo;
 
         initComponents();
         setSize(400, 600);
@@ -72,7 +99,7 @@ public class LoginPanel extends javax.swing.JFrame {
 
         if (loggedInUser != null) {
             // Success: Pass the user AND the pre-configured service to the dashboard
-            new MainDashboard(loggedInUser, employeeService, authOps, timeOps, hrOps).setVisible(true);
+            new MainDashboard(loggedInUser, employeeService, authOps, timeOps, hrOps, payrollOps, payslipOps, supervisorOps, leaveOps, itOps, leaveCreditsService, addressRepo).setVisible(true);
             this.dispose();
         } else {
             // Failure: Show Error
@@ -140,16 +167,16 @@ public class LoginPanel extends javax.swing.JFrame {
         ((javax.swing.text.AbstractDocument) jTextField1.getDocument()).setDocumentFilter(new DocumentFilter() {
             @Override
             public void insertString(FilterBypass fb, int offset, String string, AttributeSet attr) throws javax.swing.text.BadLocationException {
-                // Allow digits only, plus placeholder writes.
-                if (string.matches("\\d+") || USER_PLACEHOLDER.equals(string)) {
+                // Allow employee ID or email characters, plus placeholder writes.
+                if (string.matches("[A-Za-z0-9@._-]+") || USER_PLACEHOLDER.equals(string)) {
                     super.insertString(fb, offset, string, attr);
                 }
             }
 
             @Override
             public void replace(FilterBypass fb, int offset, int length, String text, AttributeSet attrs) throws javax.swing.text.BadLocationException {
-                // Allow digits only, plus placeholder writes.
-                if (text.matches("\\d*") || USER_PLACEHOLDER.equals(text)) {
+                // Allow employee ID or email characters, plus placeholder writes.
+                if (text.matches("[A-Za-z0-9@._-]*") || USER_PLACEHOLDER.equals(text)) {
                     super.replace(fb, offset, length, text, attrs);
                 }
             }

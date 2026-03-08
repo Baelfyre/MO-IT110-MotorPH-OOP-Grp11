@@ -1,0 +1,2 @@
+Payslip_ID,Transaction_ID,EmployeeID,LastName,FirstName,PayPeriodStart,PayPeriodEnd,BasicSalary,RiceAllowance,PhoneAllowance,ClothingAllowance,GrossSemiMonthlyRate,HourlyRate,TotalHoursWorked,GrossIncome,SSS,PhilHealth,Pagibig,WithholdingTax,TotalDeductions,NetPay,ProcessedBy,DateProcessed
+,,10000,Super,Admin,6/1/2024,6/30/2024,45000,750,1000,500,45000,535.71,170.45,42542.45,1750,1063.56,100,4073.97,22174.91,35554.92,Manuel,1/18/2026 2:44

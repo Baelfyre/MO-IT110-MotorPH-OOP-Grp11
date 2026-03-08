@@ -15,8 +15,8 @@ import java.util.List;
 /**
  * Legacy login CSV repository.
  *
- * Expected CSV format (6 columns):
- * Username,Password,Employee_ID,Employee_Name,Department,Lock_Out_Status
+ * Expected CSV format supports 6 or 7 columns:
+ * Username,Password,Employee_ID,Employee_Name,Department,Lock_Out_Status[,Email]
  */
 public class CsvUserRepository implements UserRepository {
 
@@ -28,7 +28,7 @@ public class CsvUserRepository implements UserRepository {
             return null;
         }
 
-        String target = username.trim();
+        String target = resolveUsernameTarget(username.trim());
 
         try (BufferedReader br = new BufferedReader(new FileReader(FILE_PATH))) {
             String line;
@@ -49,13 +49,13 @@ public class CsvUserRepository implements UserRepository {
                     }
                 }
 
-                // Legacy requires 6 columns
                 if (data.length < 6) {
                     continue;
                 }
 
                 String fileUsername = data[0].trim();
-                if (!fileUsername.equalsIgnoreCase(target)) {
+                String fileEmail = data.length >= 7 ? data[6].trim() : generateEmail(data.length > 2 ? data[2].trim() : fileUsername, extractFirstName(data), extractLastName(data));
+                if (!fileUsername.equalsIgnoreCase(target) && !fileEmail.equalsIgnoreCase(target)) {
                     continue;
                 }
 
@@ -81,6 +81,28 @@ public class CsvUserRepository implements UserRepository {
         return null;
     }
 
+
+    private String resolveUsernameTarget(String raw) {
+        if (raw == null) {
+            return "";
+        }
+        String target = raw.trim();
+        if (!target.contains("@")) {
+            return target;
+        }
+
+        try {
+            com.motorph.repository.csv.CsvEmployeeRepository empRepo = new com.motorph.repository.csv.CsvEmployeeRepository();
+            for (com.motorph.domain.models.Employee emp : empRepo.findAll()) {
+                if (emp != null && emp.getEmail() != null && emp.getEmail().trim().equalsIgnoreCase(target)) {
+                    return String.valueOf(emp.getId());
+                }
+            }
+        } catch (Exception ignored) {
+        }
+        return target;
+    }
+
     @Override
     public void save(User account, String firstName, String lastName, String dept) {
         if (account == null) {
@@ -93,15 +115,16 @@ public class CsvUserRepository implements UserRepository {
 
         String employeeId = String.valueOf(account.getId() > 0 ? account.getId() : safeParseInt(username, 0));
         String employeeName = buildEmployeeName(firstName, lastName);
+        String email = safeCsv(generateEmail(employeeId, firstName, lastName));
 
-        // Username,Password,Employee_ID,Employee_Name,Department,Lock_Out_Status
         String row = String.join(",",
                 username,
                 password,
                 safeCsv(employeeId),
                 safeCsv(employeeName),
                 safeCsv(dept),
-                lockOut
+                lockOut,
+                email
         );
 
         try (PrintWriter out = new PrintWriter(new BufferedWriter(new FileWriter(FILE_PATH, true)))) {
@@ -373,6 +396,50 @@ public class CsvUserRepository implements UserRepository {
         }
 
         return out;
+    }
+
+    private String generateEmail(String employeeId, String firstName, String lastName) {
+        String id = employeeId == null ? "" : employeeId.trim();
+        String suffix = id.length() >= 3 ? id.substring(id.length() - 3) : id;
+
+        String fn = sanitizeEmailName(firstName);
+        String ln = sanitizeEmailName(lastName);
+        String initial = fn.isEmpty() ? "u" : fn.substring(0, 1);
+        if (ln.isEmpty()) {
+            ln = "employee";
+        }
+        return initial + "." + ln + suffix + "@motorph.biz";
+    }
+
+    private String sanitizeEmailName(String value) {
+        if (value == null) {
+            return "";
+        }
+        return value.trim().toLowerCase().replaceAll("[^a-z0-9]", "");
+    }
+
+    private String extractFirstName(String[] data) {
+        if (data == null || data.length < 4) {
+            return "";
+        }
+        String name = data[3].trim();
+        if (name.contains(",")) {
+            String[] parts = name.split(",", 2);
+            return parts.length > 1 ? parts[1].trim() : "";
+        }
+        return name;
+    }
+
+    private String extractLastName(String[] data) {
+        if (data == null || data.length < 4) {
+            return "";
+        }
+        String name = data[3].trim();
+        if (name.contains(",")) {
+            String[] parts = name.split(",", 2);
+            return parts[0].trim();
+        }
+        return "";
     }
 
     private String unquote(String s) {

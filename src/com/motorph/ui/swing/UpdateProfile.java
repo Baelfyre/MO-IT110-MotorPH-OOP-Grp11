@@ -44,6 +44,10 @@ public class UpdateProfile extends JPanel {
 
     private Employee currentEmployee;
 
+    public UpdateProfile(User currentUser, EmployeeService employeeService, HROps hrOps, com.motorph.repository.csv.CsvAddressReferenceRepository addressRepo) {
+        this(currentUser, employeeService, hrOps);
+    }
+
     public UpdateProfile(User currentUser, EmployeeService employeeService, HROps hrOps) {
         this.currentUser = currentUser;
         this.employeeService = employeeService;

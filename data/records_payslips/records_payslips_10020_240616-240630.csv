@@ -1,0 +1,2 @@
+Payslip_ID,Transaction_ID,EmployeeID,LastName,FirstName,PayPeriodStart,PayPeriodEnd,BasicSalary,RiceAllowance,PhoneAllowance,ClothingAllowance,GrossSemiMonthlyRate,HourlyRate,TotalHoursWorked,GrossIncome,SSS,PhilHealth,Pagibig,WithholdingTax,TotalDeductions,NetPay,ProcessedBy,DateProcessed,LeaveCredits,LeaveTaken,RemainingLeaveBalance
+PS-TX-10020-240616-240630,TX-10020-240616-240630,10020,Bautista,Mark,6/16/2024,6/30/2024,23250.00,1500.00,500.00,500.00,11625.00,138.39,81.23,13901.39,575.00,289.53,100.00,0.00,3284.87,10616.52,10003,6/30/2024 18:00,40.00,24.00,16.00

@@ -1,0 +1,2 @@
+Payslip_ID,Transaction_ID,EmployeeID,LastName,FirstName,PayPeriodStart,PayPeriodEnd,BasicSalary,RiceAllowance,PhoneAllowance,ClothingAllowance,GrossSemiMonthlyRate,HourlyRate,TotalHoursWorked,GrossIncome,SSS,PhilHealth,Pagibig,WithholdingTax,TotalDeductions,NetPay,ProcessedBy,DateProcessed,LeaveCredits,LeaveTaken,RemainingLeaveBalance
+PS-TX-10027-240616-240630,TX-10027-240616-240630,10027,Manalaysay,Garfield,6/16/2024,6/30/2024,24750.00,1500.00,500.00,500.00,12375.00,147.32,83.57,14751.38,625.00,317.28,100.00,0.00,3102.30,11649.08,10003,6/30/2024 18:00,0.00,32.00,0.00

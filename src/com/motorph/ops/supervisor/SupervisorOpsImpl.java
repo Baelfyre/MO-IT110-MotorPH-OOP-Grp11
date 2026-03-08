@@ -5,15 +5,18 @@
 package com.motorph.ops.supervisor;
 
 import com.motorph.domain.enums.ApprovalStatus;
+import com.motorph.domain.enums.LeaveStatus;
 import com.motorph.domain.models.Employee;
+import com.motorph.domain.models.LeaveRequest;
 import com.motorph.domain.models.PayPeriod;
 import com.motorph.domain.models.TimeEntry;
 import com.motorph.ops.approval.DtrApprovalOps;
+import com.motorph.repository.LeaveRepository;
 import com.motorph.repository.PayrollApprovalRepository;
 import com.motorph.repository.TimeEntryRepository;
 import com.motorph.service.EmployeeService;
 import com.motorph.service.LogService;
-
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -27,17 +30,20 @@ public class SupervisorOpsImpl implements SupervisorOps {
     private final EmployeeService employeeService;
     private final TimeEntryRepository timeRepo;
     private final PayrollApprovalRepository approvalRepo;
+    private final LeaveRepository leaveRepo;
     private final DtrApprovalOps dtrApprovalOps;
     private final LogService logService;
 
     public SupervisorOpsImpl(EmployeeService employeeService,
             TimeEntryRepository timeRepo,
             PayrollApprovalRepository approvalRepo,
+            LeaveRepository leaveRepo,
             DtrApprovalOps dtrApprovalOps,
             LogService logService) {
         this.employeeService = employeeService;
         this.timeRepo = timeRepo;
         this.approvalRepo = approvalRepo;
+        this.leaveRepo = leaveRepo;
         this.dtrApprovalOps = dtrApprovalOps;
         this.logService = logService;
     }
@@ -167,6 +173,54 @@ public class SupervisorOpsImpl implements SupervisorOps {
                 String.valueOf(supervisorEmpId),
                 ok ? "SUPERVISOR_DTR_REJECTED" : "SUPERVISOR_DTR_REJECT_FAILED",
                 "DTR reject attempted. Report=" + reportEmpId + " Period=" + period.toKey()
+        );
+
+        return ok;
+    }
+
+    @Override
+    public List<LeaveRequest> listDirectReportLeaveRequests(int supervisorEmpId, PayPeriod period) {
+        List<Employee> reports = listDirectReports(supervisorEmpId);
+        List<LeaveRequest> out = new ArrayList<>();
+
+        for (Employee e : reports) {
+            List<LeaveRequest> rows = (period == null)
+                    ? leaveRepo.findByEmployee(e.getEmployeeNumber())
+                    : leaveRepo.findByEmployeeAndPeriod(e.getEmployeeNumber(), period);
+
+            for (LeaveRequest r : rows) {
+                if (r != null && r.getStatus() == LeaveStatus.PENDING) {
+                    out.add(r);
+                }
+            }
+        }
+
+        return out;
+    }
+
+    @Override
+    public boolean decideDirectReportLeave(int supervisorEmpId, int reportEmpId, String leaveId, LeaveStatus status, String note) {
+        if (leaveId == null || leaveId.trim().isEmpty() || status == null) {
+            return false;
+        }
+
+        if (!isDirectReport(supervisorEmpId, reportEmpId)) {
+            logService.recordAction(
+                    String.valueOf(supervisorEmpId),
+                    "SUPERVISOR_DENIED_LEAVE_DECISION",
+                    "Denied leave decision. Supervisor=" + supervisorEmpId
+                    + " Report=" + reportEmpId + " LeaveId=" + leaveId
+            );
+            return false;
+        }
+
+        String reviewedAt = LocalDateTime.now().toString();
+        boolean ok = leaveRepo.updateDecision(reportEmpId, leaveId, status, supervisorEmpId, reviewedAt, note);
+
+        logService.recordAction(
+                String.valueOf(supervisorEmpId),
+                ok ? "SUPERVISOR_LEAVE_" + status.name() : "SUPERVISOR_LEAVE_DECISION_FAILED",
+                "Leave decision attempted. Report=" + reportEmpId + " LeaveId=" + leaveId + " Status=" + status.name()
         );
 
         return ok;

@@ -1,0 +1,2 @@
+Payslip_ID,Transaction_ID,EmployeeID,LastName,FirstName,PayPeriodStart,PayPeriodEnd,BasicSalary,RiceAllowance,PhoneAllowance,ClothingAllowance,GrossSemiMonthlyRate,HourlyRate,TotalHoursWorked,GrossIncome,SSS,PhilHealth,Pagibig,WithholdingTax,TotalDeductions,NetPay,ProcessedBy,DateProcessed,LeaveCredits,LeaveTaken,RemainingLeaveBalance
+PS-TX-10016-240601-240615,TX-10016-240601-240615,10016,Mata,Christian,6/1/2024,6/15/2024,42975.00,1500.00,800.00,800.00,21488.00,255.80,77.12,24550.98,1025.00,510.92,100.00,0.00,5750.04,18800.94,10003,6/15/2024 18:00,40.00,24.00,16.00

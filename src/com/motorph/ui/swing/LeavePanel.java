@@ -65,6 +65,24 @@ public class LeavePanel extends JPanel {
     private static final DateTimeFormatter DATE_FMT = DateTimeFormatter.ofPattern("MM/dd/yyyy", Locale.US);
     private static final DateTimeFormatter TIME_FMT = DateTimeFormatter.ofPattern("h:mm a", Locale.US);
 
+    public LeavePanel(User currentUser, LeaveOps leaveOps, EmployeeService employeeService) {
+        this.currentUser = currentUser;
+        this.employeeService = employeeService;
+        this.leaveOps = leaveOps;
+
+        buildUi();
+        initTimeOptions();
+
+        dcDate.setDateFormatString("MM/dd/yyyy");
+        if (dcDate.getDateEditor() instanceof com.toedter.calendar.JTextFieldDateEditor editor) {
+            editor.setEditable(false);
+        }
+        dcDate.setDate(new java.util.Date());
+
+        setActivePeriod(LocalDate.now());
+        refreshAll();
+    }
+
     public LeavePanel(User currentUser) {
         this.currentUser = currentUser;
 

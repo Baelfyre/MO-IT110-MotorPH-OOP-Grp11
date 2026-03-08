@@ -67,7 +67,7 @@ public class PayrollService {
             return null;
         }
 
-        Payslip payslip = computePayslip(emp, period, comp, processedByUserId);
+        Payslip payslip = computePayslip(emp, period, comp, processedByUserId, 0.0);
         if (payslip == null) {
             return null;
         }
@@ -86,7 +86,23 @@ public class PayrollService {
         return generatePayslip(empId, period, 0);
     }
 
-    private Payslip computePayslip(Employee emp, PayPeriod period, Compensation comp, int processedByUserId) {
+    // Annotation: Overload used to demonstrate polymorphism with optional bonus amount.
+    public Payslip generatePayslip(int empId, PayPeriod period, double bonusAmount) {
+        if (empId <= 0 || period == null) {
+            return null;
+        }
+        Employee emp = empRepo.findById(empId);
+        if (emp == null || emp.getCompensation() == null) {
+            return null;
+        }
+        Payslip payslip = computePayslip(emp, period, emp.getCompensation(), 0, bonusAmount);
+        if (payslip == null || !payslipRepo.save(payslip)) {
+            return null;
+        }
+        return payslip;
+    }
+
+    private Payslip computePayslip(Employee emp, PayPeriod period, Compensation comp, int processedByUserId, double bonusAmount) {
         int empId = emp.getEmployeeNumber();
         List<TimeEntry> entries = timeEntryRepo.findByEmployeeAndPeriod(empId, period);
 
@@ -123,7 +139,7 @@ public class PayrollService {
         double phone = comp.getPhoneAllowance() / 2.0;
         double clothing = comp.getClothingAllowance() / 2.0;
 
-        double gross = semiMonthlyBasic + rice + phone + clothing + totalOvertimePay;
+        double gross = semiMonthlyBasic + rice + phone + clothing + totalOvertimePay + Math.max(0.0, bonusAmount);
 
         double payAfterTimeDeduction = Math.max(0.0, gross - totalLateDeduction);
 
@@ -139,6 +155,11 @@ public class PayrollService {
         double net = Math.max(0.0, gross - totalDeductions);
 
         String txId = buildTransactionId(empId, period);
+
+        com.motorph.domain.models.LeaveCredits lc = new com.motorph.repository.csv.CsvLeaveCreditsRepository().findByEmpId(empId);
+        double leaveCredits = lc == null ? 0.0 : lc.getLeaveCreditsHours();
+        double leaveTaken = lc == null ? 0.0 : lc.getLeaveTakenHours();
+        double leaveBalance = lc == null ? 0.0 : lc.getRemainingHours();
 
         return new Payslip(
                 txId,
@@ -163,7 +184,10 @@ public class PayrollService {
                 totalDeductions,
                 net,
                 processedByUserId,
-                LocalDateTime.now()
+                LocalDateTime.now(),
+                leaveCredits,
+                leaveTaken,
+                leaveBalance
         );
     }
 

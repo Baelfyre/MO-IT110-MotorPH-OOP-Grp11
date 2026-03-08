@@ -217,6 +217,18 @@ public abstract class Employee {
         this.employeeDetails.setPagIbigNumber(pagIbigNumber);
     }
 
+
+    public String getEmail() {
+        return (employeeDetails == null) ? "" : safe(employeeDetails.getEmail());
+    }
+
+    public void setEmail(String email) {
+        if (this.employeeDetails == null) {
+            this.employeeDetails = new EmployeeDetails();
+        }
+        this.employeeDetails.setEmail(email);
+    }
+
     // Annotation: Compensation wrappers using legacy field names.
     public double getBasicSalary() {
         return (compensation == null) ? 0.0 : compensation.getBasicSalary();
@@ -308,7 +320,8 @@ public abstract class Employee {
                 fmt(getPhoneAllowance()),
                 fmt(getClothingAllowance()),
                 fmt(getGrossSemiMonthlyRate()),
-                fmt(getHourlyRate())
+                fmt(getHourlyRate()),
+                escape(getEmail())
         );
     }
 

@@ -49,7 +49,7 @@ public class AuthService {
             currentUser = null;
 
             if (failedAttempts >= MAX_ATTEMPTS) {
-                userRepo.updateLockStatus(username, true);
+                userRepo.updateLockStatus(user.getUsername(), true);
             }
             return false;
         }

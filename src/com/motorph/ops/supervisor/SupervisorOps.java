@@ -7,6 +7,8 @@ package com.motorph.ops.supervisor;
 import com.motorph.domain.models.Employee;
 import com.motorph.domain.models.PayPeriod;
 import com.motorph.domain.models.TimeEntry;
+import com.motorph.domain.models.LeaveRequest;
+import com.motorph.domain.enums.LeaveStatus;
 import java.util.List;
 
 /**
@@ -26,4 +28,8 @@ public interface SupervisorOps {
     boolean approveDirectReportDtr(int supervisorEmpId, int reportEmpId, PayPeriod period);
 
     boolean rejectDirectReportDtr(int supervisorEmpId, int reportEmpId, PayPeriod period);
+
+    List<LeaveRequest> listDirectReportLeaveRequests(int supervisorEmpId, PayPeriod period);
+
+    boolean decideDirectReportLeave(int supervisorEmpId, int reportEmpId, String leaveId, LeaveStatus status, String note);
 }

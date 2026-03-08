@@ -1,0 +1,2 @@
+Payslip_ID,Transaction_ID,EmployeeID,LastName,FirstName,PayPeriodStart,PayPeriodEnd,BasicSalary,RiceAllowance,PhoneAllowance,ClothingAllowance,GrossSemiMonthlyRate,HourlyRate,TotalHoursWorked,GrossIncome,SSS,PhilHealth,Pagibig,WithholdingTax,TotalDeductions,NetPay,ProcessedBy,DateProcessed,LeaveCredits,LeaveTaken,RemainingLeaveBalance
+PS-TX-10028-240616-240630,TX-10028-240616-240630,10028,Villegas,Lizeth,6/16/2024,6/30/2024,24000.00,1500.00,500.00,500.00,12000.00,142.86,76.33,13830.37,575.00,284.63,100.00,0.00,3404.92,10425.45,10003,6/30/2024 18:00,0.00,16.00,0.00

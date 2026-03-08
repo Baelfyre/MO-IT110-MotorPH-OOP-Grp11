@@ -19,7 +19,7 @@ import java.io.FileWriter;
  */
 public class CsvLogRepository {
 
-    private static final String HEADER = "Log_ID,Timestamp,User,Action,Details";
+    private static final String HEADER = "Log_ID,LogCategory,Timestamp,User,Action,Details";
     private static final String CSV_SPLIT_REGEX = ",(?=(?:[^\"]*\"[^\"]*\")*[^\"]*$)";
 
     public boolean save(LogEntry entry) {

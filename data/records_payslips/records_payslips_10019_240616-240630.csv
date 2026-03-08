@@ -1,0 +1,2 @@
+Payslip_ID,Transaction_ID,EmployeeID,LastName,FirstName,PayPeriodStart,PayPeriodEnd,BasicSalary,RiceAllowance,PhoneAllowance,ClothingAllowance,GrossSemiMonthlyRate,HourlyRate,TotalHoursWorked,GrossIncome,SSS,PhilHealth,Pagibig,WithholdingTax,TotalDeductions,NetPay,ProcessedBy,DateProcessed,LeaveCredits,LeaveTaken,RemainingLeaveBalance
+PS-TX-10019-240616-240630,TX-10019-240616-240630,10019,Rosario,Cydney,6/16/2024,6/30/2024,22500.00,1500.00,500.00,500.00,11250.00,133.93,73.93,12845.99,500.00,251.84,100.00,0.00,3624.19,9221.80,10003,6/30/2024 18:00,40.00,24.00,16.00

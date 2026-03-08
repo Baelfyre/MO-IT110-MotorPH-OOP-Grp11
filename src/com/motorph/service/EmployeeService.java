@@ -84,6 +84,20 @@ public class EmployeeService {
         return new ArrayList<>(subs);
     }
 
+
+    public Employee getEmployeeByEmail(String email) {
+        if (email == null || email.trim().isEmpty()) {
+            return null;
+        }
+        String target = email.trim().toLowerCase();
+        for (Employee emp : employeeCache.values()) {
+            if (emp != null && emp.getEmail() != null && emp.getEmail().trim().equalsIgnoreCase(target)) {
+                return emp;
+            }
+        }
+        return null;
+    }
+
     public Role determineRoleFromPosition(String position) {
         if (position == null) {
             return Role.EMPLOYEE;

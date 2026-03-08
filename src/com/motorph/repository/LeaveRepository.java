@@ -23,4 +23,7 @@ public interface LeaveRepository {
     double getLeaveHoursUsed(int empId, PayPeriod period);
 
     boolean create(LeaveRequest request);
+
+    // Annotation: Updates supervisor decision for a leave request row.
+    boolean updateDecision(int empId, String leaveId, com.motorph.domain.enums.LeaveStatus status, int reviewedBy, String reviewedAt, String note);
 }

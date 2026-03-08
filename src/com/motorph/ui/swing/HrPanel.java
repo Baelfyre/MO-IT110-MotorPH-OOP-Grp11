@@ -58,6 +58,15 @@ public class HrPanel extends JPanel {
     private final JButton btnDelete = new JButton("Delete");
     private final JButton btnLogs = new JButton("System Logs");
 
+    public HrPanel(User currentUser, HROps hrOps) {
+        this.currentUser = currentUser;
+        this.hrOps = hrOps;
+
+        buildUi();
+        applyPermissions();
+        loadEmployees();
+    }
+
     public HrPanel(User currentUser) {
         this.currentUser = currentUser;
 

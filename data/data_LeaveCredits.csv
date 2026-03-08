@@ -1,35 +1,36 @@
 Employee #,Last Name,First Name,Leave Credits,Leave Taken
-10001,Garcia,Manuel III,32,
-10002,Lim,Antonio,83,
-10003,Aquino,Bianca Sofia,119,
-10004,Reyes,Isabella,83,
-10005,Hernandez,Eduard,74,
-10006,Villanueva,Andrea Mae,112,
-10007,San Jose,Brad ,7,
-10008,Romualdez,Alice,34,
-10009,Atienza,Rosie ,29,
-10010,Alvaro,Roderick,44,
-10011,Salcedo,Anthony,118,
-10012,Lopez,Josie ,110,
-10013,Farala,Martha,29,
-10014,Martinez,Leila,4,
-10015,Romualdez,Fredrick ,18,
-10016,Mata,Christian,80,
-10017,De Leon,Selena ,43,
-10018,San Jose,Allison ,48,
-10019,Rosario,Cydney ,40,
-10020,Bautista,Mark ,64,
-10021,Lazaro,Darlene ,26,
-10022,Delos Santos,Kolby ,111,
-10023,Santos,Vella ,95,
-10024,Del Rosario,Tomas,54,
-10025,Tolentino,Jacklyn ,11,
-10026,Gutierrez,Percival ,119,
-10027,Manalaysay,Garfield ,20,
-10028,Villegas,Lizeth ,73,
-10029,Ramos,Carol ,25,
-10030,Maceda,Emelia ,11,
-10031,Aguilar,Delia ,117,
-10032,Castro,John Rafael,11,
-10033,Martinez,Carlos Ian,48,
-10034,Santos,Beatriz,113,
+10000,Super,Admin,40,40
+10001,Garcia,Manuel III,40,40
+10002,Lim,Antonio,40,48
+10003,Aquino,Bianca Sofia,40,48
+10004,Reyes,Isabella,40,48
+10005,Hernandez,Eduard,40,48
+10006,Villanueva,Andrea Mae,40,48
+10007,San Jose,Brad,40,48
+10008,Romualdez,Alice,40,48
+10009,Atienza,Rosie,40,48
+10010,Alvaro,Roderick,40,48
+10011,Salcedo,Anthony,40,48
+10012,Lopez,Josie,40,48
+10013,Farala,Martha,40,64
+10014,Martinez,Leila,40,40
+10015,Romualdez,Fredrick,40,56
+10016,Mata,Christian,40,48
+10017,De Leon,Selena,40,48
+10018,San Jose,Allison,40,8
+10019,Rosario,Cydney,40,48
+10020,Bautista,Mark,40,48
+10021,Lazaro,Darlene,0,48
+10022,Delos Santos,Kolby,0,48
+10023,Santos,Vella,0,48
+10024,Del Rosario,Tomas,0,48
+10025,Tolentino,Jacklyn,0,32
+10026,Gutierrez,Percival,0,40
+10027,Manalaysay,Garfield,0,48
+10028,Villegas,Lizeth,0,48
+10029,Ramos,Carol,0,32
+10030,Maceda,Emelia,0,48
+10031,Aguilar,Delia,0,48
+10032,Castro,John Rafael,40,72
+10033,Martinez,Carlos Ian,40,32
+10034,Santos,Beatriz,40,56

@@ -1,0 +1,2 @@
+Payslip_ID,Transaction_ID,EmployeeID,LastName,FirstName,PayPeriodStart,PayPeriodEnd,BasicSalary,RiceAllowance,PhoneAllowance,ClothingAllowance,GrossSemiMonthlyRate,HourlyRate,TotalHoursWorked,GrossIncome,SSS,PhilHealth,Pagibig,WithholdingTax,TotalDeductions,NetPay,ProcessedBy,DateProcessed,LeaveCredits,LeaveTaken,RemainingLeaveBalance
+PS-TX-10014-240601-240615,TX-10014-240601-240615,10014,Martinez,Leila,6/1/2024,6/15/2024,24000.00,1500.00,500.00,500.00,12000.00,142.86,85.20,14514.91,600.00,304.78,100.00,0.00,3328.64,11186.27,10003,6/15/2024 18:00,40.00,16.00,24.00
