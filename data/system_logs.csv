@@ -4,3 +4,106 @@ Log_ID,Timestamp,User,Action,Details
 3,2026-02-01 22:36:30,99999,IT_RESET_PASSWORD_OK,Reset password (default) for user: 10000
 4,2026-02-01 22:36:30,99999,IT_RESET_PASSWORD_OK,Reset password (custom) for user: 10000
 5,2026-02-01 22:36:30,99999,IT_UNLOCK_OK,Unlocked user: 10000
+6,2026-03-05 01:49:31,10000,LOGIN_SUCCESS,User logged in successfully.
+7,2026-03-05 01:50:01,10000,LOGIN_FAILED,Invalid credentials or account locked.
+8,2026-03-05 01:50:08,10000,LOGIN_SUCCESS,User logged in successfully.
+9,2026-03-05 02:03:07,10000,LOGIN_SUCCESS,User logged in successfully.
+10,2026-03-05 02:10:32,10000,LOGIN_SUCCESS,User logged in successfully.
+11,2026-03-05 02:13:19,10000,LOGIN_SUCCESS,User logged in successfully.
+12,2026-03-05 02:40:35,10000,LOGIN_SUCCESS,User logged in successfully.
+13,2026-03-05 03:06:53,10000,LOGIN_SUCCESS,User logged in successfully.
+14,2026-03-05 03:06:58,10000,TIME_IN_OK,Time-in recorded.
+15,2026-03-05 03:07:00,10000,TIME_OUT_OK,Time-out recorded.
+16,2026-03-05 03:36:31,10000,LOGIN_SUCCESS,User logged in successfully.
+17,2026-03-05 03:36:41,10000,TIME_IN_DENIED,Time-in rejected by rule.
+18,2026-03-05 03:36:46,10000,TIME_OUT_DENIED,Time-out rejected by rule.
+19,2026-03-05 03:59:35,10000,LOGIN_SUCCESS,User logged in successfully.
+20,2026-03-05 04:06:11,10001,LOGIN_SUCCESS,User logged in successfully.
+21,2026-03-05 04:06:30,10001,TIME_IN_OK,Time-in recorded.
+22,2026-03-05 04:06:33,10001,TIME_OUT_OK,Time-out recorded.
+23,2026-03-05 04:06:36,10001,TIME_IN_DENIED,Time-in rejected by rule.
+24,2026-03-05 04:10:20,10000,LOGIN_SUCCESS,User logged in successfully.
+25,2026-03-05 04:10:38,10001,LOGIN_SUCCESS,User logged in successfully.
+26,2026-03-05 04:28:27,10002,LOGIN_SUCCESS,User logged in successfully.
+27,2026-03-05 04:34:44,10005,LOGIN_SUCCESS,User logged in successfully.
+28,2026-03-05 04:54:48,10005,LOGIN_SUCCESS,User logged in successfully.
+29,2026-03-05 04:57:10,10005,LOGIN_SUCCESS,User logged in successfully.
+30,2026-03-05 05:02:51,10005,LOGIN_SUCCESS,User logged in successfully.
+31,2026-03-05 05:37:46,10034,LOGIN_FAILED,Invalid credentials or account locked.
+32,2026-03-05 05:38:03,10034,LOGIN_FAILED,Invalid credentials or account locked.
+33,2026-03-05 05:38:12,100034,LOGIN_FAILED,Invalid credentials or account locked.
+34,2026-03-05 05:38:24,10016,LOGIN_SUCCESS,User logged in successfully.
+35,2026-03-05 05:38:57,10033,LOGIN_SUCCESS,User logged in successfully.
+36,2026-03-05 05:39:12,10034,LOGIN_FAILED,Invalid credentials or account locked.
+37,2026-03-05 05:39:25,10034,LOGIN_FAILED,Invalid credentials or account locked.
+38,2026-03-05 05:39:40,10034,LOGIN_FAILED,Invalid credentials or account locked.
+39,2026-03-05 05:39:54,10021,LOGIN_SUCCESS,User logged in successfully.
+40,2026-03-05 05:42:26,10034,LOGIN_FAILED,Invalid credentials or account locked.
+41,2026-03-05 05:42:35,10034,LOGIN_FAILED,Invalid credentials or account locked.
+42,2026-03-05 05:42:52,10034,LOGIN_FAILED,Invalid credentials or account locked.
+43,2026-03-05 05:43:12,10034,LOGIN_FAILED,Invalid credentials or account locked.
+44,2026-03-05 05:43:32,10037,LOGIN_FAILED,Invalid credentials or account locked.
+45,2026-03-05 05:43:46,10034,LOGIN_FAILED,Invalid credentials or account locked.
+46,2026-03-05 05:50:39,10000,LOGIN_SUCCESS,User logged in successfully.
+47,2026-03-05 05:51:15,10006,LOGIN_SUCCESS,User logged in successfully.
+48,2026-03-05 05:51:33,10006,TIME_IN_OK,Time-in recorded.
+49,2026-03-05 05:51:39,10006,TIME_OUT_OK,Time-out recorded.
+50,2026-03-06 05:56:19,10001,LOGIN_SUCCESS,User logged in successfully.
+51,2026-03-06 06:17:00,10001,LOGIN_FAILED,Invalid credentials or account locked.
+52,2026-03-06 06:17:06,10001,LOGIN_SUCCESS,User logged in successfully.
+53,2026-03-06 06:33:12,10001,LOGIN_SUCCESS,User logged in successfully.
+54,2026-03-06 06:33:35,10001,HR_UPDATE_OK,Update employee EmpID=10001
+55,2026-03-06 06:33:46,10001,HR_UPDATE_OK,Update employee EmpID=10001
+56,2026-03-06 06:34:29,10001,HR_UPDATE_OK,Update employee EmpID=10001
+57,2026-03-06 06:34:36,10001,HR_UPDATE_OK,Update employee EmpID=10001
+58,2026-03-06 06:36:13,10001,HR_UPDATE_OK,Update employee EmpID=10001
+59,2026-03-06 06:36:38,10001,HR_UPDATE_OK,Update employee EmpID=10001
+60,2026-03-06 06:36:48,10001,HR_UPDATE_OK,Update employee EmpID=10001
+61,2026-03-06 06:37:17,10001,HR_UPDATE_OK,Update employee EmpID=10001
+62,2026-03-06 06:37:26,10001,HR_UPDATE_OK,Update employee EmpID=10001
+63,2026-03-06 06:37:50,10001,HR_UPDATE_OK,Update employee EmpID=10001
+64,2026-03-06 06:38:03,10001,HR_UPDATE_OK,Update employee EmpID=10001
+65,2026-03-06 06:38:51,10001,LOGIN_SUCCESS,User logged in successfully.
+66,2026-03-06 06:38:58,10001,HR_UPDATE_OK,Update employee EmpID=10001
+67,2026-03-06 06:39:07,10001,HR_UPDATE_OK,Update employee EmpID=10001
+68,2026-03-06 06:51:08,10001,LOGIN_SUCCESS,User logged in successfully.
+69,2026-03-06 06:55:32,10001,LOGIN_SUCCESS,User logged in successfully.
+70,2026-03-06 06:57:11,10001,LOGIN_SUCCESS,User logged in successfully.
+71,2026-03-06 06:57:17,10001,HR_UPDATE_OK,Update employee EmpID=10001
+72,2026-03-06 06:57:25,10001,HR_UPDATE_OK,Update employee EmpID=10001
+73,2026-03-07 17:54:18,10000,LOGIN_SUCCESS,User logged in successfully.
+74,2026-03-07 18:06:34,10000,LOGIN_SUCCESS,User logged in successfully.
+75,2026-03-07 18:07:40,10007,LOGIN_SUCCESS,User logged in successfully.
+76,2026-03-07 18:08:21,1000,LOGIN_FAILED,Invalid credentials or account locked.
+77,2026-03-07 18:08:26,10000,LOGIN_SUCCESS,User logged in successfully.
+78,2026-03-07 18:12:47,10000,TIME_IN_DENIED,Time-in rejected by rule.
+79,2026-03-07 18:12:52,10000,TIME_OUT_DENIED,Time-out rejected by rule.
+80,2026-03-07 18:22:56,10000,TIME_IN_DENIED,Time-in rejected by rule.
+81,2026-03-07 18:32:40,10000,LOGIN_SUCCESS,User logged in successfully.
+82,2026-03-07 18:35:23,10000,HR_UPDATE_OK,Update employee EmpID=10000
+83,2026-03-07 18:35:46,10000,HR_UPDATE_OK,Update employee EmpID=10000
+84,2026-03-07 19:06:52,10000,LOGIN_SUCCESS,User logged in successfully.
+85,2026-03-07 19:07:26,10000,HR_UPDATE_OK,Update employee EmpID=10000
+86,2026-03-07 19:16:39,10000,HR_UPDATE_OK,Update employee EmpID=10000
+87,2026-03-07 19:16:51,10000,HR_UPDATE_OK,Update employee EmpID=10000
+88,2026-03-07 19:19:33,10000,LOGIN_SUCCESS,User logged in successfully.
+89,2026-03-07 19:24:49,10000,LOGIN_FAILED,Invalid credentials or account locked.
+90,2026-03-07 19:24:53,10000,LOGIN_SUCCESS,User logged in successfully.
+91,2026-03-07 19:25:22,10000,LOGIN_SUCCESS,User logged in successfully.
+92,2026-03-07 19:25:43,10000,HR_UPDATE_OK,Update employee EmpID=10000
+93,2026-03-07 21:05:56,10000,LOGIN_FAILED,Invalid credentials or account locked.
+94,2026-03-07 21:06:00,10000,LOGIN_SUCCESS,User logged in successfully.
+95,2026-03-07 21:17:46,10000,LOGIN_FAILED,Invalid credentials or account locked.
+96,2026-03-07 21:17:51,10000,LOGIN_SUCCESS,User logged in successfully.
+97,2026-03-07 21:19:15,10000,LOGIN_SUCCESS,User logged in successfully.
+98,2026-03-07 21:20:27,10000,LOGIN_SUCCESS,User logged in successfully.
+99,2026-03-07 21:25:01,10000,LOGIN_SUCCESS,User logged in successfully.
+100,2026-03-07 21:29:04,10000,LOGIN_SUCCESS,User logged in successfully.
+101,2026-03-07 22:06:38,10000,LOGIN_SUCCESS,User logged in successfully.
+102,2026-03-07 22:46:42,10000,LOGIN_SUCCESS,User logged in successfully.
+103,2026-03-07 22:54:16,10000,HR_UPDATE_OK,Update employee EmpID=10000
+104,2026-03-07 23:18:56,10000,LOGIN_SUCCESS,User logged in successfully.
+105,2026-03-07 23:19:57,10000,HR_UPDATE_OK,Update employee EmpID=10000
+106,2026-03-07 23:33:14,10007,LOGIN_SUCCESS,User logged in successfully.
+107,2026-03-07 23:33:34,10007,TIME_IN_DENIED,Time-in rejected by rule.
+108,2026-03-07 23:56:55,10007,LOGIN_SUCCESS,User logged in successfully.

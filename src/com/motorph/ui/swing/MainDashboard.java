@@ -4,6 +4,7 @@
  */
 package com.motorph.ui.swing;
 
+
 import com.motorph.domain.models.User;
 import com.motorph.domain.enums.Role;
 import com.motorph.service.EmployeeService;
@@ -15,27 +16,40 @@ import java.time.format.DateTimeFormatter;
 import javax.swing.Timer;
 import com.motorph.ui.swing.UiHelper.UiThemeHelper;
 
+import com.motorph.ops.auth.AuthOps;         
+import com.motorph.ops.auth.AuthOpsImpl;
+import com.motorph.ops.time.TimeOps;
+import com.motorph.ops.hr.HROps;
+
 /**
  *
  * @author ACER
  */
 public class MainDashboard extends javax.swing.JFrame {
 
-    private static final java.util.logging.Logger logger = java.util.logging.Logger.getLogger(MainDashboard.class.getName());
-
     private final User currentUser;
-    private final EmployeeService employeeService = new EmployeeService(); // To check supervisor status
+    private final EmployeeService employeeService; // Replaced the inline 'new' assignment
+    private final AuthOps authOps;
     private CardLayout cardLayout;
     private JPanel mainContentPanel;
     private Timer clockTimer;
+    private final TimeOps timeOps;
+    private final HROps hrOps;
 
-    public MainDashboard(User loggedInUser) {
+    public MainDashboard(User loggedInUser, EmployeeService employeeService, AuthOps authOps, TimeOps timeOps, HROps hrOps) {
         this.currentUser = loggedInUser;
+        this.employeeService = employeeService; 
+        this.authOps = authOps;
+        this.timeOps = timeOps;
+        this.hrOps = hrOps;
+        
         initComponents();
+        
+        loadDashboardProfile();
 
-        setResizable(false);                 // disables resize and maximize
-        setExtendedState(javax.swing.JFrame.NORMAL); // forces normal state
-        setLocationRelativeTo(null);         // center on screen
+        setResizable(false);
+        setExtendedState(javax.swing.JFrame.NORMAL);
+        setLocationRelativeTo(null);
 
         startClock();
         initCustomLayout();
@@ -43,38 +57,22 @@ public class MainDashboard extends javax.swing.JFrame {
     }
 
     private void customizeSidebar() {
-        // Null-safe fallback keeps UI stable during designer preview.
+        // Null-safe fallback
         boolean hasHR = currentUser != null && currentUser.getRoles().contains(Role.HR);
         boolean hasPayroll = currentUser != null && currentUser.getRoles().contains(Role.PAYROLL);
         boolean hasIT = currentUser != null && currentUser.getRoles().contains(Role.IT);
 
-        // 1. EVERYONE sees "Home" (My Profile, Time In/Out, Payslip)
-        // We don't hide btnHome because everyone is an employee.
-        // 2. ROLE-BASED FEATURES (Inheritance/Permissions)
-        // Only HR and IT see the HR panel entry.
-        if (!hasHR && !hasIT) {
-            jButton3.setVisible(false);
-        }
+        // 1. ROLE-BASED FEATURES 
+        // Explicitly set true OR false so they don't get stuck hidden on a UI refresh
+        jButton3.setVisible(hasHR || hasIT);       // Employee Management
+        jButton2.setVisible(hasPayroll || hasIT);  // Payroll Management
+        jButton9.setVisible(hasIT);                // System Maintenance
 
-        // Only Payroll and IT see the payroll panel entry.
-        if (!hasPayroll && !hasIT) {
-            jButton2.setVisible(false);
-        }
-
-        // Only IT sees system maintenance tools.
-        if (!hasIT) {
-            jButton9.setVisible(false);
-        }
-
-        // 3. DYNAMIC MANAGER CHECK (Polymorphism)
-        // We ask the service: "Is this person a supervisor?"
-        // This works even if the person is HR or IT.
+        // 2. DYNAMIC MANAGER CHECK
         boolean isASupervisor = (currentUser != null)
                 && employeeService.isSupervisor(currentUser.getUsername());
-
-        if (!isASupervisor) {
-            jButton7.setVisible(false);
-        }
+        
+        jButton7.setVisible(isASupervisor);        // Attendance Management
     }
 
     private void initCustomLayout() {
@@ -86,7 +84,7 @@ public class MainDashboard extends javax.swing.JFrame {
 
         // Load the panels
         // Annotation: Add working panels as cards.
-        mainContentPanel.add(new UpdateProfile(currentUser), "HOME");
+        mainContentPanel.add(new UpdateProfile(currentUser, employeeService, hrOps), "HOME");
         mainContentPanel.add(new HrPanel(currentUser), "HR");
         mainContentPanel.add(new PayrollPanel(currentUser), "PAYROLL");
         mainContentPanel.add(new TimekeepingPanel(currentUser), "ATTENDANCE");
@@ -201,8 +199,10 @@ public class MainDashboard extends javax.swing.JFrame {
         jButton3.setPreferredSize(new java.awt.Dimension(138, 22));
         jButton3.addActionListener(this::jButton3ActionPerformed);
 
+        jLabel3.setFont(new java.awt.Font("Segoe UI", 1, 12)); // NOI18N
         jLabel3.setText("Date:");
 
+        jLabel4.setFont(new java.awt.Font("Segoe UI", 1, 12)); // NOI18N
         jLabel4.setText("Time:");
 
         jButton4.setFont(new java.awt.Font("Segoe UI", 1, 12)); // NOI18N
@@ -253,11 +253,13 @@ public class MainDashboard extends javax.swing.JFrame {
         jButton10.setPreferredSize(new java.awt.Dimension(116, 22));
         jButton10.addActionListener(this::jButton10ActionPerformed);
 
+        jLabel13.setFont(new java.awt.Font("Segoe UI", 1, 12)); // NOI18N
         jLabel13.setText("Time In: ");
 
+        jLabel15.setFont(new java.awt.Font("Segoe UI", 1, 12)); // NOI18N
         jLabel15.setText("Time Out: ");
 
-        jButton8.setFont(new java.awt.Font("Corbel", 1, 12)); // NOI18N
+        jButton8.setFont(new java.awt.Font("Segoe UI Historic", 1, 12)); // NOI18N
         jButton8.setText("My Attendance");
         jButton8.setHorizontalTextPosition(javax.swing.SwingConstants.CENTER);
         jButton8.setVerticalAlignment(javax.swing.SwingConstants.BOTTOM);
@@ -380,39 +382,47 @@ public class MainDashboard extends javax.swing.JFrame {
                 .addContainerGap())
         );
 
+        jLabel12.setFont(new java.awt.Font("Segoe UI", 1, 12)); // NOI18N
         jLabel12.setText("Immediate Supervisor");
         jLabel12.setMaximumSize(new java.awt.Dimension(70, 15));
         jLabel12.setMinimumSize(new java.awt.Dimension(70, 15));
         jLabel12.setPreferredSize(new java.awt.Dimension(70, 15));
 
+        jLabel6.setFont(new java.awt.Font("Segoe UI", 1, 12)); // NOI18N
         jLabel6.setText("Employee ID:");
         jLabel6.setMaximumSize(new java.awt.Dimension(70, 15));
         jLabel6.setMinimumSize(new java.awt.Dimension(70, 15));
         jLabel6.setName(""); // NOI18N
         jLabel6.setPreferredSize(new java.awt.Dimension(70, 15));
 
+        jLabel8.setFont(new java.awt.Font("Segoe UI", 1, 12)); // NOI18N
         jLabel8.setText("Date of Birth:");
         jLabel8.setMaximumSize(new java.awt.Dimension(70, 15));
         jLabel8.setMinimumSize(new java.awt.Dimension(70, 15));
         jLabel8.setPreferredSize(new java.awt.Dimension(70, 15));
 
+        jLabel14.setFont(new java.awt.Font("Segoe UI", 1, 12)); // NOI18N
         jLabel14.setText("Address:");
 
+        jLabel7.setFont(new java.awt.Font("Segoe UI", 1, 12)); // NOI18N
         jLabel7.setText("Name:");
         jLabel7.setMaximumSize(new java.awt.Dimension(70, 15));
         jLabel7.setMinimumSize(new java.awt.Dimension(70, 15));
         jLabel7.setPreferredSize(new java.awt.Dimension(70, 15));
 
+        jLabel10.setFont(new java.awt.Font("Segoe UI", 1, 12)); // NOI18N
         jLabel10.setText("Status");
         jLabel10.setMaximumSize(new java.awt.Dimension(70, 15));
         jLabel10.setMinimumSize(new java.awt.Dimension(70, 15));
         jLabel10.setPreferredSize(new java.awt.Dimension(70, 15));
 
+        jLabel11.setFont(new java.awt.Font("Segoe UI", 1, 12)); // NOI18N
         jLabel11.setText("Phone Number:");
         jLabel11.setMaximumSize(new java.awt.Dimension(70, 15));
         jLabel11.setMinimumSize(new java.awt.Dimension(70, 15));
         jLabel11.setPreferredSize(new java.awt.Dimension(70, 15));
 
+        jLabel9.setFont(new java.awt.Font("Segoe UI", 1, 12)); // NOI18N
         jLabel9.setText("Position");
         jLabel9.setMaximumSize(new java.awt.Dimension(70, 15));
         jLabel9.setMinimumSize(new java.awt.Dimension(70, 15));
@@ -462,7 +472,9 @@ public class MainDashboard extends javax.swing.JFrame {
             .addGroup(jPanel3Layout.createSequentialGroup()
                 .addContainerGap()
                 .addGroup(jPanel3Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addComponent(jLabel14, javax.swing.GroupLayout.PREFERRED_SIZE, 287, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addGroup(jPanel3Layout.createSequentialGroup()
+                        .addComponent(jLabel14)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
                     .addGroup(jPanel3Layout.createSequentialGroup()
                         .addComponent(jLabel5, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
@@ -505,10 +517,9 @@ public class MainDashboard extends javax.swing.JFrame {
                         .addGap(27, 27, 27)
                         .addComponent(jLabel5, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
                     .addGroup(jPanel3Layout.createSequentialGroup()
-                        .addGroup(jPanel3Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                            .addGroup(jPanel3Layout.createSequentialGroup()
-                                .addGap(7, 7, 7)
-                                .addComponent(jTextField1, javax.swing.GroupLayout.DEFAULT_SIZE, 25, Short.MAX_VALUE))
+                        .addGap(7, 7, 7)
+                        .addGroup(jPanel3Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                            .addComponent(jTextField1, javax.swing.GroupLayout.DEFAULT_SIZE, 25, Short.MAX_VALUE)
                             .addComponent(jLabel6, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
                         .addGap(6, 6, 6)
                         .addGroup(jPanel3Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
@@ -549,6 +560,7 @@ public class MainDashboard extends javax.swing.JFrame {
         jButton11.setOpaque(true);
         jButton11.addActionListener(this::jButton11ActionPerformed);
 
+        jLabel16.setFont(new java.awt.Font("Segoe UI", 1, 12)); // NOI18N
         jLabel16.setText("Additional Details:");
         jLabel16.setMaximumSize(new java.awt.Dimension(100, 15));
         jLabel16.setMinimumSize(new java.awt.Dimension(100, 15));
@@ -605,7 +617,22 @@ public class MainDashboard extends javax.swing.JFrame {
 
     private void jButton1ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButton1ActionPerformed
         // Update Profile
-        showCard("HOME");
+        // Launch Update Profile as a Popup Window
+        javax.swing.JDialog dialog = new javax.swing.JDialog(this, "Edit Profile", true); // 'true' makes it modal (locks the dashboard)
+        dialog.setDefaultCloseOperation(javax.swing.WindowConstants.DISPOSE_ON_CLOSE);
+        
+        // Add fully wired panel into this dialog
+        UpdateProfile updatePanel = new UpdateProfile(currentUser, employeeService, hrOps);
+        dialog.getContentPane().add(updatePanel);
+        
+        dialog.pack();
+        dialog.setLocationRelativeTo(this); // Centers it over the dashboard
+        dialog.setVisible(true); // The code pauses here until the user closes the popup
+        
+        // Once they close the popup, automatically refresh the dashboard to show the data
+        employeeService.refreshCache();
+        loadDashboardProfile();
+        customizeSidebar();
     }//GEN-LAST:event_jButton1ActionPerformed
 
     private void jButton3ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButton3ActionPerformed
@@ -615,12 +642,28 @@ public class MainDashboard extends javax.swing.JFrame {
 
     private void jButton4ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButton4ActionPerformed
         // Clock In
-        JOptionPane.showMessageDialog(this, "Clock In triggered.");
+        int empId = Integer.parseInt(currentUser.getUsername());
+        
+        boolean success = timeOps.clockIn(empId);
+        if (success){
+            JOptionPane.showMessageDialog(this, "Clock in successful!", "Success",JOptionPane.INFORMATION_MESSAGE );
+        } else {
+            JOptionPane.showMessageDialog(this, "Clock In failed. You might already be clocked in today.", "Error", JOptionPane.ERROR_MESSAGE);
+        }
+        //JOptionPane.showMessageDialog(this, "Clock In triggered.");
     }//GEN-LAST:event_jButton4ActionPerformed
 
     private void jButton5ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButton5ActionPerformed
         // Clock Out
-        JOptionPane.showMessageDialog(this, "Clock Out triggered.");
+        int empId = Integer.parseInt(currentUser.getUsername());
+        
+        boolean success = timeOps.clockOut(empId);
+        if (success) {
+            JOptionPane.showMessageDialog(this, "Clock Out successful!", "Success", JOptionPane.INFORMATION_MESSAGE);
+        } else {
+            JOptionPane.showMessageDialog(this, "Clock Out failed. You might not be clocked in, or already clocked out.", "Error", JOptionPane.ERROR_MESSAGE);
+        }
+        //JOptionPane.showMessageDialog(this, "Clock Out triggered.");
     }//GEN-LAST:event_jButton5ActionPerformed
 
     private void jButton7ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButton7ActionPerformed
@@ -640,7 +683,7 @@ public class MainDashboard extends javax.swing.JFrame {
 
     private void jButton6ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButton6ActionPerformed
         // Logout
-        new LoginPanel().setVisible(true);
+        new LoginPanel(authOps, employeeService, timeOps, hrOps).setVisible(true);
         dispose();
     }//GEN-LAST:event_jButton6ActionPerformed
 
@@ -668,29 +711,7 @@ public class MainDashboard extends javax.swing.JFrame {
     /**
      * @param args the command line arguments
      */
-    public static void main(String args[]) {
-        /* Set the Nimbus look and feel */
-        //<editor-fold defaultstate="collapsed" desc=" Look and feel setting code (optional) ">
-        /* If Nimbus (introduced in Java SE 6) is not available, stay with the default look and feel.
-         * For details see http://download.oracle.com/javase/tutorial/uiswing/lookandfeel/plaf.html 
-         */
-        try {
-            for (javax.swing.UIManager.LookAndFeelInfo info : javax.swing.UIManager.getInstalledLookAndFeels()) {
-                if ("Nimbus".equals(info.getName())) {
-                    javax.swing.UIManager.setLookAndFeel(info.getClassName());
-                    break;
-                }
-            }
-        } catch (ReflectiveOperationException | javax.swing.UnsupportedLookAndFeelException ex) {
-            logger.log(java.util.logging.Level.SEVERE, null, ex);
-        }
-        //</editor-fold>
-
-        /* Create and display the form */
-        // Main entry is LoginPanel. MainDashboard requires an authenticated user.
-        UiThemeHelper.useNimbus();
-        java.awt.EventQueue.invokeLater(() -> new com.motorph.ui.swing.LoginPanel().setVisible(true));
-    }
+   
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JButton jButton10;
@@ -740,6 +761,81 @@ public class MainDashboard extends javax.swing.JFrame {
 
         clockTimer = new Timer(1000, e -> updateDateTimeLabels());
         clockTimer.start();
+    }
+    
+    // Grabs the Employee profile and fills the Dashboard text fields
+    private void loadDashboardProfile() {
+        if (currentUser == null) return;
+
+        try {
+            int empId = Integer.parseInt(currentUser.getUsername());
+            // Fetch the employee object using the injected service
+            com.motorph.domain.models.Employee emp = employeeService.getEmployee(empId);
+
+            if (emp != null) {
+                // ID and Name
+                jTextField1.setText(String.valueOf(emp.getId()));
+                jTextField2.setText(emp.getFirstName() + " " + emp.getLastName());
+
+                // Birthday formatting
+                if (emp.getBirthday() != null) {
+                    java.time.format.DateTimeFormatter df = java.time.format.DateTimeFormatter.ofPattern("MMMM dd, yyyy");
+                    jTextField3.setText(emp.getBirthday().format(df));
+                } else {
+                    jTextField3.setText("N/A");
+                }
+
+                // Job Details
+                jTextField4.setText(emp.getPosition());
+                jTextField5.setText(emp.getStatus());
+                jTextField6.setText(emp.getImmediateSupervisor());
+                
+                // Contact
+                jTextField7.setText(emp.getPhoneNumber());
+                jLabel14.setText("Address: " + emp.getAddress());
+
+                // Lock the fields so they can't be edited directly on the dashboard
+                jTextField1.setEditable(false);
+                jTextField2.setEditable(false);
+                jTextField3.setEditable(false);
+                jTextField4.setEditable(false);
+                jTextField5.setEditable(false);
+                jTextField6.setEditable(false);
+                jTextField7.setEditable(false);
+                
+                // Use a Monospaced font so the columns align perfectly
+                jTextArea1.setFont(new java.awt.Font("Monospaced", java.awt.Font.PLAIN, 12));
+                
+                StringBuilder details = new StringBuilder();
+                
+                // Section 1: Government IDs
+                details.append("GOVERNMENT IDENTIFICATION\n");
+                details.append("--------------------------------------------------\n");
+                details.append(String.format("%-18s %s\n", "SSS No:", emp.getSssNumber()));
+                details.append(String.format("%-18s %s\n", "PhilHealth No:", emp.getPhilHealthNumber()));
+                details.append(String.format("%-18s %s\n", "TIN:", emp.getTinNumber()));
+                details.append(String.format("%-18s %s\n\n", "Pag-IBIG No:", emp.getPagIbigNumber()));
+
+                // Section 2: Basic Compensation Summary
+                details.append("COMPENSATION OVERVIEW\n");
+                details.append("--------------------------------------------------\n");
+                details.append(String.format("%-18s PHP %,.2f\n", "Basic Salary:", emp.getBasicSalary()));
+                details.append(String.format("%-18s PHP %,.2f\n", "Hourly Rate:", emp.getHourlyRate()));
+                
+                // Format allowances
+                details.append(String.format("%-18s Rice (PHP %,.2f) | Phone (PHP %,.2f) | Clothing (PHP %,.2f)\n", 
+                        "Allowances:", 
+                        emp.getRiceAllowance(), 
+                        emp.getPhoneAllowance(), 
+                        emp.getClothingAllowance()));
+
+                // Set the text and lock the text area
+                jTextArea1.setText(details.toString());
+                jTextArea1.setEditable(false);
+            }
+        } catch (NumberFormatException e) {
+            System.err.println("Could not parse user ID for dashboard: " + e.getMessage());
+        }
     }
 
     private void updateDateTimeLabels() {
