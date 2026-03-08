@@ -86,15 +86,15 @@ public class SwingApp {
         );
         HROps hrOps = new HROpsImpl(empRepo, employeeService, userRepo, logService);
         ItOps itOps = new ItOpsImpl(userRepo, logService);
-        
+
         //Initialize the AuthOps layer
         AuthOps authOps = new AuthOpsImpl(authService, logService);
-        
+
         // --- FINAL UI WIRING ---
         java.awt.EventQueue.invokeLater(() -> {
             // Ensure Nimbus Theme is set globally before launching UI
-            com.motorph.ui.swing.UiHelper.UiThemeHelper.useNimbus();
-            
+            com.motorph.ui.swing.UiHelper.UiThemeHelper.useFlatLaf();
+
             // Pass the successfully wired backend directly into the UI
             com.motorph.ui.swing.LoginPanel login = new com.motorph.ui.swing.LoginPanel(authOps, employeeService, timeOps, hrOps);
             login.setVisible(true);

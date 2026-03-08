@@ -4,7 +4,6 @@
  */
 package com.motorph.ui.swing;
 
-import com.motorph.ui.swing.UiHelper.UiThemeHelper;
 import com.motorph.domain.models.User;
 import com.motorph.ops.auth.AuthOps;
 import com.motorph.service.EmployeeService;
@@ -35,7 +34,11 @@ public class LoginPanel extends javax.swing.JFrame {
     private final HROps hrOps;
 
     /**
-     * Creates new form LoginView
+     * Creates new form LoginPanel
+     * @param authOps
+     * @param employeeService
+     * @param timeOps
+     * @param hrOps
      */
     public LoginPanel(AuthOps authOps, EmployeeService employeeService, TimeOps timeOps, HROps hrOps) {
         this.authOps = authOps;
@@ -218,7 +221,7 @@ public class LoginPanel extends javax.swing.JFrame {
         jPanel1.add(jLabel2, gridBagConstraints);
 
         jTextField1.setHorizontalAlignment(javax.swing.JTextField.CENTER);
-        jTextField1.setText("USERNAME");
+        jTextField1.setText("EMPLOYEE ID");
         jTextField1.setToolTipText("");
         jTextField1.setBorder(new javax.swing.border.SoftBevelBorder(javax.swing.border.BevelBorder.LOWERED));
         jTextField1.setMargin(new java.awt.Insets(3, 7, 3, 7));

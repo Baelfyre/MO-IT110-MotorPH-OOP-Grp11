@@ -40,6 +40,9 @@ public class DataPaths {
     public static final String LEAVE_CREDITS_CSV = "./data/data_LeaveCredits.csv";
     public static final String LEAVE_FOLDER = "./data/records_leave/";
 
+    // --- 7. ADDRESS REFERENCE ---
+    public static final String ADDRESS_REFERENCE_CSV = "./data/AddressReference.csv";
+
     // Default Hased Password
     public static final String DEFAULT_PASSWORD = "Test1234";
 }

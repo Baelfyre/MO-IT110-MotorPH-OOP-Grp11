@@ -199,8 +199,10 @@ public class MainDashboard extends javax.swing.JFrame {
         jButton3.setPreferredSize(new java.awt.Dimension(138, 22));
         jButton3.addActionListener(this::jButton3ActionPerformed);
 
+        jLabel3.setFont(new java.awt.Font("Segoe UI", 1, 12)); // NOI18N
         jLabel3.setText("Date:");
 
+        jLabel4.setFont(new java.awt.Font("Segoe UI", 1, 12)); // NOI18N
         jLabel4.setText("Time:");
 
         jButton4.setFont(new java.awt.Font("Segoe UI", 1, 12)); // NOI18N
@@ -251,11 +253,13 @@ public class MainDashboard extends javax.swing.JFrame {
         jButton10.setPreferredSize(new java.awt.Dimension(116, 22));
         jButton10.addActionListener(this::jButton10ActionPerformed);
 
+        jLabel13.setFont(new java.awt.Font("Segoe UI", 1, 12)); // NOI18N
         jLabel13.setText("Time In: ");
 
+        jLabel15.setFont(new java.awt.Font("Segoe UI", 1, 12)); // NOI18N
         jLabel15.setText("Time Out: ");
 
-        jButton8.setFont(new java.awt.Font("Corbel", 1, 12)); // NOI18N
+        jButton8.setFont(new java.awt.Font("Segoe UI Historic", 1, 12)); // NOI18N
         jButton8.setText("My Attendance");
         jButton8.setHorizontalTextPosition(javax.swing.SwingConstants.CENTER);
         jButton8.setVerticalAlignment(javax.swing.SwingConstants.BOTTOM);
@@ -378,39 +382,47 @@ public class MainDashboard extends javax.swing.JFrame {
                 .addContainerGap())
         );
 
+        jLabel12.setFont(new java.awt.Font("Segoe UI", 1, 12)); // NOI18N
         jLabel12.setText("Immediate Supervisor");
         jLabel12.setMaximumSize(new java.awt.Dimension(70, 15));
         jLabel12.setMinimumSize(new java.awt.Dimension(70, 15));
         jLabel12.setPreferredSize(new java.awt.Dimension(70, 15));
 
+        jLabel6.setFont(new java.awt.Font("Segoe UI", 1, 12)); // NOI18N
         jLabel6.setText("Employee ID:");
         jLabel6.setMaximumSize(new java.awt.Dimension(70, 15));
         jLabel6.setMinimumSize(new java.awt.Dimension(70, 15));
         jLabel6.setName(""); // NOI18N
         jLabel6.setPreferredSize(new java.awt.Dimension(70, 15));
 
+        jLabel8.setFont(new java.awt.Font("Segoe UI", 1, 12)); // NOI18N
         jLabel8.setText("Date of Birth:");
         jLabel8.setMaximumSize(new java.awt.Dimension(70, 15));
         jLabel8.setMinimumSize(new java.awt.Dimension(70, 15));
         jLabel8.setPreferredSize(new java.awt.Dimension(70, 15));
 
+        jLabel14.setFont(new java.awt.Font("Segoe UI", 1, 12)); // NOI18N
         jLabel14.setText("Address:");
 
+        jLabel7.setFont(new java.awt.Font("Segoe UI", 1, 12)); // NOI18N
         jLabel7.setText("Name:");
         jLabel7.setMaximumSize(new java.awt.Dimension(70, 15));
         jLabel7.setMinimumSize(new java.awt.Dimension(70, 15));
         jLabel7.setPreferredSize(new java.awt.Dimension(70, 15));
 
+        jLabel10.setFont(new java.awt.Font("Segoe UI", 1, 12)); // NOI18N
         jLabel10.setText("Status");
         jLabel10.setMaximumSize(new java.awt.Dimension(70, 15));
         jLabel10.setMinimumSize(new java.awt.Dimension(70, 15));
         jLabel10.setPreferredSize(new java.awt.Dimension(70, 15));
 
+        jLabel11.setFont(new java.awt.Font("Segoe UI", 1, 12)); // NOI18N
         jLabel11.setText("Phone Number:");
         jLabel11.setMaximumSize(new java.awt.Dimension(70, 15));
         jLabel11.setMinimumSize(new java.awt.Dimension(70, 15));
         jLabel11.setPreferredSize(new java.awt.Dimension(70, 15));
 
+        jLabel9.setFont(new java.awt.Font("Segoe UI", 1, 12)); // NOI18N
         jLabel9.setText("Position");
         jLabel9.setMaximumSize(new java.awt.Dimension(70, 15));
         jLabel9.setMinimumSize(new java.awt.Dimension(70, 15));
@@ -460,7 +472,9 @@ public class MainDashboard extends javax.swing.JFrame {
             .addGroup(jPanel3Layout.createSequentialGroup()
                 .addContainerGap()
                 .addGroup(jPanel3Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addComponent(jLabel14, javax.swing.GroupLayout.PREFERRED_SIZE, 287, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addGroup(jPanel3Layout.createSequentialGroup()
+                        .addComponent(jLabel14)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
                     .addGroup(jPanel3Layout.createSequentialGroup()
                         .addComponent(jLabel5, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
@@ -503,10 +517,9 @@ public class MainDashboard extends javax.swing.JFrame {
                         .addGap(27, 27, 27)
                         .addComponent(jLabel5, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
                     .addGroup(jPanel3Layout.createSequentialGroup()
-                        .addGroup(jPanel3Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                            .addGroup(jPanel3Layout.createSequentialGroup()
-                                .addGap(7, 7, 7)
-                                .addComponent(jTextField1, javax.swing.GroupLayout.DEFAULT_SIZE, 25, Short.MAX_VALUE))
+                        .addGap(7, 7, 7)
+                        .addGroup(jPanel3Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                            .addComponent(jTextField1, javax.swing.GroupLayout.DEFAULT_SIZE, 25, Short.MAX_VALUE)
                             .addComponent(jLabel6, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
                         .addGap(6, 6, 6)
                         .addGroup(jPanel3Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
@@ -547,6 +560,7 @@ public class MainDashboard extends javax.swing.JFrame {
         jButton11.setOpaque(true);
         jButton11.addActionListener(this::jButton11ActionPerformed);
 
+        jLabel16.setFont(new java.awt.Font("Segoe UI", 1, 12)); // NOI18N
         jLabel16.setText("Additional Details:");
         jLabel16.setMaximumSize(new java.awt.Dimension(100, 15));
         jLabel16.setMinimumSize(new java.awt.Dimension(100, 15));

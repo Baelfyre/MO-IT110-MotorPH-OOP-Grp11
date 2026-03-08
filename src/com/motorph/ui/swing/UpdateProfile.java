@@ -1,161 +1,93 @@
 /*
  * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
- * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
+ * Click nbfs://nbhost/SystemFileSystem/Templates/GUIForms/JPanel.java to edit this template
  */
 package com.motorph.ui.swing;
 
+import com.motorph.domain.models.Employee;
 import com.motorph.domain.models.User;
-import com.toedter.calendar.JDateChooser;
+import com.motorph.ops.hr.HROps;
+import com.motorph.repository.csv.CsvAddressReferenceRepository;
+import com.motorph.repository.csv.DataPaths;
+import com.motorph.service.EmployeeService;
+import com.motorph.utils.AddressFormatter;
+import com.motorph.utils.AddressParser;
+import com.motorph.utils.InputRestrictionUtil;
+import com.motorph.utils.ValidationUtil;
+
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import java.awt.*;
-import java.time.LocalDate;
-import java.time.ZoneId;
-import java.util.Date;
-
-import com.motorph.domain.models.Employee;
-import com.motorph.service.EmployeeService;
-import com.motorph.ops.hr.HROps;
-import com.motorph.utils.ValidationUtil;
+import java.nio.file.Paths;
 
 /**
  *
- * @author ACER
+ * @author OngoJ.
  */
-
 public class UpdateProfile extends JPanel {
 
-    // Text fields
-    private final JTextField txtEmpNo = new JTextField(10);
-    private final JTextField txtLastName = new JTextField(18);
-    private final JTextField txtFirstName = new JTextField(18);
+    private static final String PROVINCE_PLACEHOLDER = "Select Province";
+    private static final String CITY_PLACEHOLDER = "Select City / Municipality";
 
-    private final JTextField txtAddress = new JTextField(40);
-
-    // Birthday (JCalendar)
-    private final JDateChooser dcBirthday = new JDateChooser();
-
-    private final JTextField txtSSS = new JTextField(16);
-    private final JTextField txtPagibig = new JTextField(16);
-    private final JTextField txtTIN = new JTextField(16);
-    private final JTextField txtPhilHealth = new JTextField(16);
+    // Annotation: Self-service fields only.
+    private final JTextField txtAddressLine1 = new JTextField(28);
+    private final JTextField txtAddressLine2 = new JTextField(28);
+    private final JComboBox<String> cbProvinceAddress = new JComboBox<>();
+    private final JComboBox<String> cbCityAddress = new JComboBox<>();
+    private final JTextField txtZipCode = new JTextField(10);
     private final JTextField txtPhone = new JTextField(16);
 
-    private final JComboBox<String> cbStatus = new JComboBox<>(new String[]{"Regular", "Probationary"});
-    private final JComboBox<String> cbSupervisor = new JComboBox<>(new String[]{"Select Supervisor"});
-    private final JComboBox<String> cbPosition = new JComboBox<>(new String[]{"Select Position"});
-
-    private final JTextField txtBasicSalary = new JTextField(12);
-    private final JTextField txtRiceSubsidy = new JTextField(12);
-    private final JTextField txtPhoneAllowance = new JTextField(12);
-    private final JTextField txtClothingAllowance = new JTextField(12);
-
-    // Computed fields
-    private final JTextField txtGrossSemiMonthly = new JTextField(12);
-    private final JTextField txtHourlyRate = new JTextField(12);
-    
     private final User currentUser;
     private final EmployeeService employeeService;
     private final HROps hrOps;
+    private final CsvAddressReferenceRepository addressRepo;
+
     private Employee currentEmployee;
 
     public UpdateProfile(User currentUser, EmployeeService employeeService, HROps hrOps) {
-        this.currentUser = currentUser; // Save the user
+        this.currentUser = currentUser;
         this.employeeService = employeeService;
         this.hrOps = hrOps;
-        
-        // 1. Tell this panel to use a BorderLayout so it fills the screen
-        this.setLayout(new BorderLayout());
+        this.addressRepo = new CsvAddressReferenceRepository(
+                Paths.get(DataPaths.ADDRESS_REFERENCE_CSV)
+        );
+
+        setLayout(new BorderLayout());
 
         JPanel content = new JPanel(new GridBagLayout());
         content.setBorder(new EmptyBorder(18, 18, 18, 18));
 
-        // Field rules
-        txtEmpNo.setEditable(false);
-        txtGrossSemiMonthly.setEditable(false);
-        txtHourlyRate.setEditable(false);
+        txtZipCode.setEditable(false);
+        txtZipCode.setEnabled(false);
 
-        // JDateChooser setup
-        dcBirthday.setDateFormatString("dd-MMM-yy"); // Example: 01-Jan-24
-        dcBirthday.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+        initializeAddressDropdowns();
+        initializeRestrictions();
 
         GridBagConstraints gbc = baseGbc();
         int r = 0;
 
-        // Row 0: Emp # | Last | First
-        addLabel(content, gbc, 0, r, "Employee #:");
-        addField(content, gbc, 1, r, txtEmpNo);
-
-        addLabel(content, gbc, 2, r, "Last Name:");
-        addField(content, gbc, 3, r, txtLastName);
-
-        addLabel(content, gbc, 4, r, "First Name:");
-        addField(content, gbc, 5, r, txtFirstName);
+        addLabel(content, gbc, 0, r, "Address Line 1:");
+        addFieldSpan(content, gbc, 1, r, 3, txtAddressLine1);
         r++;
 
-        // Row 1: Address spans | Birthday (JCalendar)
-        addLabel(content, gbc, 0, r, "Address:");
-        addFieldSpan(content, gbc, 1, r, 3, txtAddress);
-
-        addLabel(content, gbc, 4, r, "Birthday:");
-        addField(content, gbc, 5, r, dcBirthday);
+        addLabel(content, gbc, 0, r, "Address Line 2:");
+        addFieldSpan(content, gbc, 1, r, 3, txtAddressLine2);
         r++;
 
-        // Row 2: SSS | Pag-ibig | TIN
-        addLabel(content, gbc, 0, r, "SSS #:");
-        addField(content, gbc, 1, r, txtSSS);
+        addLabel(content, gbc, 0, r, "Province:");
+        addField(content, gbc, 1, r, cbProvinceAddress);
 
-        addLabel(content, gbc, 2, r, "Pag-ibig #:");
-        addField(content, gbc, 3, r, txtPagibig);
-
-        addLabel(content, gbc, 4, r, "TIN #:");
-        addField(content, gbc, 5, r, txtTIN);
+        addLabel(content, gbc, 2, r, "City / Municipality:");
+        addField(content, gbc, 3, r, cbCityAddress);
         r++;
 
-        // Row 3: Status | Phone | PhilHealth
-        addLabel(content, gbc, 0, r, "Status:");
-        addField(content, gbc, 1, r, cbStatus);
+        addLabel(content, gbc, 0, r, "ZIP Code:");
+        addField(content, gbc, 1, r, txtZipCode);
 
         addLabel(content, gbc, 2, r, "Phone #:");
         addField(content, gbc, 3, r, txtPhone);
-
-        addLabel(content, gbc, 4, r, "PhilHealth #:");
-        addField(content, gbc, 5, r, txtPhilHealth);
         r++;
 
-        // Row 4: Supervisor | Position
-        addLabel(content, gbc, 0, r, "Immediate Supervisor:");
-        addField(content, gbc, 1, r, cbSupervisor);
-
-        addLabel(content, gbc, 2, r, "Position:");
-        addFieldSpan(content, gbc, 3, r, 3, cbPosition);
-        r++;
-
-        // Row 5: Basic | Rice | Phone Allow
-        addLabel(content, gbc, 0, r, "Basic Salary:");
-        addField(content, gbc, 1, r, txtBasicSalary);
-
-        addLabel(content, gbc, 2, r, "Rice Subsidy:");
-        addField(content, gbc, 3, r, txtRiceSubsidy);
-
-        addLabel(content, gbc, 4, r, "Phone Allowance:");
-        addField(content, gbc, 5, r, txtPhoneAllowance);
-        r++;
-
-        // Row 6: Gross Semi | Clothing
-        addLabel(content, gbc, 0, r, "Gross Semi-Monthly Rate:");
-        addField(content, gbc, 1, r, txtGrossSemiMonthly);
-
-        addLabel(content, gbc, 2, r, "Clothing Allowance:");
-        addField(content, gbc, 3, r, txtClothingAllowance);
-        r++;
-
-        // Row 7: Hourly Rate
-        addLabel(content, gbc, 0, r, "Hourly Rate:");
-        addField(content, gbc, 1, r, txtHourlyRate);
-        r++;
-
-        // Buttons row
         JPanel buttons = new JPanel(new FlowLayout(FlowLayout.CENTER, 12, 0));
         JButton btnClear = new JButton("Clear");
         JButton btnUpdate = new JButton("Update");
@@ -164,183 +96,201 @@ public class UpdateProfile extends JPanel {
 
         gbc.gridx = 0;
         gbc.gridy = r;
-        gbc.gridwidth = 6;
+        gbc.gridwidth = 4;
         gbc.fill = GridBagConstraints.NONE;
         gbc.anchor = GridBagConstraints.CENTER;
         gbc.weightx = 1;
         gbc.insets = new Insets(18, 0, 0, 0);
         content.add(buttons, gbc);
 
-        // Basic wiring (placeholder)
         btnClear.addActionListener(e -> clearForm());
         btnUpdate.addActionListener(e -> onUpdate());
-    
-       this.add(content, BorderLayout.CENTER);
-       
-       loadEmployeeData();
+
+        add(createHeaderPanel(), BorderLayout.NORTH);
+        add(content, BorderLayout.CENTER);
+
+        loadEmployeeData();
     }
 
-   
+    private JPanel createHeaderPanel() {
+        JPanel headerPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 0, 0));
+        headerPanel.setBorder(new EmptyBorder(8, 8, 0, 8));
+        headerPanel.setOpaque(false);
 
-    // Annotation: Clears all input fields and resets drop-down selections.
+        JButton btnInfo = new JButton("ⓘ");
+        btnInfo.putClientProperty("JButton.buttonType", "roundRect");
+        btnInfo.setToolTipText("Profile update information");
+        btnInfo.setFocusable(false);
+        btnInfo.setMargin(new Insets(2, 8, 2, 8));
+
+        btnInfo.addActionListener(e -> JOptionPane.showMessageDialog(
+                this,
+                "Only Address and Contact Number can be updated in this form.\n"
+                + "For changes to other employee details, please use Employee Management or contact HR.",
+                "Profile Update Information",
+                JOptionPane.INFORMATION_MESSAGE
+        ));
+
+        headerPanel.add(btnInfo);
+        return headerPanel;
+    }
+
+    private void initializeAddressDropdowns() {
+        cbProvinceAddress.removeAllItems();
+        cbCityAddress.removeAllItems();
+
+        cbProvinceAddress.addItem(PROVINCE_PLACEHOLDER);
+        cbCityAddress.addItem(CITY_PLACEHOLDER);
+
+        for (String province : addressRepo.getProvinces()) {
+            cbProvinceAddress.addItem(province);
+        }
+
+        cbProvinceAddress.addActionListener(e -> onProvinceAddressChanged());
+        cbCityAddress.addActionListener(e -> onCityAddressChanged());
+    }
+
+    private void initializeRestrictions() {
+        InputRestrictionUtil.applyPhoneRestriction(txtPhone);
+    }
+
+    private void onProvinceAddressChanged() {
+        String province = getSelectedComboValue(cbProvinceAddress);
+
+        cbCityAddress.removeAllItems();
+        cbCityAddress.addItem(CITY_PLACEHOLDER);
+        txtZipCode.setText("");
+
+        if (ValidationUtil.isEmpty(province) || PROVINCE_PLACEHOLDER.equalsIgnoreCase(province)) {
+            return;
+        }
+
+        for (String city : addressRepo.getCitiesByProvince(province)) {
+            cbCityAddress.addItem(city);
+        }
+    }
+
+    private void onCityAddressChanged() {
+        String province = getSelectedComboValue(cbProvinceAddress);
+        String city = getSelectedComboValue(cbCityAddress);
+
+        txtZipCode.setText("");
+
+        if (ValidationUtil.isEmpty(province) || ValidationUtil.isEmpty(city)
+                || PROVINCE_PLACEHOLDER.equalsIgnoreCase(province)
+                || CITY_PLACEHOLDER.equalsIgnoreCase(city)) {
+            return;
+        }
+
+        txtZipCode.setText(addressRepo.getZipCode(province, city));
+    }
+
     private void clearForm() {
-        txtLastName.setText("");
-        txtFirstName.setText("");
-        txtAddress.setText("");
-        dcBirthday.setDate(null);
-
-        txtSSS.setText("");
-        txtPagibig.setText("");
-        txtTIN.setText("");
-        txtPhilHealth.setText("");
-        txtPhone.setText("");
-
-        cbStatus.setSelectedIndex(0);
-        cbSupervisor.setSelectedIndex(0);
-        cbPosition.setSelectedIndex(0);
-
-        txtBasicSalary.setText("");
-        txtRiceSubsidy.setText("");
-        txtPhoneAllowance.setText("");
-        txtClothingAllowance.setText("");
-
-        txtGrossSemiMonthly.setText("");
-        txtHourlyRate.setText("");
+        loadEmployeeData();
     }
 
-    // Reads the CSV through the service and fills the text fields
     private void loadEmployeeData() {
         int empId = Integer.parseInt(currentUser.getUsername());
         currentEmployee = employeeService.getEmployee(empId);
 
-        if (currentEmployee != null) {
-            txtEmpNo.setText(String.valueOf(currentEmployee.getId()));
-            txtLastName.setText(currentEmployee.getLastName());
-            txtFirstName.setText(currentEmployee.getFirstName());
-            txtAddress.setText(currentEmployee.getAddress());
-            setBirthdayFromLocalDate(currentEmployee.getBirthday());
+        if (currentEmployee == null) {
+            return;
+        }
 
-            txtSSS.setText(currentEmployee.getSssNumber());
-            txtPagibig.setText(currentEmployee.getPagIbigNumber());
-            txtTIN.setText(currentEmployee.getTinNumber());
-            txtPhilHealth.setText(currentEmployee.getPhilHealthNumber());
-            txtPhone.setText(currentEmployee.getPhoneNumber());
+        AddressParser.ParsedAddress parsedAddress
+                = AddressParser.parse(currentEmployee.getAddress(), addressRepo);
 
-            cbStatus.setSelectedItem(currentEmployee.getStatus());
-            cbPosition.setSelectedItem(currentEmployee.getPosition());
-            cbSupervisor.setSelectedItem(currentEmployee.getImmediateSupervisor());
+        txtAddressLine1.setText(parsedAddress.getAddressLine1());
+        txtAddressLine2.setText(parsedAddress.getAddressLine2());
+        txtPhone.setText(currentEmployee.getPhoneNumber());
 
-            txtBasicSalary.setText(String.valueOf(currentEmployee.getBasicSalary()));
-            txtRiceSubsidy.setText(String.valueOf(currentEmployee.getRiceAllowance()));
-            txtPhoneAllowance.setText(String.valueOf(currentEmployee.getPhoneAllowance()));
-            txtClothingAllowance.setText(String.valueOf(currentEmployee.getClothingAllowance()));
+        cbProvinceAddress.setSelectedIndex(0);
+        cbCityAddress.removeAllItems();
+        cbCityAddress.addItem(CITY_PLACEHOLDER);
+        txtZipCode.setText("");
 
-            txtGrossSemiMonthly.setText(String.valueOf(currentEmployee.getGrossSemiMonthlyRate()));
-            txtHourlyRate.setText(String.valueOf(currentEmployee.getHourlyRate()));
+        if (!ValidationUtil.isEmpty(parsedAddress.getProvince())) {
+            cbProvinceAddress.setSelectedItem(parsedAddress.getProvince());
+
+            cbCityAddress.removeAllItems();
+            cbCityAddress.addItem(CITY_PLACEHOLDER);
+
+            for (String city : addressRepo.getCitiesByProvince(parsedAddress.getProvince())) {
+                cbCityAddress.addItem(city);
+            }
+
+            if (!ValidationUtil.isEmpty(parsedAddress.getCityMunicipality())) {
+                cbCityAddress.setSelectedItem(parsedAddress.getCityMunicipality());
+            }
+
+            txtZipCode.setText(parsedAddress.getZipCode());
         }
     }
-    
-    // Gathers text field data, runs validation, updates the model, and saves to CSV
+
     private void onUpdate() {
-        if (currentEmployee == null) return;
-
-        // --- 1. VALIDATION CHECKS ---
-        
-        // Check Required Fields
-        if (ValidationUtil.isEmpty(txtLastName.getText()) || ValidationUtil.isEmpty(txtFirstName.getText())) {
-            JOptionPane.showMessageDialog(this, "First Name and Last Name are required.", "Validation Error", JOptionPane.WARNING_MESSAGE);
-            return; // Stop execution
+        if (currentEmployee == null) {
+            JOptionPane.showMessageDialog(this, "Employee profile could not be loaded.", "Error", JOptionPane.ERROR_MESSAGE);
+            return;
         }
 
-        // Check Number Formats (Salaries and Allowances)
-        if (!ValidationUtil.isPositiveDouble(txtBasicSalary.getText()) ||
-            !ValidationUtil.isPositiveDouble(txtRiceSubsidy.getText()) ||
-            !ValidationUtil.isPositiveDouble(txtPhoneAllowance.getText()) ||
-            !ValidationUtil.isPositiveDouble(txtClothingAllowance.getText())) {
-            JOptionPane.showMessageDialog(this, "Compensation fields (Salary, Allowances) must be valid numbers.", "Validation Error", JOptionPane.WARNING_MESSAGE);
-            return; // Stop execution
+        if (ValidationUtil.isEmpty(txtAddressLine1.getText()) || ValidationUtil.isEmpty(txtPhone.getText())) {
+            JOptionPane.showMessageDialog(this, "Address Line 1 and Phone Number are required.", "Validation Error", JOptionPane.WARNING_MESSAGE);
+            return;
         }
 
-        // Check Government ID Formats
-        if (!ValidationUtil.isValidSssFormat(txtSSS.getText())) {
-            JOptionPane.showMessageDialog(this, "SSS Number must follow the format XX-XXXXXXX-X.", "Validation Error", JOptionPane.WARNING_MESSAGE);
-            return; // Stop execution
-        }
-        
-        if (!ValidationUtil.isValidTinFormat(txtTIN.getText())) {
-            JOptionPane.showMessageDialog(this, "TIN must follow the format XXX-XXX-XXX-XXX.", "Validation Error", JOptionPane.WARNING_MESSAGE);
-            return; // Stop execution
-        }
-        
-        if (!ValidationUtil.isNumbersAndDashesOnly(txtPhone.getText()) ||
-            !ValidationUtil.isNumbersAndDashesOnly(txtPagibig.getText()) ||
-            !ValidationUtil.isNumbersAndDashesOnly(txtPhilHealth.getText())) {
-            
-            JOptionPane.showMessageDialog(this, "Phone Number, Pag-IBIG, and PhilHealth must only contain numbers and dashes (no letters).", "Validation Error", JOptionPane.WARNING_MESSAGE);
-            return; // Stop execution
+        if (ValidationUtil.isEmpty(getSelectedComboValue(cbProvinceAddress))
+                || PROVINCE_PLACEHOLDER.equalsIgnoreCase(getSelectedComboValue(cbProvinceAddress))
+                || ValidationUtil.isEmpty(getSelectedComboValue(cbCityAddress))
+                || CITY_PLACEHOLDER.equalsIgnoreCase(getSelectedComboValue(cbCityAddress))) {
+            JOptionPane.showMessageDialog(this, "Please select a valid Province and City / Municipality.", "Validation Error", JOptionPane.WARNING_MESSAGE);
+            return;
         }
 
-        // --- 2. SAFE PARSING AND SAVING ---
+        if (!ValidationUtil.isValidPhoneFormat(txtPhone.getText())) {
+            JOptionPane.showMessageDialog(
+                    this,
+                    "Please enter a valid phone number.\n"
+                    + "Required format: 09XX-XXX-XXXX or 09XXXXXXXXX.\n"
+                    + "Example: 0912-345-6789 or 09123456789.",
+                    "Validation Error",
+                    JOptionPane.WARNING_MESSAGE
+            );
+            return;
+        }
+
         try {
-            // Update the Employee object
-            currentEmployee.setLastName(txtLastName.getText().trim());
-            currentEmployee.setFirstName(txtFirstName.getText().trim());
-            currentEmployee.setAddress(txtAddress.getText().trim());
-            currentEmployee.setBirthday(getBirthdayAsLocalDate());
-
-            currentEmployee.setSssNumber(txtSSS.getText().trim());
-            currentEmployee.setPagIbigNumber(txtPagibig.getText().trim());
-            currentEmployee.setTinNumber(txtTIN.getText().trim());
-            currentEmployee.setPhilHealthNumber(txtPhilHealth.getText().trim());
+            currentEmployee.setAddress(
+                    AddressFormatter.buildFullAddress(
+                            txtAddressLine1.getText(),
+                            txtAddressLine2.getText(),
+                            getSelectedComboValue(cbCityAddress),
+                            getSelectedComboValue(cbProvinceAddress),
+                            txtZipCode.getText()
+                    )
+            );
             currentEmployee.setPhoneNumber(txtPhone.getText().trim());
 
-            // Get ComboBox selections safely
-            if (cbStatus.getSelectedItem() != null) currentEmployee.setStatus(cbStatus.getSelectedItem().toString());
-            if (cbPosition.getSelectedItem() != null) currentEmployee.setPosition(cbPosition.getSelectedItem().toString());
-            if (cbSupervisor.getSelectedItem() != null) currentEmployee.setImmediateSupervisor(cbSupervisor.getSelectedItem().toString());
-
-            // Update Compensation (Safely parsed because of our validation above!)
-            currentEmployee.setBasicSalary(Double.parseDouble(txtBasicSalary.getText().trim()));
-            currentEmployee.setRiceAllowance(Double.parseDouble(txtRiceSubsidy.getText().trim()));
-            currentEmployee.setPhoneAllowance(Double.parseDouble(txtPhoneAllowance.getText().trim()));
-            currentEmployee.setClothingAllowance(Double.parseDouble(txtClothingAllowance.getText().trim()));
-
-            // Call HROps to save back to CSV!
             int performerId = Integer.parseInt(currentUser.getUsername());
             boolean success = hrOps.updateEmployee(currentEmployee, performerId);
 
             if (success) {
                 JOptionPane.showMessageDialog(this, "Profile updated successfully!", "Success", JOptionPane.INFORMATION_MESSAGE);
-            }
-            java.awt.Window window = javax.swing.SwingUtilities.getWindowAncestor(this);
+
+                Window window = SwingUtilities.getWindowAncestor(this);
                 if (window != null) {
                     window.dispose();
-                } 
-            else {
+                }
+            } else {
                 JOptionPane.showMessageDialog(this, "Failed to update profile.", "Error", JOptionPane.ERROR_MESSAGE);
             }
         } catch (Exception ex) {
-            // This acts as a final safety net for unexpected errors
-            JOptionPane.showMessageDialog(this, "An unexpected error occurred: \n" + ex.getMessage(), "System Error", JOptionPane.ERROR_MESSAGE);
+            JOptionPane.showMessageDialog(this, "An unexpected error occurred:\n" + ex.getMessage(), "System Error", JOptionPane.ERROR_MESSAGE);
         }
-        
     }
 
-    // Annotation: Converts the selected calendar date to LocalDate for the model layer.
-    public LocalDate getBirthdayAsLocalDate() {
-        Date d = dcBirthday.getDate();
-        if (d == null) return null;
-        return d.toInstant().atZone(ZoneId.systemDefault()).toLocalDate();
-    }
-
-    // Annotation: Loads an existing LocalDate value into the calendar picker.
-    public void setBirthdayFromLocalDate(LocalDate date) {
-        if (date == null) {
-            dcBirthday.setDate(null);
-            return;
-        }
-        Date d = Date.from(date.atStartOfDay(ZoneId.systemDefault()).toInstant());
-        dcBirthday.setDate(d);
+    private String getSelectedComboValue(JComboBox<String> comboBox) {
+        Object value = comboBox.getSelectedItem();
+        return value == null ? "" : value.toString().trim();
     }
 
     private static GridBagConstraints baseGbc() {

@@ -11,6 +11,6 @@ public final class UiThemeHelper {
     }
 
     public static void useNimbus() {
-        com.motorph.ui.swing.UiHelper.UiThemeHelper.useNimbus();
+        com.motorph.ui.swing.UiHelper.UiThemeHelper.useFlatLaf();
     }
 }
