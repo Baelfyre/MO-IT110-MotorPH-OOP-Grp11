@@ -4,8 +4,10 @@
  */
 package com.motorph.ops.time;
 
+import com.motorph.domain.enums.ApprovalStatus;
 import com.motorph.domain.models.PayPeriod;
 import com.motorph.domain.models.TimeEntry;
+import com.motorph.repository.PayrollApprovalRepository;
 import com.motorph.repository.TimeEntryRepository;
 import com.motorph.service.LogService;
 import com.motorph.service.TimeService;
@@ -21,11 +23,13 @@ public class TimeOpsImpl implements TimeOps {
 
     private final TimeService timeService;
     private final TimeEntryRepository timeRepo;
+    private final PayrollApprovalRepository approvalRepo;
     private final LogService logService;
 
-    public TimeOpsImpl(TimeService timeService, TimeEntryRepository timeRepo, LogService logService) {
+    public TimeOpsImpl(TimeService timeService, TimeEntryRepository timeRepo, PayrollApprovalRepository approvalRepo, LogService logService) {
         this.timeService = timeService;
         this.timeRepo = timeRepo;
+        this.approvalRepo = approvalRepo;
         this.logService = logService;
     }
 
@@ -64,4 +68,14 @@ public class TimeOpsImpl implements TimeOps {
     public List<TimeEntry> viewMyTimeEntriesForPeriod(int empId, PayPeriod period) {
         return timeRepo.findByEmployeeAndPeriod(empId, period);
     }
+
+    @Override
+    public ApprovalStatus getMyDtrStatus(int empId, PayPeriod period) {
+        if (period == null) {
+            return null;
+        }
+        approvalRepo.ensureRowExists(empId, period);
+        return approvalRepo.getDtrStatus(empId, period);
+    }
 }
+

@@ -7,16 +7,20 @@ package com.motorph.repository.csv;
 import com.motorph.domain.enums.Role;
 import com.motorph.domain.models.User;
 import com.motorph.repository.UserRepository;
-
-import java.io.*;
+import java.io.BufferedReader;
+import java.io.BufferedWriter;
+import java.io.FileReader;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Legacy login CSV repository.
+ * CSV repository for legacy login accounts.
  *
- * Expected CSV format supports 6 or 7 columns:
- * Username,Password,Employee_ID,Employee_Name,Department,Lock_Out_Status[,Email]
+ * Expected CSV format:
+ * Username,Password,Employee_ID,Employee_Name,Department,Lock_Out_Status
  */
 public class CsvUserRepository implements UserRepository {
 
@@ -28,7 +32,7 @@ public class CsvUserRepository implements UserRepository {
             return null;
         }
 
-        String target = resolveUsernameTarget(username.trim());
+        String target = username.trim();
 
         try (BufferedReader br = new BufferedReader(new FileReader(FILE_PATH))) {
             String line;
@@ -41,7 +45,6 @@ public class CsvUserRepository implements UserRepository {
 
                 String[] data = line.split(",", -1);
 
-                // Skip header if present
                 if (!headerChecked) {
                     headerChecked = true;
                     if (data.length > 0 && "Username".equalsIgnoreCase(data[0].trim())) {
@@ -54,53 +57,22 @@ public class CsvUserRepository implements UserRepository {
                 }
 
                 String fileUsername = data[0].trim();
-                String fileEmail = data.length >= 7 ? data[6].trim() : generateEmail(data.length > 2 ? data[2].trim() : fileUsername, extractFirstName(data), extractLastName(data));
-                if (!fileUsername.equalsIgnoreCase(target) && !fileEmail.equalsIgnoreCase(target)) {
+                if (!fileUsername.equalsIgnoreCase(target)) {
                     continue;
                 }
 
                 String passwordPlain = data[1].trim();
-                String department = data[4].trim();
-                String lockStr = data[5].trim();
-
-                boolean isLocked = lockStr.equalsIgnoreCase("Yes")
-                        || lockStr.equalsIgnoreCase("Y")
-                        || lockStr.equalsIgnoreCase("True");
-
-                Role role = determineRoleFromDepartment(department);
-
                 int id = safeParseInt(data[2].trim(), safeParseInt(fileUsername, 0));
+                Role role = determineRoleFromDepartment(data[4].trim());
+                boolean isLocked = parseLocked(data[5].trim());
 
                 return new User(id, fileUsername, passwordPlain, role, isLocked);
             }
-
         } catch (IOException e) {
             System.err.println("Error reading legacy login file: " + e.getMessage());
         }
 
         return null;
-    }
-
-
-    private String resolveUsernameTarget(String raw) {
-        if (raw == null) {
-            return "";
-        }
-        String target = raw.trim();
-        if (!target.contains("@")) {
-            return target;
-        }
-
-        try {
-            com.motorph.repository.csv.CsvEmployeeRepository empRepo = new com.motorph.repository.csv.CsvEmployeeRepository();
-            for (com.motorph.domain.models.Employee emp : empRepo.findAll()) {
-                if (emp != null && emp.getEmail() != null && emp.getEmail().trim().equalsIgnoreCase(target)) {
-                    return String.valueOf(emp.getId());
-                }
-            }
-        } catch (Exception ignored) {
-        }
-        return target;
     }
 
     @Override
@@ -111,11 +83,9 @@ public class CsvUserRepository implements UserRepository {
 
         String username = safeCsv(account.getUsername());
         String password = safeCsv(account.getPassword());
-        String lockOut = account.isLocked() ? "Yes" : "No";
-
         String employeeId = String.valueOf(account.getId() > 0 ? account.getId() : safeParseInt(username, 0));
         String employeeName = buildEmployeeName(firstName, lastName);
-        String email = safeCsv(generateEmail(employeeId, firstName, lastName));
+        String lockOut = account.isLocked() ? "Yes" : "No";
 
         String row = String.join(",",
                 username,
@@ -123,8 +93,7 @@ public class CsvUserRepository implements UserRepository {
                 safeCsv(employeeId),
                 safeCsv(employeeName),
                 safeCsv(dept),
-                lockOut,
-                email
+                lockOut
         );
 
         try (PrintWriter out = new PrintWriter(new BufferedWriter(new FileWriter(FILE_PATH, true)))) {
@@ -136,63 +105,22 @@ public class CsvUserRepository implements UserRepository {
 
     @Override
     public void updatePassword(String username, String newPassword) {
-        if (username == null || username.trim().isEmpty()) {
-            return;
-        }
-
-        List<String> lines = new ArrayList<>();
-
-        try (BufferedReader br = new BufferedReader(new FileReader(FILE_PATH))) {
-            String line;
-            boolean headerHandled = false;
-
-            while ((line = br.readLine()) != null) {
-                if (!headerHandled) {
-                    headerHandled = true;
-                    lines.add(line); // keep header
-                    continue;
-                }
-
-                if (line.trim().isEmpty()) {
-                    lines.add(line);
-                    continue;
-                }
-
-                String[] data = line.split(",", -1);
-                if (data.length < 6) {
-                    lines.add(line);
-                    continue;
-                }
-
-                if (data[0].trim().equalsIgnoreCase(username.trim())) {
-                    data[1] = newPassword == null ? "" : newPassword.trim();
-                    line = String.join(",", data);
-                }
-
-                lines.add(line);
-            }
-
-        } catch (IOException e) {
-            System.err.println("Error reading legacy login file for password update: " + e.getMessage());
-            return;
-        }
-
-        try (PrintWriter out = new PrintWriter(new FileWriter(FILE_PATH))) {
-            for (String l : lines) {
-                out.println(l);
-            }
-        } catch (IOException e) {
-            System.err.println("Error rewriting legacy login file for password update: " + e.getMessage());
-        }
+        rewriteSingleUserField(username, 1, newPassword == null ? "" : newPassword.trim());
     }
 
     @Override
     public void updateLockStatus(String username, boolean isLocked) {
+        rewriteSingleUserField(username, 5, isLocked ? "Yes" : "No");
+    }
+
+    @Override
+    public boolean deleteByUsername(String username) {
         if (username == null || username.trim().isEmpty()) {
-            return;
+            return false;
         }
 
-        List<String> lines = new ArrayList<>();
+        List<String> out = new ArrayList<>();
+        boolean removed = false;
 
         try (BufferedReader br = new BufferedReader(new FileReader(FILE_PATH))) {
             String line;
@@ -201,163 +129,50 @@ public class CsvUserRepository implements UserRepository {
             while ((line = br.readLine()) != null) {
                 if (!headerHandled) {
                     headerHandled = true;
-                    lines.add(line); // keep header
+                    out.add(line);
                     continue;
                 }
 
                 if (line.trim().isEmpty()) {
-                    lines.add(line);
                     continue;
                 }
 
                 String[] data = line.split(",", -1);
                 if (data.length < 6) {
-                    lines.add(line);
+                    out.add(line);
                     continue;
                 }
 
                 if (data[0].trim().equalsIgnoreCase(username.trim())) {
-                    data[5] = isLocked ? "Yes" : "No";
-                    line = String.join(",", data);
-                }
-
-                lines.add(line);
-            }
-
-        } catch (IOException e) {
-            System.err.println("Error reading legacy login file for lock update: " + e.getMessage());
-            return;
-        }
-
-        try (PrintWriter out = new PrintWriter(new FileWriter(FILE_PATH))) {
-            for (String l : lines) {
-                out.println(l);
-            }
-        } catch (IOException e) {
-            System.err.println("Error rewriting legacy login file for lock update: " + e.getMessage());
-        }
-    }
-
-    private Role determineRoleFromDepartment(String department) {
-        if (department == null) {
-            return Role.EMPLOYEE;
-        }
-
-        String d = department.trim().toUpperCase();
-
-        if (d.contains("HR")) {
-            return Role.HR;
-        }
-        if (d.contains("PAYROLL") || d.contains("FINANCE") || d.contains("ACCOUNTING")) {
-            return Role.PAYROLL;
-        }
-        if (d.contains("MANAGER") || d.contains("MANAGEMENT")) {
-            return Role.SUPERVISOR;
-        }
-        if (d.equals("IT OPERATIONS AND SYSTEMS") || d.contains("IT ")) {
-            return Role.IT;
-        }
-
-        return Role.EMPLOYEE;
-    }
-
-    private int safeParseInt(String value, int fallback) {
-        try {
-            return Integer.parseInt(value.trim());
-        } catch (Exception e) {
-            return fallback;
-        }
-    }
-
-    private String safeCsv(String value) {
-        // Avoid commas because CSV parsing is split-based.
-        return value == null ? "" : value.trim();
-    }
-
-    private String buildEmployeeName(String firstName, String lastName) {
-        String fn = safeCsv(firstName);
-        String ln = safeCsv(lastName);
-
-        if (fn.isEmpty() && ln.isEmpty()) {
-            return "";
-        }
-        if (ln.isEmpty()) {
-            return fn;
-        }
-        if (fn.isEmpty()) {
-            return ln;
-        }
-
-        // Format: Last, First
-        return ln + ", " + fn;
-    }
-
-    @Override
-    public boolean deleteByUsername(String username) {
-        if (username == null) {
-            return false;
-        }
-
-        java.nio.file.Path path = java.nio.file.Paths.get(DataPaths.LOGIN_CSV);
-
-        if (!java.nio.file.Files.exists(path)) {
-            return false;
-        }
-
-        try {
-            java.util.List<String> lines = java.nio.file.Files.readAllLines(path);
-            if (lines.isEmpty()) {
-                return false;
-            }
-
-            String header = lines.get(0);
-            java.util.List<String> out = new java.util.ArrayList<>();
-            out.add(header);
-
-            boolean removed = false;
-
-            for (int i = 1; i < lines.size(); i++) {
-                String line = lines.get(i);
-                if (line == null || line.trim().isEmpty()) {
-                    continue;
-                }
-
-                String[] parts = line.split(",", -1);
-                if (parts.length == 0) {
-                    continue;
-                }
-
-                String rowUsername = unquote(parts[0]).trim();
-                if (rowUsername.equals(username.trim())) {
                     removed = true;
                     continue;
                 }
 
                 out.add(line);
             }
+        } catch (IOException e) {
+            System.err.println("Error deleting legacy user: " + e.getMessage());
+            return false;
+        }
 
-            if (!removed) {
-                return false;
+        if (!removed) {
+            return false;
+        }
+
+        try (PrintWriter outWriter = new PrintWriter(new FileWriter(FILE_PATH))) {
+            for (String row : out) {
+                outWriter.println(row);
             }
-
-            java.nio.file.Files.write(
-                    path,
-                    out,
-                    java.nio.charset.StandardCharsets.UTF_8,
-                    java.nio.file.StandardOpenOption.TRUNCATE_EXISTING,
-                    java.nio.file.StandardOpenOption.CREATE
-            );
-
             return true;
-
-        } catch (Exception e) {
+        } catch (IOException e) {
+            System.err.println("Error rewriting legacy login file after delete: " + e.getMessage());
             return false;
         }
     }
 
     @Override
     public List<User> findAll() {
-        List<User> out = new ArrayList<>();
+        List<User> users = new ArrayList<>();
 
         try (BufferedReader br = new BufferedReader(new FileReader(FILE_PATH))) {
             String line;
@@ -382,75 +197,110 @@ public class CsvUserRepository implements UserRepository {
                 }
 
                 String username = data[0].trim();
-                String password = data[1].trim();
+                String passwordPlain = data[1].trim();
                 int id = safeParseInt(data[2].trim(), safeParseInt(username, 0));
-                String dept = data[4].trim();
-                boolean locked = data[5].trim().equalsIgnoreCase("Yes");
+                Role role = determineRoleFromDepartment(data[4].trim());
+                boolean isLocked = parseLocked(data[5].trim());
 
-                Role role = determineRoleFromDepartment(dept);
-                out.add(new User(id, username, password, role, locked));
+                users.add(new User(id, username, passwordPlain, role, isLocked));
             }
-
         } catch (IOException e) {
-            return out;
+            System.err.println("Error reading all legacy users: " + e.getMessage());
         }
 
-        return out;
+        return users;
     }
 
-    private String generateEmail(String employeeId, String firstName, String lastName) {
-        String id = employeeId == null ? "" : employeeId.trim();
-        String suffix = id.length() >= 3 ? id.substring(id.length() - 3) : id;
-
-        String fn = sanitizeEmailName(firstName);
-        String ln = sanitizeEmailName(lastName);
-        String initial = fn.isEmpty() ? "u" : fn.substring(0, 1);
-        if (ln.isEmpty()) {
-            ln = "employee";
+    private void rewriteSingleUserField(String username, int columnIndex, String newValue) {
+        if (username == null || username.trim().isEmpty()) {
+            return;
         }
-        return initial + "." + ln + suffix + "@motorph.biz";
+
+        List<String> lines = new ArrayList<>();
+
+        try (BufferedReader br = new BufferedReader(new FileReader(FILE_PATH))) {
+            String line;
+            boolean headerHandled = false;
+
+            while ((line = br.readLine()) != null) {
+                if (!headerHandled) {
+                    headerHandled = true;
+                    lines.add(line);
+                    continue;
+                }
+
+                if (line.trim().isEmpty()) {
+                    lines.add(line);
+                    continue;
+                }
+
+                String[] data = line.split(",", -1);
+                if (data.length < 6) {
+                    lines.add(line);
+                    continue;
+                }
+
+                if (data[0].trim().equalsIgnoreCase(username.trim())) {
+                    data[columnIndex] = newValue;
+                    line = String.join(",", data);
+                }
+
+                lines.add(line);
+            }
+        } catch (IOException e) {
+            System.err.println("Error reading legacy login file for update: " + e.getMessage());
+            return;
+        }
+
+        try (PrintWriter out = new PrintWriter(new FileWriter(FILE_PATH))) {
+            for (String row : lines) {
+                out.println(row);
+            }
+        } catch (IOException e) {
+            System.err.println("Error rewriting legacy login file: " + e.getMessage());
+        }
     }
 
-    private String sanitizeEmailName(String value) {
-        if (value == null) {
-            return "";
-        }
-        return value.trim().toLowerCase().replaceAll("[^a-z0-9]", "");
+    private boolean parseLocked(String lockStr) {
+        return lockStr.equalsIgnoreCase("Yes")
+                || lockStr.equalsIgnoreCase("Y")
+                || lockStr.equalsIgnoreCase("True");
     }
 
-    private String extractFirstName(String[] data) {
-        if (data == null || data.length < 4) {
-            return "";
+    private Role determineRoleFromDepartment(String department) {
+        if (department == null) {
+            return Role.EMPLOYEE;
         }
-        String name = data[3].trim();
-        if (name.contains(",")) {
-            String[] parts = name.split(",", 2);
-            return parts.length > 1 ? parts[1].trim() : "";
+
+        String dept = department.trim().toUpperCase();
+        if (dept.contains("HR")) {
+            return Role.HR;
         }
-        return name;
+        if (dept.contains("PAYROLL") || dept.contains("FINANCE")) {
+            return Role.PAYROLL;
+        }
+        if (dept.contains("IT")) {
+            return Role.IT;
+        }
+        return Role.EMPLOYEE;
     }
 
-    private String extractLastName(String[] data) {
-        if (data == null || data.length < 4) {
-            return "";
+    private int safeParseInt(String value, int fallback) {
+        try {
+            return Integer.parseInt(value);
+        } catch (NumberFormatException e) {
+            return fallback;
         }
-        String name = data[3].trim();
-        if (name.contains(",")) {
-            String[] parts = name.split(",", 2);
-            return parts[0].trim();
-        }
-        return "";
     }
 
-    private String unquote(String s) {
-        if (s == null) {
-            return "";
-        }
-        String v = s.trim();
-        if (v.startsWith("\"") && v.endsWith("\"") && v.length() >= 2) {
-            v = v.substring(1, v.length() - 1);
-            v = v.replace("\"\"", "\"");
-        }
-        return v;
+    private String buildEmployeeName(String firstName, String lastName) {
+        String fn = firstName == null ? "" : firstName.trim();
+        String ln = lastName == null ? "" : lastName.trim();
+        String full = (fn + " " + ln).trim();
+        return full.isEmpty() ? "N/A" : full;
+    }
+
+    private String safeCsv(String value) {
+        return value == null ? "" : value.trim();
     }
 }

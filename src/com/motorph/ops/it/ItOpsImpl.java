@@ -6,6 +6,7 @@ package com.motorph.ops.it;
 
 import com.motorph.domain.models.User;
 import com.motorph.repository.UserRepository;
+import java.util.List;
 import com.motorph.repository.csv.DataPaths;
 import com.motorph.service.LogService;
 
@@ -21,6 +22,11 @@ public class ItOpsImpl implements ItOps {
     public ItOpsImpl(UserRepository userRepo, LogService logService) {
         this.userRepo = userRepo;
         this.logService = logService;
+    }
+
+    @Override
+    public List<User> listUsers() {
+        return userRepo.findAll();
     }
 
     @Override

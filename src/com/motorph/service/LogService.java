@@ -5,6 +5,7 @@
 package com.motorph.service;
 
 import com.motorph.domain.models.LogEntry;
+import com.motorph.repository.LogRepository;
 import com.motorph.repository.csv.CsvLogRepository;
 import java.time.LocalDateTime;
 
@@ -13,7 +14,16 @@ import java.time.LocalDateTime;
  * @author ACER
  */
 public class LogService {
-    private final CsvLogRepository logRepo = new CsvLogRepository();
+    private final LogRepository logRepo;
+
+    public LogService() {
+        this(new CsvLogRepository());
+    }
+
+    // Annotation: Overloaded constructor for dependency injection from the composition root.
+    public LogService(LogRepository logRepo) {
+        this.logRepo = logRepo;
+    }
 
     public void recordAction(String user, String action, String details) {
         LogEntry entry = new LogEntry(

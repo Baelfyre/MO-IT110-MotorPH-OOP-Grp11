@@ -4,6 +4,7 @@
  */
 package com.motorph.ops.time;
 
+import com.motorph.domain.enums.ApprovalStatus;
 import com.motorph.domain.models.PayPeriod;
 import com.motorph.domain.models.TimeEntry;
 
@@ -23,4 +24,7 @@ public interface TimeOps {
     List<TimeEntry> viewMyTimeEntries(int empId);
 
     List<TimeEntry> viewMyTimeEntriesForPeriod(int empId, PayPeriod period);
+
+    ApprovalStatus getMyDtrStatus(int empId, PayPeriod period);
 }
+

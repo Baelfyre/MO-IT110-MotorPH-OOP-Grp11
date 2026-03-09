@@ -10,12 +10,9 @@ import com.motorph.domain.models.PayPeriod;
 import com.motorph.domain.models.Payslip;
 import com.motorph.domain.models.User;
 import com.motorph.ops.payslip.PayslipOps;
-import com.motorph.ops.payslip.PayslipOpsImpl;
 import com.motorph.repository.PayslipRepository;
-import com.motorph.repository.csv.CsvPayslipRepository;
 import com.motorph.service.EmployeeService;
 import com.motorph.service.LeaveCreditsService;
-import com.motorph.service.LogService;
 import com.toedter.calendar.JDateChooser;
 import com.toedter.calendar.JTextFieldDateEditor;
 import java.awt.BorderLayout;
@@ -67,10 +64,6 @@ public class PayslipPanel extends JPanel {
         }
     };
     private final JTable tblHistory = new JTable(historyModel);
-
-    public PayslipPanel(User currentUser) {
-        this(currentUser, new PayslipOpsImpl(new CsvPayslipRepository(), new LogService()), new EmployeeService(new com.motorph.repository.csv.CsvEmployeeRepository()), new LeaveCreditsService(new com.motorph.repository.csv.CsvLeaveCreditsRepository(), new com.motorph.service.LeaveService(new com.motorph.repository.csv.CsvLeaveRepository())));
-    }
 
     public PayslipPanel(User currentUser, PayslipOps payslipOps, EmployeeService employeeService, LeaveCreditsService leaveCreditsService) {
         this.currentUser = currentUser;

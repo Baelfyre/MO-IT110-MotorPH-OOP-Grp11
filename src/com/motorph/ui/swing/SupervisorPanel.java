@@ -9,16 +9,8 @@ import com.motorph.domain.models.TimeEntry;
 import com.motorph.domain.models.LeaveRequest;
 import com.motorph.domain.enums.LeaveStatus;
 import com.motorph.domain.models.User;
-import com.motorph.ops.approval.DtrApprovalOps;
-import com.motorph.ops.approval.DtrApprovalOpsImpl;
 import com.motorph.ops.supervisor.SupervisorDtrSummary;
 import com.motorph.ops.supervisor.SupervisorOps;
-import com.motorph.ops.supervisor.SupervisorOpsImpl;
-import com.motorph.repository.*;
-import com.motorph.repository.csv.*;
-import com.motorph.service.EmployeeService;
-import com.motorph.service.LogService;
-
 import com.toedter.calendar.JDateChooser;
 import com.toedter.calendar.JTextFieldDateEditor;
 
@@ -68,30 +60,6 @@ public class SupervisorPanel extends JPanel {
     public SupervisorPanel(User currentUser, SupervisorOps supervisorOps) {
         this.currentUser = currentUser;
         this.supervisorOps = supervisorOps;
-
-        buildUi();
-
-        dcAnyDate.setDateFormatString("MM/dd/yyyy");
-        if (dcAnyDate.getDateEditor() instanceof JTextFieldDateEditor editor) {
-            editor.setEditable(false);
-        }
-        dcAnyDate.setDate(new Date());
-        setActivePeriod(LocalDate.now());
-    }
-
-    public SupervisorPanel(User currentUser) {
-        this.currentUser = currentUser;
-
-        EmployeeRepository empRepo = new CsvEmployeeRepository();
-        EmployeeService employeeService = new EmployeeService(empRepo);
-        TimeEntryRepository timeRepo = new CsvTimeRepository(empRepo);
-        PayrollApprovalRepository approvalRepo = new CsvPayrollApprovalRepository();
-        LeaveRepository leaveRepo = new CsvLeaveRepository();
-        AuditRepository auditRepo = new CsvAuditRepository();
-        DtrApprovalOps dtrApprovalOps = new DtrApprovalOpsImpl(approvalRepo, auditRepo);
-        LogService logService = new LogService();
-
-        this.supervisorOps = new SupervisorOpsImpl(employeeService, timeRepo, approvalRepo, leaveRepo, dtrApprovalOps, logService);
 
         buildUi();
 

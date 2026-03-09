@@ -4,16 +4,9 @@
  */
 package com.motorph.ui.swing;
 
-import com.motorph.domain.enums.ApprovalStatus;
 import com.motorph.domain.models.PayPeriod;
 import com.motorph.domain.models.TimeEntry;
 import com.motorph.domain.models.User;
-import com.motorph.repository.PayrollApprovalRepository;
-import com.motorph.repository.TimeEntryRepository;
-import com.motorph.repository.csv.CsvEmployeeRepository;
-import com.motorph.repository.csv.CsvPayrollApprovalRepository;
-import com.motorph.repository.csv.CsvTimeRepository;
-import com.motorph.service.TimeService;
 import com.toedter.calendar.JDateChooser;
 import com.toedter.calendar.JTextFieldDateEditor;
 
@@ -35,9 +28,7 @@ import java.util.Locale;
 public class TimekeepingPanel extends JPanel {
 
     private final User currentUser;
-    private final TimeEntryRepository timeRepo;
-    private final TimeService timeService;
-    private final PayrollApprovalRepository approvalRepo;
+    private final com.motorph.ops.time.TimeOps timeOps;
 
     private final JDateChooser dcAnyDate = new JDateChooser();
     private final JLabel lblPeriod = new JLabel("Period: -");
@@ -64,24 +55,7 @@ public class TimekeepingPanel extends JPanel {
 
     public TimekeepingPanel(User currentUser, com.motorph.ops.time.TimeOps timeOps) {
         this.currentUser = currentUser;
-        this.timeRepo = new CsvTimeRepository(new CsvEmployeeRepository());
-        this.timeService = new TimeService(timeRepo);
-        this.approvalRepo = new CsvPayrollApprovalRepository();
-
-        buildUi();
-        dcAnyDate.setDateFormatString("MM/dd/yyyy");
-        if (dcAnyDate.getDateEditor() instanceof JTextFieldDateEditor editor) {
-            editor.setEditable(false);
-        }
-        dcAnyDate.setDate(new Date());
-        setActivePeriod(LocalDate.now());
-    }
-
-    public TimekeepingPanel(User currentUser) {
-        this.currentUser = currentUser;
-        this.timeRepo = new CsvTimeRepository(new CsvEmployeeRepository());
-        this.timeService = new TimeService(timeRepo);
-        this.approvalRepo = new CsvPayrollApprovalRepository();
+        this.timeOps = timeOps;
 
         buildUi();
         dcAnyDate.setDateFormatString("MM/dd/yyyy");
@@ -128,8 +102,7 @@ public class TimekeepingPanel extends JPanel {
         this.activePeriod = PayPeriod.fromDateSemiMonthly(anyDate);
         lblPeriod.setText("Period: " + activePeriod.getStartDate() + " to " + activePeriod.getEndDate());
         int empId = empId();
-        approvalRepo.ensureRowExists(empId, activePeriod);
-        ApprovalStatus dtr = approvalRepo.getDtrStatus(empId, activePeriod);
+        var dtr = timeOps.getMyDtrStatus(empId, activePeriod);
         lblDtrStatus.setText("DTR Status: " + (dtr == null ? "N/A" : dtr.name()));
         reload();
     }
@@ -137,7 +110,7 @@ public class TimekeepingPanel extends JPanel {
     private void reload() {
         model.setRowCount(0);
         int empId = empId();
-        List<TimeEntry> entries = timeRepo.findByEmployeeAndPeriod(empId, activePeriod);
+        List<TimeEntry> entries = timeOps.viewMyTimeEntriesForPeriod(empId, activePeriod);
         for (TimeEntry t : entries) {
             model.addRow(new Object[]{
                     t.getDate() == null ? "" : t.getDate().format(DATE_FMT),
@@ -153,7 +126,7 @@ public class TimekeepingPanel extends JPanel {
             UiDialogs.error(this, "Invalid EmpID.");
             return;
         }
-        boolean ok = timeService.logTimeIn(empId);
+        boolean ok = timeOps.clockIn(empId);
         if (ok) {
             UiDialogs.info(this, "Time In recorded.");
             if (isOutsideWorkingHours()) {
@@ -171,7 +144,7 @@ public class TimekeepingPanel extends JPanel {
             UiDialogs.error(this, "Invalid EmpID.");
             return;
         }
-        boolean ok = timeService.logTimeOut(empId);
+        boolean ok = timeOps.clockOut(empId);
         if (ok) {
             UiDialogs.info(this, "Time Out recorded.");
             if (isOutsideWorkingHours()) {

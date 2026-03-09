@@ -44,10 +44,7 @@ public class CsvEmployeeRepository implements EmployeeRepository {
 
                 String[] data = line.split(CSV_SPLIT_REGEX, -1);
 
-                // Accept:
-                // - 19 columns (without email)
-                // - 20 columns (with email)
-                // - 21 columns (legacy trailing extra field)
+                // Accept the employee master row using the current project columns.
                 if (data.length >= 19) {
                     Employee emp = parseEmployee(data);
                     if (emp != null) {
@@ -254,14 +251,6 @@ public class CsvEmployeeRepository implements EmployeeRepository {
             double grossSemi = parseCurrency(data[17]);
             double hourly = parseCurrency(data[18]);
 
-            String email = "";
-            if (data.length >= 20) {
-                String col20 = clean(data[19]);
-                if (col20.contains("@") || col20.contains(".")) {
-                    email = col20;
-                }
-            }
-
             Employee emp;
             if ("PROBATIONARY".equalsIgnoreCase(status)) {
                 emp = new com.motorph.domain.models.ProbationaryEmployee(id, last, first);
@@ -288,7 +277,6 @@ public class CsvEmployeeRepository implements EmployeeRepository {
             emp.setClothingAllowance(clothing);
             emp.setGrossSemiMonthlyRate(grossSemi);
             emp.setHourlyRate(hourly);
-            emp.setEmail(email);
 
             return emp;
         } catch (Exception e) {

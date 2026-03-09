@@ -8,7 +8,6 @@ import com.motorph.domain.models.Employee;
 import com.motorph.domain.models.User;
 import com.motorph.ops.hr.HROps;
 import com.motorph.repository.csv.CsvAddressReferenceRepository;
-import com.motorph.repository.csv.DataPaths;
 import com.motorph.service.EmployeeService;
 import com.motorph.utils.AddressFormatter;
 import com.motorph.utils.AddressParser;
@@ -18,7 +17,6 @@ import com.motorph.utils.ValidationUtil;
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import java.awt.*;
-import java.nio.file.Paths;
 
 /**
  *
@@ -45,75 +43,56 @@ public class UpdateProfile extends JPanel {
     private Employee currentEmployee;
 
     public UpdateProfile(User currentUser, EmployeeService employeeService, HROps hrOps, com.motorph.repository.csv.CsvAddressReferenceRepository addressRepo) {
-        this(currentUser, employeeService, hrOps);
-    }
-
-    public UpdateProfile(User currentUser, EmployeeService employeeService, HROps hrOps) {
         this.currentUser = currentUser;
         this.employeeService = employeeService;
         this.hrOps = hrOps;
-        this.addressRepo = new CsvAddressReferenceRepository(
-                Paths.get(DataPaths.ADDRESS_REFERENCE_CSV)
-        );
+        this.addressRepo = addressRepo;
 
-        setLayout(new BorderLayout());
+        setLayout(new BorderLayout(10, 10));
+        setBorder(new EmptyBorder(8, 8, 8, 8));
 
-        JPanel content = new JPanel(new GridBagLayout());
-        content.setBorder(new EmptyBorder(18, 18, 18, 18));
+        JPanel content = new JPanel(new BorderLayout(10, 10));
+        content.add(createHeaderPanel(), BorderLayout.NORTH);
 
-        txtZipCode.setEditable(false);
-        txtZipCode.setEnabled(false);
-
-        initializeAddressDropdowns();
-        initializeRestrictions();
-
+        JPanel form = new JPanel(new GridBagLayout());
         GridBagConstraints gbc = baseGbc();
         int r = 0;
 
-        addLabel(content, gbc, 0, r, "Address Line 1:");
-        addFieldSpan(content, gbc, 1, r, 3, txtAddressLine1);
+        addLabel(form, gbc, 0, r, "Address Line 1:");
+        addField(form, gbc, 1, r, txtAddressLine1);
+        addLabel(form, gbc, 2, r, "Address Line 2:");
+        addField(form, gbc, 3, r, txtAddressLine2);
         r++;
 
-        addLabel(content, gbc, 0, r, "Address Line 2:");
-        addFieldSpan(content, gbc, 1, r, 3, txtAddressLine2);
+        addLabel(form, gbc, 0, r, "Province:");
+        addField(form, gbc, 1, r, cbProvinceAddress);
+        addLabel(form, gbc, 2, r, "City / Municipality:");
+        addField(form, gbc, 3, r, cbCityAddress);
         r++;
 
-        addLabel(content, gbc, 0, r, "Province:");
-        addField(content, gbc, 1, r, cbProvinceAddress);
+        addLabel(form, gbc, 0, r, "ZIP Code:");
+        txtZipCode.setEditable(false);
+        addField(form, gbc, 1, r, txtZipCode);
+        addLabel(form, gbc, 2, r, "Phone Number:");
+        addField(form, gbc, 3, r, txtPhone);
 
-        addLabel(content, gbc, 2, r, "City / Municipality:");
-        addField(content, gbc, 3, r, cbCityAddress);
-        r++;
+        content.add(form, BorderLayout.CENTER);
 
-        addLabel(content, gbc, 0, r, "ZIP Code:");
-        addField(content, gbc, 1, r, txtZipCode);
-
-        addLabel(content, gbc, 2, r, "Phone #:");
-        addField(content, gbc, 3, r, txtPhone);
-        r++;
-
-        JPanel buttons = new JPanel(new FlowLayout(FlowLayout.CENTER, 12, 0));
-        JButton btnClear = new JButton("Clear");
         JButton btnUpdate = new JButton("Update");
-        buttons.add(btnClear);
-        buttons.add(btnUpdate);
+        JButton btnClear = new JButton("Reset");
+        JPanel south = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
+        south.add(btnClear);
+        south.add(btnUpdate);
+        content.add(south, BorderLayout.SOUTH);
 
-        gbc.gridx = 0;
-        gbc.gridy = r;
-        gbc.gridwidth = 4;
-        gbc.fill = GridBagConstraints.NONE;
-        gbc.anchor = GridBagConstraints.CENTER;
-        gbc.weightx = 1;
-        gbc.insets = new Insets(18, 0, 0, 0);
-        content.add(buttons, gbc);
-
-        btnClear.addActionListener(e -> clearForm());
-        btnUpdate.addActionListener(e -> onUpdate());
-
-        add(createHeaderPanel(), BorderLayout.NORTH);
         add(content, BorderLayout.CENTER);
 
+        initializeAddressDropdowns();
+        initializeRestrictions();
         loadEmployeeData();
+
+        btnUpdate.addActionListener(e -> onUpdate());
+        btnClear.addActionListener(e -> clearForm());
     }
 
     private JPanel createHeaderPanel() {

@@ -4,12 +4,7 @@ import com.motorph.domain.enums.Role;
 import com.motorph.domain.models.Employee;
 import com.motorph.domain.models.User;
 import com.motorph.ops.it.ItOps;
-import com.motorph.ops.it.ItOpsImpl;
-import com.motorph.repository.UserRepository;
-import com.motorph.repository.csv.CsvEmployeeRepository;
-import com.motorph.repository.csv.CsvUserRepository;
 import com.motorph.service.EmployeeService;
-import com.motorph.service.LogService;
 
 import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
@@ -24,7 +19,6 @@ public class ITPanel extends JPanel {
 
     private final User currentUser;
 
-    private final UserRepository userRepo;
     private final EmployeeService employeeService;
     private final ItOps itOps;
 
@@ -47,20 +41,8 @@ public class ITPanel extends JPanel {
 
     public ITPanel(User currentUser, EmployeeService employeeService, ItOps itOps) {
         this.currentUser = currentUser;
-        this.userRepo = new CsvUserRepository();
         this.employeeService = employeeService;
         this.itOps = itOps;
-
-        buildUi();
-        applyPermissions();
-        loadUsers();
-    }
-
-    public ITPanel(User currentUser) {
-        this.currentUser = currentUser;
-        this.userRepo = new CsvUserRepository();
-        this.employeeService = new EmployeeService(new CsvEmployeeRepository());
-        this.itOps = new ItOpsImpl(userRepo, new LogService());
 
         buildUi();
         applyPermissions();
@@ -108,7 +90,7 @@ public class ITPanel extends JPanel {
     private void loadUsers() {
         model.setRowCount(0);
 
-        List<User> users = userRepo.findAll();
+        List<User> users = itOps.listUsers();
         for (User u : users) {
             String fullName = "N/A";
             Employee emp = employeeService.getEmployee(u.getId());

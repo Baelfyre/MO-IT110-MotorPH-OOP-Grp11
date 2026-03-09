@@ -20,7 +20,6 @@ public class EmployeeDetails {
     private String tinNumber;
     private String philHealthNumber;
     private String pagIbigNumber;
-    private String email;
 
     public EmployeeDetails() {
     }
@@ -79,15 +78,6 @@ public class EmployeeDetails {
 
     public void setPagIbigNumber(String pagIbigNumber) {
         this.pagIbigNumber = safe(pagIbigNumber);
-    }
-
-
-    public String getEmail() {
-        return email;
-    }
-
-    public void setEmail(String email) {
-        this.email = safe(email).toLowerCase();
     }
 
     private String safe(String s) {

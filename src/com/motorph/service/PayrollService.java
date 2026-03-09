@@ -32,6 +32,7 @@ public class PayrollService {
     private final DeductionStrategy deductionStrategy;
     private final PayslipRepository payslipRepo;
     private final AuditRepository auditRepo;
+    private final LeaveCreditsService leaveCreditsService;
 
     private static final LocalTime WORK_START = LocalTime.of(8, 0);
     private static final LocalTime WORK_END = LocalTime.of(17, 0);
@@ -43,15 +44,17 @@ public class PayrollService {
             TimeEntryRepository timeEntryRepo,
             DeductionStrategy deductionStrategy,
             PayslipRepository payslipRepo,
-            AuditRepository auditRepo) {
+            AuditRepository auditRepo,
+            LeaveCreditsService leaveCreditsService) {
         this.empRepo = empRepo;
         this.timeEntryRepo = timeEntryRepo;
         this.deductionStrategy = deductionStrategy;
         this.payslipRepo = payslipRepo;
         this.auditRepo = auditRepo;
+        this.leaveCreditsService = leaveCreditsService;
     }
 
-    // Annotation: Generates and saves payslip for employee and pay period.
+    // Annotation: Base overload for standard payroll processing.
     public Payslip generatePayslip(int empId, PayPeriod period, int processedByUserId) {
         if (empId <= 0 || period == null) {
             return null;
@@ -81,12 +84,12 @@ public class PayrollService {
         return payslip;
     }
 
-    // Annotation: Compatibility overload for older callers.
+    // Annotation: Overloaded method for standard generation without explicit processor.
     public Payslip generatePayslip(int empId, PayPeriod period) {
         return generatePayslip(empId, period, 0);
     }
 
-    // Annotation: Overload used to demonstrate polymorphism with optional bonus amount.
+    // Annotation: Overloaded method for generation with optional bonus amount.
     public Payslip generatePayslip(int empId, PayPeriod period, double bonusAmount) {
         if (empId <= 0 || period == null) {
             return null;
@@ -156,10 +159,9 @@ public class PayrollService {
 
         String txId = buildTransactionId(empId, period);
 
-        com.motorph.domain.models.LeaveCredits lc = new com.motorph.repository.csv.CsvLeaveCreditsRepository().findByEmpId(empId);
-        double leaveCredits = lc == null ? 0.0 : lc.getLeaveCreditsHours();
-        double leaveTaken = lc == null ? 0.0 : lc.getLeaveTakenHours();
-        double leaveBalance = lc == null ? 0.0 : lc.getRemainingHours();
+        double leaveCredits = leaveCreditsService == null ? 0.0 : leaveCreditsService.getStoredLeaveCreditsHours(empId);
+        double leaveTaken = leaveCreditsService == null ? 0.0 : leaveCreditsService.getStoredLeaveTakenHours(empId);
+        double leaveBalance = leaveCreditsService == null ? 0.0 : leaveCreditsService.getStoredRemainingHours(empId);
 
         return new Payslip(
                 txId,

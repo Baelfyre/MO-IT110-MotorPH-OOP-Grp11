@@ -82,10 +82,10 @@ public class SwingApp {
         LeaveCreditsService leaveCreditsService = new LeaveCreditsService(leaveCreditsRepo, leaveService);
 
         DeductionStrategy deductionStrategy = new PayDeductionStrategy();
-        PayrollService payrollService = new PayrollService(empRepo, timeRepo, deductionStrategy, payslipRepo, auditRepo);
+        PayrollService payrollService = new PayrollService(empRepo, timeRepo, deductionStrategy, payslipRepo, auditRepo, leaveCreditsService);
 
 // Ops
-        TimeOps timeOps = new TimeOpsImpl(timeService, timeRepo, logService);
+        TimeOps timeOps = new TimeOpsImpl(timeService, timeRepo, approvalRepo, logService);
         PayrollOps payrollOps = new PayrollOpsImpl(payrollService, empRepo, logService, approvalRepo);
         DtrApprovalOps dtrApprovalOps = new DtrApprovalOpsImpl(approvalRepo, auditRepo);
         PayslipOps payslipOps = new PayslipOpsImpl(payslipRepo, logService);

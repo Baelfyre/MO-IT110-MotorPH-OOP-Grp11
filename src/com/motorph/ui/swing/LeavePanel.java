@@ -5,16 +5,7 @@ import com.motorph.domain.models.LeaveRequest;
 import com.motorph.domain.models.PayPeriod;
 import com.motorph.domain.models.User;
 import com.motorph.ops.leave.LeaveOps;
-import com.motorph.ops.leave.LeaveOpsImpl;
-import com.motorph.repository.LeaveCreditsRepository;
-import com.motorph.repository.LeaveRepository;
-import com.motorph.repository.csv.CsvEmployeeRepository;
-import com.motorph.repository.csv.CsvLeaveCreditsRepository;
-import com.motorph.repository.csv.CsvLeaveRepository;
 import com.motorph.service.EmployeeService;
-import com.motorph.service.LeaveCreditsService;
-import com.motorph.service.LeaveService;
-import com.motorph.service.LogService;
 import com.toedter.calendar.JDateChooser;
 
 import javax.swing.*;
@@ -77,28 +68,6 @@ public class LeavePanel extends JPanel {
         if (dcDate.getDateEditor() instanceof com.toedter.calendar.JTextFieldDateEditor editor) {
             editor.setEditable(false);
         }
-        dcDate.setDate(new java.util.Date());
-
-        setActivePeriod(LocalDate.now());
-        refreshAll();
-    }
-
-    public LeavePanel(User currentUser) {
-        this.currentUser = currentUser;
-
-        this.employeeService = new EmployeeService(new CsvEmployeeRepository());
-
-        LeaveRepository leaveRepo = new CsvLeaveRepository();
-        LeaveCreditsRepository creditsRepo = new CsvLeaveCreditsRepository();
-
-        LeaveService leaveService = new LeaveService(leaveRepo);
-        LeaveCreditsService creditsService = new LeaveCreditsService(creditsRepo, leaveService);
-        this.leaveOps = new LeaveOpsImpl(leaveRepo, creditsService, new LogService());
-
-        buildUi();
-        initTimeOptions();
-
-        dcDate.setDateFormatString("MM/dd/yyyy");
         dcDate.setDate(new java.util.Date());
 
         setActivePeriod(LocalDate.now());

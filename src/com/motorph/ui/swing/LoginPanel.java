@@ -31,7 +31,7 @@ import com.motorph.service.LeaveCreditsService;
 public class LoginPanel extends javax.swing.JFrame {
 
     // Placeholder text kept as constants to align input validation and filters.
-    private static final String USER_PLACEHOLDER = "EMPLOYEE ID OR EMAIL";
+    private static final String USER_PLACEHOLDER = "EMPLOYEE ID";
     private static final String PASS_PLACEHOLDER = "PASSWORD";
 
     // Dependencies injected via constructor
@@ -46,17 +46,6 @@ public class LoginPanel extends javax.swing.JFrame {
     private final ItOps itOps;
     private final LeaveCreditsService leaveCreditsService;
     private final CsvAddressReferenceRepository addressRepo;
-
-    /**
-     * Creates new form LoginPanel
-     * @param authOps
-     * @param employeeService
-     * @param timeOps
-     * @param hrOps
-     */
-    public LoginPanel(AuthOps authOps, EmployeeService employeeService, TimeOps timeOps, HROps hrOps) {
-        this(authOps, employeeService, timeOps, hrOps, null, null, null, null, null, null, null);
-    }
 
     public LoginPanel(AuthOps authOps, EmployeeService employeeService, TimeOps timeOps, HROps hrOps,
             PayrollOps payrollOps, PayslipOps payslipOps, SupervisorOps supervisorOps, LeaveOps leaveOps, ItOps itOps,
@@ -90,7 +79,7 @@ public class LoginPanel extends javax.swing.JFrame {
         String password = new String(jPasswordField1.getPassword());
 
         if (username.equals(USER_PLACEHOLDER) || password.equals(PASS_PLACEHOLDER) || username.isEmpty() || password.isEmpty()) {
-            JOptionPane.showMessageDialog(this, "Please enter both username and password.", "Missing Info", JOptionPane.WARNING_MESSAGE);
+            JOptionPane.showMessageDialog(this, "Please enter Employee ID and password.", "Missing Info", JOptionPane.WARNING_MESSAGE);
             return;
         }
 
@@ -167,16 +156,16 @@ public class LoginPanel extends javax.swing.JFrame {
         ((javax.swing.text.AbstractDocument) jTextField1.getDocument()).setDocumentFilter(new DocumentFilter() {
             @Override
             public void insertString(FilterBypass fb, int offset, String string, AttributeSet attr) throws javax.swing.text.BadLocationException {
-                // Allow employee ID or email characters, plus placeholder writes.
-                if (string.matches("[A-Za-z0-9@._-]+") || USER_PLACEHOLDER.equals(string)) {
+                // Allow numeric Employee ID input and placeholder writes.
+                if (string.matches("[0-9]+") || USER_PLACEHOLDER.equals(string)) {
                     super.insertString(fb, offset, string, attr);
                 }
             }
 
             @Override
             public void replace(FilterBypass fb, int offset, int length, String text, AttributeSet attrs) throws javax.swing.text.BadLocationException {
-                // Allow employee ID or email characters, plus placeholder writes.
-                if (text.matches("[A-Za-z0-9@._-]*") || USER_PLACEHOLDER.equals(text)) {
+                // Allow numeric Employee ID input and placeholder writes.
+                if (text.matches("[0-9]*") || USER_PLACEHOLDER.equals(text)) {
                     super.replace(fb, offset, length, text, attrs);
                 }
             }
