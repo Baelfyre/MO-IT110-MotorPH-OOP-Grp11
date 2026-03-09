@@ -1,0 +1,2 @@
+Payslip_ID,Transaction_ID,EmployeeID,LastName,FirstName,PayPeriodStart,PayPeriodEnd,BasicSalary,RiceAllowance,PhoneAllowance,ClothingAllowance,GrossSemiMonthlyRate,HourlyRate,TotalHoursWorked,GrossIncome,SSS,PhilHealth,Pagibig,WithholdingTax,TotalDeductions,NetPay,ProcessedBy,DateProcessed,LeaveCredits,LeaveTaken,RemainingLeaveBalance
+PS-TX-10026-240601-240615,TX-10026-240601-240615,10026,Gutierrez,Percival,6/1/2024,6/15/2024,24750.00,1500.00,500.00,500.00,12375.00,147.32,79.18,14134.48,625.00,315.73,100.00,0.00,2545.85,11588.63,10003,6/15/2024 18:00,0.00,16.00,0.00

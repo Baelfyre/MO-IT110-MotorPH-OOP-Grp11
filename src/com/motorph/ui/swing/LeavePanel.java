@@ -5,16 +5,7 @@ import com.motorph.domain.models.LeaveRequest;
 import com.motorph.domain.models.PayPeriod;
 import com.motorph.domain.models.User;
 import com.motorph.ops.leave.LeaveOps;
-import com.motorph.ops.leave.LeaveOpsImpl;
-import com.motorph.repository.LeaveCreditsRepository;
-import com.motorph.repository.LeaveRepository;
-import com.motorph.repository.csv.CsvEmployeeRepository;
-import com.motorph.repository.csv.CsvLeaveCreditsRepository;
-import com.motorph.repository.csv.CsvLeaveRepository;
 import com.motorph.service.EmployeeService;
-import com.motorph.service.LeaveCreditsService;
-import com.motorph.service.LeaveService;
-import com.motorph.service.LogService;
 import com.toedter.calendar.JDateChooser;
 
 import javax.swing.*;
@@ -65,22 +56,18 @@ public class LeavePanel extends JPanel {
     private static final DateTimeFormatter DATE_FMT = DateTimeFormatter.ofPattern("MM/dd/yyyy", Locale.US);
     private static final DateTimeFormatter TIME_FMT = DateTimeFormatter.ofPattern("h:mm a", Locale.US);
 
-    public LeavePanel(User currentUser) {
+    public LeavePanel(User currentUser, LeaveOps leaveOps, EmployeeService employeeService) {
         this.currentUser = currentUser;
-
-        this.employeeService = new EmployeeService(new CsvEmployeeRepository());
-
-        LeaveRepository leaveRepo = new CsvLeaveRepository();
-        LeaveCreditsRepository creditsRepo = new CsvLeaveCreditsRepository();
-
-        LeaveService leaveService = new LeaveService(leaveRepo);
-        LeaveCreditsService creditsService = new LeaveCreditsService(creditsRepo, leaveService);
-        this.leaveOps = new LeaveOpsImpl(leaveRepo, creditsService, new LogService());
+        this.employeeService = employeeService;
+        this.leaveOps = leaveOps;
 
         buildUi();
         initTimeOptions();
 
         dcDate.setDateFormatString("MM/dd/yyyy");
+        if (dcDate.getDateEditor() instanceof com.toedter.calendar.JTextFieldDateEditor editor) {
+            editor.setEditable(false);
+        }
         dcDate.setDate(new java.util.Date());
 
         setActivePeriod(LocalDate.now());

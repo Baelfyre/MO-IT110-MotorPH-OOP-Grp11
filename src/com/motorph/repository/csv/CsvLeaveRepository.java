@@ -91,6 +91,60 @@ public class CsvLeaveRepository implements LeaveRepository {
         return total;
     }
 
+
+    @Override
+    public boolean updateDecision(int empId, String leaveId, LeaveStatus status, int reviewedBy, String reviewedAt, String note) {
+        if (leaveId == null || leaveId.trim().isEmpty() || status == null) {
+            return false;
+        }
+
+        File file = new File(DataPaths.LEAVE_FOLDER + FILE_PREFIX + empId + FILE_SUFFIX);
+        if (!file.exists()) {
+            return false;
+        }
+
+        List<LeaveRequest> rows = read(empId, null);
+        boolean updated = false;
+        List<LeaveRequest> out = new ArrayList<>();
+
+        for (LeaveRequest r : rows) {
+            if (!updated && leaveId.equalsIgnoreCase(r.getLeaveId())) {
+                LeaveRequest revised = new LeaveRequest(
+                        r.getLeaveId(),
+                        r.getEmployeeId(),
+                        r.getDate(),
+                        r.getStartTime(),
+                        r.getEndTime(),
+                        r.getFirstName(),
+                        r.getLastName(),
+                        status,
+                        reviewedBy,
+                        reviewedAt == null ? "" : reviewedAt,
+                        note == null ? "" : note
+                );
+                out.add(revised);
+                updated = true;
+            } else {
+                out.add(r);
+            }
+        }
+
+        if (!updated) {
+            return false;
+        }
+
+        try (BufferedWriter bw = new BufferedWriter(new FileWriter(file, false))) {
+            bw.write(HEADER);
+            for (LeaveRequest r : out) {
+                bw.newLine();
+                bw.write(r.toCsvRow());
+            }
+            return true;
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
     @Override
     public boolean create(LeaveRequest request) {
         if (request == null) {

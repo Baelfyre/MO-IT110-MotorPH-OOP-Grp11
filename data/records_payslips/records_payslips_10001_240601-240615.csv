@@ -1,0 +1,2 @@
+Payslip_ID,Transaction_ID,EmployeeID,LastName,FirstName,PayPeriodStart,PayPeriodEnd,BasicSalary,RiceAllowance,PhoneAllowance,ClothingAllowance,GrossSemiMonthlyRate,HourlyRate,TotalHoursWorked,GrossIncome,SSS,PhilHealth,Pagibig,WithholdingTax,TotalDeductions,NetPay,ProcessedBy,DateProcessed,LeaveCredits,LeaveTaken,RemainingLeaveBalance
+PS-TX-10001-240601-240615,TX-10001-240601-240615,10001,Garcia,Manuel III,6/1/2024,6/15/2024,90000.00,1500.00,2000.00,1000.00,45000.00,535.71,89.13,53366.02,1750.00,1131.03,100.00,4731.76,15837.73,37528.29,10003,6/15/2024 18:00,40.00,24.00,16.00

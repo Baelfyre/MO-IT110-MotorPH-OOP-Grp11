@@ -1,0 +1,2 @@
+Payslip_ID,Transaction_ID,EmployeeID,LastName,FirstName,PayPeriodStart,PayPeriodEnd,BasicSalary,RiceAllowance,PhoneAllowance,ClothingAllowance,GrossSemiMonthlyRate,HourlyRate,TotalHoursWorked,GrossIncome,SSS,PhilHealth,Pagibig,WithholdingTax,TotalDeductions,NetPay,ProcessedBy,DateProcessed,LeaveCredits,LeaveTaken,RemainingLeaveBalance
+PS-TX-10032-240616-240630,TX-10032-240616-240630,10032,Castro,John Rafael,6/16/2024,6/30/2024,52670.00,1500.00,1000.00,1000.00,26335.00,313.51,76.80,29841.96,1200.00,602.75,100.00,274.84,7909.60,21932.36,10003,6/30/2024 18:00,40.00,40.00,0.00

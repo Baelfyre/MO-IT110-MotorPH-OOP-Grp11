@@ -35,6 +35,9 @@ public class Payslip {
 
     private final int processedByUserId;
     private final LocalDateTime dateProcessed;
+    private final double leaveCreditsSnapshot;
+    private final double leaveTakenSnapshot;
+    private final double leaveBalanceSnapshot;
 
     // Annotation: Full constructor used by CSV repositories and payroll computation.
     public Payslip(
@@ -60,7 +63,10 @@ public class Payslip {
             double totalDeductions,
             double netPay,
             int processedByUserId,
-            LocalDateTime dateProcessed
+            LocalDateTime dateProcessed,
+            double leaveCreditsSnapshot,
+            double leaveTakenSnapshot,
+            double leaveBalanceSnapshot
     ) {
         this.transactionId = safe(transactionId);
         this.employeeId = employeeId;
@@ -90,6 +96,37 @@ public class Payslip {
 
         this.processedByUserId = processedByUserId;
         this.dateProcessed = dateProcessed;
+        this.leaveCreditsSnapshot = leaveCreditsSnapshot;
+        this.leaveTakenSnapshot = leaveTakenSnapshot;
+        this.leaveBalanceSnapshot = leaveBalanceSnapshot;
+    }
+
+    public Payslip(
+            String transactionId,
+            int employeeId,
+            String lastName,
+            String firstName,
+            PayPeriod period,
+            double basicSalary,
+            double riceAllowance,
+            double phoneAllowance,
+            double clothingAllowance,
+            double grossSemiMonthlyRate,
+            double hourlyRate,
+            double totalHoursWorked,
+            double overtimePay,
+            double grossIncome,
+            double lateDeduction,
+            double sss,
+            double philHealth,
+            double pagIbig,
+            double withholdingTax,
+            double totalDeductions,
+            double netPay,
+            int processedByUserId,
+            LocalDateTime dateProcessed
+    ) {
+        this(transactionId, employeeId, lastName, firstName, period, basicSalary, riceAllowance, phoneAllowance, clothingAllowance, grossSemiMonthlyRate, hourlyRate, totalHoursWorked, overtimePay, grossIncome, lateDeduction, sss, philHealth, pagIbig, withholdingTax, totalDeductions, netPay, processedByUserId, dateProcessed, 0.0, 0.0, 0.0);
     }
 
     public String getTransactionId() {
@@ -182,6 +219,29 @@ public class Payslip {
 
     public LocalDateTime getDateProcessed() {
         return dateProcessed;
+    }
+
+    public double getLeaveCreditsSnapshot() {
+        return leaveCreditsSnapshot;
+    }
+
+    public double getLeaveTakenSnapshot() {
+        return leaveTakenSnapshot;
+    }
+
+    public double getLeaveBalanceSnapshot() {
+        return leaveBalanceSnapshot;
+    }
+
+    public String getPayslipNumber() {
+        if (period == null) {
+            return transactionId;
+        }
+        return employeeId + "-" + period.getStartDate().getYear() + "-" + String.format(java.util.Locale.US, "%02d", period.getStartDate().getMonthValue()) + "-" + String.format(java.util.Locale.US, "%02d", period.getStartDate().getDayOfMonth());
+    }
+
+    public String getEmployeeName() {
+        return (firstName + " " + lastName).trim();
     }
 
     private String safe(String s) {

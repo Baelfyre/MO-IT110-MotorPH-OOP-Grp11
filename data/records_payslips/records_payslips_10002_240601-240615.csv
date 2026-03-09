@@ -1,0 +1,2 @@
+Payslip_ID,Transaction_ID,EmployeeID,LastName,FirstName,PayPeriodStart,PayPeriodEnd,BasicSalary,RiceAllowance,PhoneAllowance,ClothingAllowance,GrossSemiMonthlyRate,HourlyRate,TotalHoursWorked,GrossIncome,SSS,PhilHealth,Pagibig,WithholdingTax,TotalDeductions,NetPay,ProcessedBy,DateProcessed,LeaveCredits,LeaveTaken,RemainingLeaveBalance
+PS-TX-10002-240601-240615,TX-10002-240601-240615,10002,Lim,Antonio,6/1/2024,6/15/2024,60000.00,1500.00,2000.00,1000.00,30000.00,357.14,88.38,35992.53,1550.00,769.75,100.00,1507.49,9129.58,26862.95,10003,6/15/2024 18:00,40.00,32.00,8.00

@@ -1,0 +1,2 @@
+Payslip_ID,Transaction_ID,EmployeeID,LastName,FirstName,PayPeriodStart,PayPeriodEnd,BasicSalary,RiceAllowance,PhoneAllowance,ClothingAllowance,GrossSemiMonthlyRate,HourlyRate,TotalHoursWorked,GrossIncome,SSS,PhilHealth,Pagibig,WithholdingTax,TotalDeductions,NetPay,ProcessedBy,DateProcessed,LeaveCredits,LeaveTaken,RemainingLeaveBalance
+PS-TX-10025-240601-240615,TX-10025-240601-240615,10025,Tolentino,Jacklyn,6/1/2024,6/15/2024,24000.00,1500.00,500.00,500.00,12000.00,142.86,77.38,13800.61,575.00,288.05,100.00,0.00,3241.67,10558.94,10003,6/15/2024 18:00,0.00,24.00,0.00

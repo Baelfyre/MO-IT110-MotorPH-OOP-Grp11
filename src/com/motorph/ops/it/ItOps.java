@@ -4,11 +4,16 @@
  */
 package com.motorph.ops.it;
 
+import com.motorph.domain.models.User;
+import java.util.List;
+
 /**
  *
  * @author ACER
  */
 public interface ItOps {
+
+    List<User> listUsers();
 
     boolean resetPasswordToDefault(String username, int performedByUserId);
 

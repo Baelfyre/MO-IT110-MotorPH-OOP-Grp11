@@ -4,22 +4,32 @@
  */
 package com.motorph.ui.swing;
 
-
 import com.motorph.domain.models.User;
 import com.motorph.domain.enums.Role;
 import com.motorph.service.EmployeeService;
+import java.awt.BorderLayout;
 import java.awt.CardLayout;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
+import java.time.DayOfWeek;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
+import java.util.List;
 import javax.swing.Timer;
-import com.motorph.ui.swing.UiHelper.UiThemeHelper;
 
-import com.motorph.ops.auth.AuthOps;         
-import com.motorph.ops.auth.AuthOpsImpl;
+import com.motorph.domain.models.TimeEntry;
+import com.motorph.ops.auth.AuthOps;
 import com.motorph.ops.time.TimeOps;
 import com.motorph.ops.hr.HROps;
+import com.motorph.ops.it.ItOps;
+import com.motorph.ops.leave.LeaveOps;
+import com.motorph.ops.payroll.PayrollOps;
+import com.motorph.ops.payslip.PayslipOps;
+import com.motorph.ops.supervisor.SupervisorOps;
+import com.motorph.repository.csv.CsvAddressReferenceRepository;
+import com.motorph.service.LeaveCreditsService;
 
 /**
  *
@@ -32,27 +42,45 @@ public class MainDashboard extends javax.swing.JFrame {
     private final AuthOps authOps;
     private CardLayout cardLayout;
     private JPanel mainContentPanel;
+    private HomePanel homePanel;
     private Timer clockTimer;
     private final TimeOps timeOps;
     private final HROps hrOps;
+    private final PayrollOps payrollOps;
+    private final PayslipOps payslipOps;
+    private final SupervisorOps supervisorOps;
+    private final LeaveOps leaveOps;
+    private final ItOps itOps;
+    private final LeaveCreditsService leaveCreditsService;
+    private final CsvAddressReferenceRepository addressRepo;
 
-    public MainDashboard(User loggedInUser, EmployeeService employeeService, AuthOps authOps, TimeOps timeOps, HROps hrOps) {
+    public MainDashboard(User loggedInUser, EmployeeService employeeService, AuthOps authOps, TimeOps timeOps, HROps hrOps,
+            PayrollOps payrollOps, PayslipOps payslipOps, SupervisorOps supervisorOps, LeaveOps leaveOps, ItOps itOps,
+            LeaveCreditsService leaveCreditsService, CsvAddressReferenceRepository addressRepo) {
         this.currentUser = loggedInUser;
-        this.employeeService = employeeService; 
+        this.employeeService = employeeService;
         this.authOps = authOps;
         this.timeOps = timeOps;
         this.hrOps = hrOps;
-        
-        initComponents();
-        
-        loadDashboardProfile();
+        this.payrollOps = payrollOps;
+        this.payslipOps = payslipOps;
+        this.supervisorOps = supervisorOps;
+        this.leaveOps = leaveOps;
+        this.itOps = itOps;
+        this.leaveCreditsService = leaveCreditsService;
+        this.addressRepo = addressRepo;
 
-        setResizable(false);
-        setExtendedState(javax.swing.JFrame.NORMAL);
+        initComponents();
+        initCustomLayout();
+        loadDashboardProfile();
+        loadTodayAttendanceLabels();
+
+        setResizable(true);
+        setLocationRelativeTo(null);
+        setExtendedState(javax.swing.JFrame.MAXIMIZED_BOTH);
         setLocationRelativeTo(null);
 
         startClock();
-        initCustomLayout();
         customizeSidebar();
     }
 
@@ -64,14 +92,14 @@ public class MainDashboard extends javax.swing.JFrame {
 
         // 1. ROLE-BASED FEATURES 
         // Explicitly set true OR false so they don't get stuck hidden on a UI refresh
-        jButton3.setVisible(hasHR || hasIT);       // Employee Management
-        jButton2.setVisible(hasPayroll || hasIT);  // Payroll Management
+        jButton3.setVisible(hasHR);                // Employee Management = HR only
+        jButton2.setVisible(hasPayroll);           // Payroll Management = Payroll only
         jButton9.setVisible(hasIT);                // System Maintenance
 
         // 2. DYNAMIC MANAGER CHECK
         boolean isASupervisor = (currentUser != null)
                 && employeeService.isSupervisor(currentUser.getUsername());
-        
+
         jButton7.setVisible(isASupervisor);        // Attendance Management
     }
 
@@ -82,21 +110,82 @@ public class MainDashboard extends javax.swing.JFrame {
         mainContentPanel.removeAll();
         mainContentPanel.setLayout(cardLayout);
 
-        // Load the panels
-        // Annotation: Add working panels as cards.
-        mainContentPanel.add(new UpdateProfile(currentUser, employeeService, hrOps), "HOME");
-        mainContentPanel.add(new HrPanel(currentUser), "HR");
-        mainContentPanel.add(new PayrollPanel(currentUser), "PAYROLL");
-        mainContentPanel.add(new TimekeepingPanel(currentUser), "ATTENDANCE");
-        mainContentPanel.add(new SupervisorPanel(currentUser), "SUPERVISOR");
-        mainContentPanel.add(new ITPanel(currentUser), "IT");
+        homePanel = new HomePanel(currentUser);
 
-        // Default to Home
-        cardLayout.show(mainContentPanel, "HOME");
+        // Annotation: Register dashboard cards.
+        mainContentPanel.add(homePanel, "HOME");
+        mainContentPanel.add(new SelfServicePanel(
+                () -> showCard("HOME"),
+                () -> showCard("ATTENDANCE"),
+                () -> showCard("LEAVE"),
+                () -> showCard("PAYSLIP"),
+                this::openUpdateProfileDialog
+        ), "SELF_SERVICE");
+        mainContentPanel.add(new HrPanel(currentUser, hrOps), "HR");
+        mainContentPanel.add(new PayrollPanel(currentUser, payrollOps), "PAYROLL");
+        mainContentPanel.add(new TimekeepingPanel(currentUser, timeOps), "ATTENDANCE");
+        mainContentPanel.add(new LeavePanel(currentUser, leaveOps, employeeService), "LEAVE");
+        mainContentPanel.add(new SupervisorPanel(currentUser, supervisorOps), "SUPERVISOR");
+        mainContentPanel.add(new ITPanel(currentUser, employeeService, itOps), "IT");
+        mainContentPanel.add(new PayslipPanel(currentUser, payslipOps, employeeService, leaveCreditsService), "PAYSLIP");
 
-        // Annotation: Refresh UI after swapping layout and adding cards.
+        jPanel2.removeAll();
+        jPanel2.setLayout(new BorderLayout());
+        jPanel2.add(mainContentPanel, BorderLayout.CENTER);
+
+        showCard("HOME");
+
+        jPanel2.revalidate();
+        jPanel2.repaint();
+    }
+
+    // Annotation: Updates the section title based on the active card.
+    private void showCard(String cardKey) {
+        if (cardLayout == null || mainContentPanel == null) {
+            return;
+        }
+
+        cardLayout.show(mainContentPanel, cardKey);
+        updateSectionTitle(cardKey);
+
         mainContentPanel.revalidate();
         mainContentPanel.repaint();
+    }
+
+// Annotation: Update the section title based on the active card.
+    private void updateSectionTitle(String cardKey) {
+        switch (cardKey) {
+            case "HOME":
+                jLabel16.setText("Additional Employee Details");
+                break;
+            case "SELF_SERVICE":
+                jLabel16.setText("Self Service Portal");
+                break;
+            case "HR":
+                jLabel16.setText("Employee Management");
+                break;
+            case "PAYROLL":
+                jLabel16.setText("Payroll Management");
+                break;
+            case "PAYSLIP":
+                jLabel16.setText("View Payroll Details");
+                break;
+            case "ATTENDANCE":
+                jLabel16.setText("My Attendance");
+                break;
+            case "LEAVE":
+                jLabel16.setText("Leave Requests");
+                break;
+            case "SUPERVISOR":
+                jLabel16.setText("Attendance Management");
+                break;
+            case "IT":
+                jLabel16.setText("System Maintenance");
+                break;
+            default:
+                jLabel16.setText("Additional Details");
+                break;
+        }
     }
 
     /**
@@ -123,9 +212,10 @@ public class MainDashboard extends javax.swing.JFrame {
         jButton10 = new javax.swing.JButton();
         jLabel13 = new javax.swing.JLabel();
         jLabel15 = new javax.swing.JLabel();
-        jButton8 = new javax.swing.JButton();
         jLabel17 = new javax.swing.JLabel();
         jLabel18 = new javax.swing.JLabel();
+        jLabel20 = new javax.swing.JLabel();
+        jLabel21 = new javax.swing.JLabel();
         jButton6 = new javax.swing.JButton();
         jPanel2 = new javax.swing.JPanel();
         jScrollPane1 = new javax.swing.JScrollPane();
@@ -134,7 +224,6 @@ public class MainDashboard extends javax.swing.JFrame {
         jLabel12 = new javax.swing.JLabel();
         jLabel6 = new javax.swing.JLabel();
         jLabel8 = new javax.swing.JLabel();
-        jLabel14 = new javax.swing.JLabel();
         jLabel7 = new javax.swing.JLabel();
         jLabel10 = new javax.swing.JLabel();
         jLabel11 = new javax.swing.JLabel();
@@ -149,6 +238,7 @@ public class MainDashboard extends javax.swing.JFrame {
         jTextField7 = new javax.swing.JTextField();
         jButton11 = new javax.swing.JButton();
         jLabel16 = new javax.swing.JLabel();
+        jLabel14 = new javax.swing.JLabel();
 
         setDefaultCloseOperation(javax.swing.WindowConstants.EXIT_ON_CLOSE);
 
@@ -175,7 +265,6 @@ public class MainDashboard extends javax.swing.JFrame {
 
         jButton2.setFont(new java.awt.Font("Segoe UI", 1, 12)); // NOI18N
         jButton2.setText("Payroll Management");
-        jButton2.setBorder(javax.swing.BorderFactory.createTitledBorder(""));
         jButton2.setMaximumSize(new java.awt.Dimension(130, 20));
         jButton2.setMinimumSize(new java.awt.Dimension(130, 20));
         jButton2.setOpaque(true);
@@ -183,8 +272,7 @@ public class MainDashboard extends javax.swing.JFrame {
         jButton2.addActionListener(this::jButton2ActionPerformed);
 
         jButton1.setFont(new java.awt.Font("Segoe UI", 1, 12)); // NOI18N
-        jButton1.setText("Update Profile");
-        jButton1.setBorder(javax.swing.BorderFactory.createTitledBorder(""));
+        jButton1.setText("Self Service Portal");
         jButton1.setMaximumSize(new java.awt.Dimension(130, 20));
         jButton1.setMinimumSize(new java.awt.Dimension(130, 20));
         jButton1.setOpaque(true);
@@ -192,7 +280,6 @@ public class MainDashboard extends javax.swing.JFrame {
 
         jButton3.setFont(new java.awt.Font("Segoe UI", 1, 12)); // NOI18N
         jButton3.setText("Employee Management");
-        jButton3.setBorder(javax.swing.BorderFactory.createTitledBorder(""));
         jButton3.setMaximumSize(new java.awt.Dimension(130, 20));
         jButton3.setMinimumSize(new java.awt.Dimension(130, 20));
         jButton3.setOpaque(true);
@@ -208,7 +295,6 @@ public class MainDashboard extends javax.swing.JFrame {
         jButton4.setFont(new java.awt.Font("Segoe UI", 1, 12)); // NOI18N
         jButton4.setIcon(new javax.swing.ImageIcon(getClass().getResource("/com/motorph/ui/resources/images/clockIn.png"))); // NOI18N
         jButton4.setText("Clock In");
-        jButton4.setBorder(javax.swing.BorderFactory.createTitledBorder(""));
         jButton4.setMaximumSize(new java.awt.Dimension(110, 30));
         jButton4.setMinimumSize(new java.awt.Dimension(110, 30));
         jButton4.setOpaque(true);
@@ -218,7 +304,6 @@ public class MainDashboard extends javax.swing.JFrame {
         jButton5.setFont(new java.awt.Font("Segoe UI", 1, 12)); // NOI18N
         jButton5.setIcon(new javax.swing.ImageIcon(getClass().getResource("/com/motorph/ui/resources/images/clockOut.png"))); // NOI18N
         jButton5.setText("Clock Out");
-        jButton5.setBorder(javax.swing.BorderFactory.createTitledBorder(""));
         jButton5.setCursor(new java.awt.Cursor(java.awt.Cursor.HAND_CURSOR));
         jButton5.setHorizontalTextPosition(javax.swing.SwingConstants.RIGHT);
         jButton5.setMaximumSize(new java.awt.Dimension(110, 30));
@@ -230,7 +315,6 @@ public class MainDashboard extends javax.swing.JFrame {
 
         jButton7.setFont(new java.awt.Font("Segoe UI", 1, 12)); // NOI18N
         jButton7.setText("Attendance Management");
-        jButton7.setBorder(javax.swing.BorderFactory.createTitledBorder(""));
         jButton7.setMaximumSize(new java.awt.Dimension(130, 20));
         jButton7.setMinimumSize(new java.awt.Dimension(130, 20));
         jButton7.setOpaque(true);
@@ -238,7 +322,6 @@ public class MainDashboard extends javax.swing.JFrame {
 
         jButton9.setFont(new java.awt.Font("Segoe UI", 1, 12)); // NOI18N
         jButton9.setText("System Maintenance");
-        jButton9.setBorder(javax.swing.BorderFactory.createTitledBorder(""));
         jButton9.setMaximumSize(new java.awt.Dimension(130, 20));
         jButton9.setMinimumSize(new java.awt.Dimension(130, 20));
         jButton9.setOpaque(true);
@@ -246,7 +329,6 @@ public class MainDashboard extends javax.swing.JFrame {
 
         jButton10.setFont(new java.awt.Font("Segoe UI", 1, 12)); // NOI18N
         jButton10.setText("View Payroll Details");
-        jButton10.setBorder(javax.swing.BorderFactory.createTitledBorder(""));
         jButton10.setMaximumSize(new java.awt.Dimension(130, 20));
         jButton10.setMinimumSize(new java.awt.Dimension(130, 20));
         jButton10.setOpaque(true);
@@ -259,15 +341,14 @@ public class MainDashboard extends javax.swing.JFrame {
         jLabel15.setFont(new java.awt.Font("Segoe UI", 1, 12)); // NOI18N
         jLabel15.setText("Time Out: ");
 
-        jButton8.setFont(new java.awt.Font("Segoe UI Historic", 1, 12)); // NOI18N
-        jButton8.setText("My Attendance");
-        jButton8.setHorizontalTextPosition(javax.swing.SwingConstants.CENTER);
-        jButton8.setVerticalAlignment(javax.swing.SwingConstants.BOTTOM);
-        jButton8.addActionListener(this::jButton8ActionPerformed);
-
         jLabel17.setText("jLabel17");
 
         jLabel18.setText("jLabel18");
+
+        jLabel20.setFont(new java.awt.Font("Segoe UI", 1, 12)); // NOI18N
+        jLabel20.setText("Total Worked Hours");
+
+        jLabel21.setText("jLabel21");
 
         javax.swing.GroupLayout jPanel1Layout = new javax.swing.GroupLayout(jPanel1);
         jPanel1.setLayout(jPanel1Layout);
@@ -298,10 +379,13 @@ public class MainDashboard extends javax.swing.JFrame {
                                         .addComponent(jLabel17, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)))
                                 .addGap(0, 0, Short.MAX_VALUE)))
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                        .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING, false)
-                            .addComponent(jButton8)
-                            .addComponent(jButton5, javax.swing.GroupLayout.Alignment.LEADING, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                            .addComponent(jLabel15, javax.swing.GroupLayout.Alignment.LEADING))
+                        .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                            .addComponent(jButton5, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                            .addGroup(jPanel1Layout.createSequentialGroup()
+                                .addComponent(jLabel15)
+                                .addGap(0, 0, Short.MAX_VALUE))
+                            .addComponent(jLabel20, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                            .addComponent(jLabel21, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
                         .addGap(1, 1, 1))
                     .addComponent(jLabel1, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
                     .addComponent(jLabel2, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
@@ -311,26 +395,28 @@ public class MainDashboard extends javax.swing.JFrame {
             jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(jPanel1Layout.createSequentialGroup()
                 .addGap(18, 18, 18)
+                .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(jLabel3, javax.swing.GroupLayout.PREFERRED_SIZE, 16, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(jLabel18)
+                    .addComponent(jLabel20))
                 .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                     .addGroup(jPanel1Layout.createSequentialGroup()
-                        .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                            .addComponent(jLabel3, javax.swing.GroupLayout.PREFERRED_SIZE, 16, javax.swing.GroupLayout.PREFERRED_SIZE)
-                            .addComponent(jLabel18))
                         .addGap(12, 12, 12)
                         .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                             .addComponent(jLabel4)
                             .addComponent(jLabel17)))
-                    .addComponent(jButton8, javax.swing.GroupLayout.PREFERRED_SIZE, 25, javax.swing.GroupLayout.PREFERRED_SIZE))
+                    .addGroup(jPanel1Layout.createSequentialGroup()
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                        .addComponent(jLabel21)))
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
                     .addGroup(jPanel1Layout.createSequentialGroup()
-                        .addComponent(jButton4, javax.swing.GroupLayout.PREFERRED_SIZE, 25, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                            .addComponent(jButton4, javax.swing.GroupLayout.PREFERRED_SIZE, 25, javax.swing.GroupLayout.PREFERRED_SIZE)
+                            .addComponent(jButton5, javax.swing.GroupLayout.PREFERRED_SIZE, 25, javax.swing.GroupLayout.PREFERRED_SIZE))
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                         .addComponent(jLabel13))
-                    .addGroup(jPanel1Layout.createSequentialGroup()
-                        .addComponent(jButton5, javax.swing.GroupLayout.PREFERRED_SIZE, 25, javax.swing.GroupLayout.PREFERRED_SIZE)
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                        .addComponent(jLabel15)))
+                    .addComponent(jLabel15))
                 .addGap(18, 18, 18)
                 .addComponent(jLabel1, javax.swing.GroupLayout.PREFERRED_SIZE, 135, javax.swing.GroupLayout.PREFERRED_SIZE)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
@@ -353,7 +439,6 @@ public class MainDashboard extends javax.swing.JFrame {
         jButton6.setFont(new java.awt.Font("Segoe UI", 1, 12)); // NOI18N
         jButton6.setIcon(new javax.swing.ImageIcon(getClass().getResource("/com/motorph/ui/resources/images/Logout.png"))); // NOI18N
         jButton6.setText("Log out");
-        jButton6.setBorder(new javax.swing.border.LineBorder(new java.awt.Color(204, 204, 204), 1, true));
         jButton6.setCursor(new java.awt.Cursor(java.awt.Cursor.HAND_CURSOR));
         jButton6.setHorizontalTextPosition(javax.swing.SwingConstants.RIGHT);
         jButton6.setMaximumSize(new java.awt.Dimension(75, 25));
@@ -363,6 +448,7 @@ public class MainDashboard extends javax.swing.JFrame {
         jButton6.addActionListener(this::jButton6ActionPerformed);
 
         jTextArea1.setColumns(20);
+        jTextArea1.setLineWrap(true);
         jTextArea1.setRows(5);
         jScrollPane1.setViewportView(jTextArea1);
 
@@ -401,9 +487,6 @@ public class MainDashboard extends javax.swing.JFrame {
         jLabel8.setMinimumSize(new java.awt.Dimension(70, 15));
         jLabel8.setPreferredSize(new java.awt.Dimension(70, 15));
 
-        jLabel14.setFont(new java.awt.Font("Segoe UI", 1, 12)); // NOI18N
-        jLabel14.setText("Address:");
-
         jLabel7.setFont(new java.awt.Font("Segoe UI", 1, 12)); // NOI18N
         jLabel7.setText("Name:");
         jLabel7.setMaximumSize(new java.awt.Dimension(70, 15));
@@ -438,7 +521,6 @@ public class MainDashboard extends javax.swing.JFrame {
         jLabel5.setPreferredSize(new java.awt.Dimension(150, 150));
 
         jTextField1.setText(" jTextField1");
-        jTextField1.setBorder(javax.swing.BorderFactory.createEtchedBorder());
         jTextField1.setMaximumSize(null);
         jTextField1.setMinimumSize(new java.awt.Dimension(340, 25));
         jTextField1.addActionListener(this::jTextField1ActionPerformed);
@@ -464,6 +546,8 @@ public class MainDashboard extends javax.swing.JFrame {
         jTextField6.setMinimumSize(new java.awt.Dimension(340, 25));
 
         jTextField7.setText("jTextField7");
+        jTextField7.setMaximumSize(null);
+        jTextField7.setMinimumSize(new java.awt.Dimension(340, 25));
 
         javax.swing.GroupLayout jPanel3Layout = new javax.swing.GroupLayout(jPanel3);
         jPanel3.setLayout(jPanel3Layout);
@@ -471,43 +555,38 @@ public class MainDashboard extends javax.swing.JFrame {
             jPanel3Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(jPanel3Layout.createSequentialGroup()
                 .addContainerGap()
+                .addComponent(jLabel5, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
                 .addGroup(jPanel3Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                     .addGroup(jPanel3Layout.createSequentialGroup()
-                        .addComponent(jLabel14)
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
-                    .addGroup(jPanel3Layout.createSequentialGroup()
-                        .addComponent(jLabel5, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addGroup(jPanel3Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                            .addComponent(jLabel7, javax.swing.GroupLayout.PREFERRED_SIZE, 125, javax.swing.GroupLayout.PREFERRED_SIZE)
+                            .addComponent(jLabel6, javax.swing.GroupLayout.PREFERRED_SIZE, 125, javax.swing.GroupLayout.PREFERRED_SIZE))
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
                         .addGroup(jPanel3Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                            .addGroup(jPanel3Layout.createSequentialGroup()
-                                .addGroup(jPanel3Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                                    .addComponent(jLabel7, javax.swing.GroupLayout.PREFERRED_SIZE, 125, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                    .addComponent(jLabel6, javax.swing.GroupLayout.PREFERRED_SIZE, 125, javax.swing.GroupLayout.PREFERRED_SIZE))
-                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
-                                .addGroup(jPanel3Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                                    .addComponent(jTextField2, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                                    .addComponent(jTextField1, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)))
-                            .addGroup(jPanel3Layout.createSequentialGroup()
-                                .addComponent(jLabel8, javax.swing.GroupLayout.PREFERRED_SIZE, 125, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
-                                .addComponent(jTextField3, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
-                            .addGroup(jPanel3Layout.createSequentialGroup()
-                                .addComponent(jLabel9, javax.swing.GroupLayout.PREFERRED_SIZE, 125, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
-                                .addComponent(jTextField4, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
-                            .addGroup(jPanel3Layout.createSequentialGroup()
-                                .addComponent(jLabel10, javax.swing.GroupLayout.PREFERRED_SIZE, 125, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
-                                .addComponent(jTextField5, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
-                            .addGroup(jPanel3Layout.createSequentialGroup()
-                                .addComponent(jLabel11, javax.swing.GroupLayout.PREFERRED_SIZE, 125, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
-                                .addComponent(jTextField7))
-                            .addGroup(jPanel3Layout.createSequentialGroup()
-                                .addComponent(jLabel12, javax.swing.GroupLayout.PREFERRED_SIZE, 125, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
-                                .addComponent(jTextField6, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)))))
-                .addGap(7, 7, 7))
+                            .addComponent(jTextField2, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                            .addComponent(jTextField1, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)))
+                    .addGroup(jPanel3Layout.createSequentialGroup()
+                        .addComponent(jLabel8, javax.swing.GroupLayout.PREFERRED_SIZE, 125, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
+                        .addComponent(jTextField3, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                    .addGroup(jPanel3Layout.createSequentialGroup()
+                        .addComponent(jLabel9, javax.swing.GroupLayout.PREFERRED_SIZE, 125, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
+                        .addComponent(jTextField4, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                    .addGroup(jPanel3Layout.createSequentialGroup()
+                        .addComponent(jLabel10, javax.swing.GroupLayout.PREFERRED_SIZE, 125, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
+                        .addComponent(jTextField5, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                    .addGroup(jPanel3Layout.createSequentialGroup()
+                        .addComponent(jLabel12, javax.swing.GroupLayout.PREFERRED_SIZE, 125, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
+                        .addComponent(jTextField6, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                    .addGroup(jPanel3Layout.createSequentialGroup()
+                        .addComponent(jLabel11, javax.swing.GroupLayout.PREFERRED_SIZE, 125, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
+                        .addComponent(jTextField7, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)))
+                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
         );
         jPanel3Layout.setVerticalGroup(
             jPanel3Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
@@ -519,7 +598,7 @@ public class MainDashboard extends javax.swing.JFrame {
                     .addGroup(jPanel3Layout.createSequentialGroup()
                         .addGap(7, 7, 7)
                         .addGroup(jPanel3Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                            .addComponent(jTextField1, javax.swing.GroupLayout.DEFAULT_SIZE, 25, Short.MAX_VALUE)
+                            .addComponent(jTextField1, javax.swing.GroupLayout.PREFERRED_SIZE, 25, javax.swing.GroupLayout.PREFERRED_SIZE)
                             .addComponent(jLabel6, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
                         .addGap(6, 6, 6)
                         .addGroup(jPanel3Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
@@ -529,43 +608,44 @@ public class MainDashboard extends javax.swing.JFrame {
                             .addGroup(jPanel3Layout.createSequentialGroup()
                                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                                 .addGroup(jPanel3Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                                    .addComponent(jTextField3, javax.swing.GroupLayout.DEFAULT_SIZE, 25, Short.MAX_VALUE)
-                                    .addComponent(jLabel8, javax.swing.GroupLayout.PREFERRED_SIZE, 20, javax.swing.GroupLayout.PREFERRED_SIZE))
-                                .addGap(116, 116, 116))
+                                    .addComponent(jTextField3, javax.swing.GroupLayout.PREFERRED_SIZE, 25, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                    .addComponent(jLabel8, javax.swing.GroupLayout.PREFERRED_SIZE, 20, javax.swing.GroupLayout.PREFERRED_SIZE)))
                             .addGroup(jPanel3Layout.createSequentialGroup()
                                 .addGap(38, 38, 38)
                                 .addGroup(jPanel3Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                                     .addComponent(jLabel9, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                    .addComponent(jTextField4, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+                                    .addComponent(jTextField4, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
                                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                                 .addGroup(jPanel3Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                                     .addComponent(jLabel10, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                    .addComponent(jTextField5, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+                                    .addComponent(jTextField5, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
                                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                                 .addGroup(jPanel3Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                                     .addComponent(jLabel12, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                    .addComponent(jTextField6, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+                                    .addComponent(jTextField6, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
                                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                                 .addGroup(jPanel3Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                                     .addComponent(jLabel11, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                    .addComponent(jTextField7))))))
-                .addGap(0, 0, 0)
-                .addComponent(jLabel14, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                .addContainerGap())
+                                    .addComponent(jTextField7, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))))))
+                .addContainerGap(31, Short.MAX_VALUE))
         );
 
         jButton11.setFont(new java.awt.Font("Segoe UI", 1, 12)); // NOI18N
         jButton11.setText("Refresh");
-        jButton11.setBorder(javax.swing.BorderFactory.createTitledBorder(""));
         jButton11.setOpaque(true);
         jButton11.addActionListener(this::jButton11ActionPerformed);
 
         jLabel16.setFont(new java.awt.Font("Segoe UI", 1, 12)); // NOI18N
-        jLabel16.setText("Additional Details:");
-        jLabel16.setMaximumSize(new java.awt.Dimension(100, 15));
-        jLabel16.setMinimumSize(new java.awt.Dimension(100, 15));
+        jLabel16.setText("jLabel16");
+        jLabel16.setMinimumSize(new java.awt.Dimension(200, 15));
         jLabel16.setOpaque(true);
         jLabel16.setPreferredSize(new java.awt.Dimension(100, 15));
+
+        jLabel14.setFont(new java.awt.Font("Segoe UI", 1, 12)); // NOI18N
+        jLabel14.setText("Address:");
+        jLabel14.setMaximumSize(new java.awt.Dimension(450, 15));
+        jLabel14.setMinimumSize(new java.awt.Dimension(450, 15));
+        jLabel14.setPreferredSize(new java.awt.Dimension(450, 15));
 
         javax.swing.GroupLayout layout = new javax.swing.GroupLayout(getContentPane());
         getContentPane().setLayout(layout);
@@ -577,7 +657,9 @@ public class MainDashboard extends javax.swing.JFrame {
                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                     .addGroup(layout.createSequentialGroup()
                         .addGap(6, 6, 6)
-                        .addComponent(jLabel16, javax.swing.GroupLayout.PREFERRED_SIZE, 110, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addComponent(jLabel16, javax.swing.GroupLayout.PREFERRED_SIZE, 155, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                        .addComponent(jLabel14, javax.swing.GroupLayout.PREFERRED_SIZE, 450, javax.swing.GroupLayout.PREFERRED_SIZE)
                         .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
                     .addGroup(layout.createSequentialGroup()
                         .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
@@ -585,9 +667,9 @@ public class MainDashboard extends javax.swing.JFrame {
                             .addComponent(jPanel3, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
                             .addGroup(layout.createSequentialGroup()
                                 .addGap(11, 11, 11)
-                                .addComponent(jButton11, javax.swing.GroupLayout.PREFERRED_SIZE, 61, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                .addComponent(jButton11)
                                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                                .addComponent(jButton6, javax.swing.GroupLayout.PREFERRED_SIZE, 86, javax.swing.GroupLayout.PREFERRED_SIZE)))
+                                .addComponent(jButton6, javax.swing.GroupLayout.PREFERRED_SIZE, 120, javax.swing.GroupLayout.PREFERRED_SIZE)))
                         .addContainerGap())))
         );
         layout.setVerticalGroup(
@@ -601,7 +683,9 @@ public class MainDashboard extends javax.swing.JFrame {
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addComponent(jPanel3, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addComponent(jLabel16, javax.swing.GroupLayout.PREFERRED_SIZE, 15, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(jLabel16, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(jLabel14, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
                 .addGap(4, 4, 4)
                 .addComponent(jPanel2, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
                 .addContainerGap())
@@ -616,23 +700,7 @@ public class MainDashboard extends javax.swing.JFrame {
     }//GEN-LAST:event_jButton2ActionPerformed
 
     private void jButton1ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButton1ActionPerformed
-        // Update Profile
-        // Launch Update Profile as a Popup Window
-        javax.swing.JDialog dialog = new javax.swing.JDialog(this, "Edit Profile", true); // 'true' makes it modal (locks the dashboard)
-        dialog.setDefaultCloseOperation(javax.swing.WindowConstants.DISPOSE_ON_CLOSE);
-        
-        // Add fully wired panel into this dialog
-        UpdateProfile updatePanel = new UpdateProfile(currentUser, employeeService, hrOps);
-        dialog.getContentPane().add(updatePanel);
-        
-        dialog.pack();
-        dialog.setLocationRelativeTo(this); // Centers it over the dashboard
-        dialog.setVisible(true); // The code pauses here until the user closes the popup
-        
-        // Once they close the popup, automatically refresh the dashboard to show the data
-        employeeService.refreshCache();
-        loadDashboardProfile();
-        customizeSidebar();
+        showCard("SELF_SERVICE");
     }//GEN-LAST:event_jButton1ActionPerformed
 
     private void jButton3ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButton3ActionPerformed
@@ -643,32 +711,57 @@ public class MainDashboard extends javax.swing.JFrame {
     private void jButton4ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButton4ActionPerformed
         // Clock In
         int empId = Integer.parseInt(currentUser.getUsername());
-        
+
         boolean success = timeOps.clockIn(empId);
-        if (success){
-            JOptionPane.showMessageDialog(this, "Clock in successful!", "Success",JOptionPane.INFORMATION_MESSAGE );
+        loadTodayAttendanceLabels();
+
+        if (success) {
+            JOptionPane.showMessageDialog(this, "Clock In successful!", "Success", JOptionPane.INFORMATION_MESSAGE);
+
+            if (isOutsideWorkingHours()) {
+                JOptionPane.showMessageDialog(
+                        this,
+                        "Logged in beyond working hours. Time was recorded, but it may be subject for supervisor approval.",
+                        "Notice",
+                        JOptionPane.WARNING_MESSAGE
+                );
+            }
+        } else if (isWeekendToday()) {
+            JOptionPane.showMessageDialog(this, "Clock In is disabled on weekends. Please use supervisor-approved manual DTR entry.", "Notice", JOptionPane.WARNING_MESSAGE);
         } else {
-            JOptionPane.showMessageDialog(this, "Clock In failed. You might already be clocked in today.", "Error", JOptionPane.ERROR_MESSAGE);
+            JOptionPane.showMessageDialog(this, "Clock In failed. A time-in may already exist for today.", "Error", JOptionPane.ERROR_MESSAGE);
         }
-        //JOptionPane.showMessageDialog(this, "Clock In triggered.");
     }//GEN-LAST:event_jButton4ActionPerformed
 
     private void jButton5ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButton5ActionPerformed
         // Clock Out
         int empId = Integer.parseInt(currentUser.getUsername());
-        
+
         boolean success = timeOps.clockOut(empId);
+        loadTodayAttendanceLabels();
+
         if (success) {
             JOptionPane.showMessageDialog(this, "Clock Out successful!", "Success", JOptionPane.INFORMATION_MESSAGE);
+
+            if (isOutsideWorkingHours()) {
+                JOptionPane.showMessageDialog(
+                        this,
+                        "Logged out beyond working hours. Time was recorded, but it may be subject for supervisor approval.",
+                        "Notice",
+                        JOptionPane.WARNING_MESSAGE
+                );
+            }
+        } else if (isWeekendToday()) {
+            JOptionPane.showMessageDialog(this, "Clock Out is disabled on weekends. Please use supervisor-approved manual DTR entry.", "Notice", JOptionPane.WARNING_MESSAGE);
         } else {
-            JOptionPane.showMessageDialog(this, "Clock Out failed. You might not be clocked in, or already clocked out.", "Error", JOptionPane.ERROR_MESSAGE);
+            JOptionPane.showMessageDialog(this, "Clock Out failed. A time-in may be missing, or a time-out may already exist for today.", "Error", JOptionPane.ERROR_MESSAGE);
         }
-        //JOptionPane.showMessageDialog(this, "Clock Out triggered.");
     }//GEN-LAST:event_jButton5ActionPerformed
 
     private void jButton7ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButton7ActionPerformed
         // Attendance Management
         showCard("SUPERVISOR");
+
     }//GEN-LAST:event_jButton7ActionPerformed
 
     private void jButton9ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButton9ActionPerformed
@@ -678,18 +771,20 @@ public class MainDashboard extends javax.swing.JFrame {
 
     private void jButton10ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButton10ActionPerformed
         // View Payroll Details
-        showCard("HOME");
+        showCard("PAYSLIP");
     }//GEN-LAST:event_jButton10ActionPerformed
 
     private void jButton6ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButton6ActionPerformed
         // Logout
-        new LoginPanel(authOps, employeeService, timeOps, hrOps).setVisible(true);
+        new LoginPanel(authOps, employeeService, timeOps, hrOps, payrollOps, payslipOps, supervisorOps, leaveOps, itOps, leaveCreditsService, addressRepo).setVisible(true);
         dispose();
     }//GEN-LAST:event_jButton6ActionPerformed
 
     private void jButton11ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButton11ActionPerformed
         // Refresh cached data used by supervisor checks.
         employeeService.refreshCache();
+        loadDashboardProfile();
+        loadTodayAttendanceLabels();
         customizeSidebar();
     }//GEN-LAST:event_jButton11ActionPerformed
 
@@ -697,21 +792,9 @@ public class MainDashboard extends javax.swing.JFrame {
         // TODO add your handling code here:
     }//GEN-LAST:event_jTextField1ActionPerformed
 
-    private void jButton8ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButton8ActionPerformed
-        // TODO add your handling code here:
-    }//GEN-LAST:event_jButton8ActionPerformed
-
-    private void showCard(String cardKey) {
-        if (cardLayout == null || mainContentPanel == null) {
-            return;
-        }
-        cardLayout.show(mainContentPanel, cardKey);
-    }
-
     /**
      * @param args the command line arguments
      */
-   
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JButton jButton10;
@@ -722,7 +805,6 @@ public class MainDashboard extends javax.swing.JFrame {
     private javax.swing.JButton jButton5;
     private javax.swing.JButton jButton6;
     private javax.swing.JButton jButton7;
-    private javax.swing.JButton jButton8;
     private javax.swing.JButton jButton9;
     private javax.swing.JLabel jLabel1;
     private javax.swing.JLabel jLabel10;
@@ -735,6 +817,8 @@ public class MainDashboard extends javax.swing.JFrame {
     private javax.swing.JLabel jLabel17;
     private javax.swing.JLabel jLabel18;
     private javax.swing.JLabel jLabel2;
+    private javax.swing.JLabel jLabel20;
+    private javax.swing.JLabel jLabel21;
     private javax.swing.JLabel jLabel3;
     private javax.swing.JLabel jLabel4;
     private javax.swing.JLabel jLabel5;
@@ -756,45 +840,110 @@ public class MainDashboard extends javax.swing.JFrame {
     private javax.swing.JTextField jTextField7;
     // End of variables declaration//GEN-END:variables
 
+    private boolean isOutsideWorkingHours() {
+        LocalTime now = LocalTime.now();
+        LocalTime start = LocalTime.of(8, 0);
+        LocalTime end = LocalTime.of(17, 0);
+        return now.isBefore(start) || now.isAfter(end);
+    }
+
+    private boolean isWeekendToday() {
+        DayOfWeek day = LocalDate.now().getDayOfWeek();
+        return day == DayOfWeek.SATURDAY || day == DayOfWeek.SUNDAY;
+    }
+
+    // Annotation: Loads today's time-in and time-out into the sidebar labels.
+    private void loadTodayAttendanceLabels() {
+        if (currentUser == null) {
+            jLabel13.setText("Time In: ");
+            jLabel15.setText("Time Out: ");
+            return;
+        }
+
+        int empId;
+        try {
+            empId = Integer.parseInt(currentUser.getUsername());
+        } catch (NumberFormatException e) {
+            jLabel13.setText("Time In: ");
+            jLabel15.setText("Time Out: ");
+            return;
+        }
+
+        List<TimeEntry> entries = timeOps.viewMyTimeEntries(empId);
+        LocalDate today = LocalDate.now();
+        DateTimeFormatter timeFmt = DateTimeFormatter.ofPattern("hh:mm:ss a");
+
+        String timeInText = "";
+        String timeOutText = "";
+
+        for (TimeEntry entry : entries) {
+            if (entry.getDate() != null && entry.getDate().equals(today)) {
+                if (entry.getTimeIn() != null) {
+                    timeInText = entry.getTimeIn().format(timeFmt);
+                }
+                if (entry.getTimeOut() != null) {
+                    timeOutText = entry.getTimeOut().format(timeFmt);
+                }
+                break;
+            }
+        }
+
+        jLabel13.setText("Time In: " + timeInText);
+        jLabel15.setText("Time Out: " + timeOutText);
+    }
+
+    private void openUpdateProfileDialog() {
+        javax.swing.JDialog dialog = new javax.swing.JDialog(this, "Update Address and Contact Information", true);
+        dialog.setDefaultCloseOperation(javax.swing.WindowConstants.DISPOSE_ON_CLOSE);
+
+        UpdateProfile updatePanel = new UpdateProfile(currentUser, employeeService, hrOps, addressRepo);
+        dialog.getContentPane().add(updatePanel);
+        dialog.pack();
+        dialog.setLocationRelativeTo(this);
+        dialog.setVisible(true);
+
+        employeeService.refreshCache();
+        loadDashboardProfile();
+        loadTodayAttendanceLabels();
+        customizeSidebar();
+    }
+
     private void startClock() {
         updateDateTimeLabels(); // show immediately
 
         clockTimer = new Timer(1000, e -> updateDateTimeLabels());
         clockTimer.start();
     }
-    
+
     // Grabs the Employee profile and fills the Dashboard text fields
     private void loadDashboardProfile() {
-        if (currentUser == null) return;
+        if (currentUser == null) {
+            return;
+        }
 
         try {
             int empId = Integer.parseInt(currentUser.getUsername());
-            // Fetch the employee object using the injected service
             com.motorph.domain.models.Employee emp = employeeService.getEmployee(empId);
 
             if (emp != null) {
-                // ID and Name
+                // Top profile fields
                 jTextField1.setText(String.valueOf(emp.getId()));
                 jTextField2.setText(emp.getFirstName() + " " + emp.getLastName());
 
-                // Birthday formatting
                 if (emp.getBirthday() != null) {
-                    java.time.format.DateTimeFormatter df = java.time.format.DateTimeFormatter.ofPattern("MMMM dd, yyyy");
+                    java.time.format.DateTimeFormatter df
+                            = java.time.format.DateTimeFormatter.ofPattern("MMMM dd, yyyy");
                     jTextField3.setText(emp.getBirthday().format(df));
                 } else {
                     jTextField3.setText("N/A");
                 }
 
-                // Job Details
                 jTextField4.setText(emp.getPosition());
                 jTextField5.setText(emp.getStatus());
                 jTextField6.setText(emp.getImmediateSupervisor());
-                
-                // Contact
                 jTextField7.setText(emp.getPhoneNumber());
                 jLabel14.setText("Address: " + emp.getAddress());
 
-                // Lock the fields so they can't be edited directly on the dashboard
                 jTextField1.setEditable(false);
                 jTextField2.setEditable(false);
                 jTextField3.setEditable(false);
@@ -802,40 +951,83 @@ public class MainDashboard extends javax.swing.JFrame {
                 jTextField5.setEditable(false);
                 jTextField6.setEditable(false);
                 jTextField7.setEditable(false);
-                
-                // Use a Monospaced font so the columns align perfectly
-                jTextArea1.setFont(new java.awt.Font("Monospaced", java.awt.Font.PLAIN, 12));
-                
-                StringBuilder details = new StringBuilder();
-                
-                // Section 1: Government IDs
-                details.append("GOVERNMENT IDENTIFICATION\n");
-                details.append("--------------------------------------------------\n");
-                details.append(String.format("%-18s %s\n", "SSS No:", emp.getSssNumber()));
-                details.append(String.format("%-18s %s\n", "PhilHealth No:", emp.getPhilHealthNumber()));
-                details.append(String.format("%-18s %s\n", "TIN:", emp.getTinNumber()));
-                details.append(String.format("%-18s %s\n\n", "Pag-IBIG No:", emp.getPagIbigNumber()));
 
-                // Section 2: Basic Compensation Summary
-                details.append("COMPENSATION OVERVIEW\n");
-                details.append("--------------------------------------------------\n");
-                details.append(String.format("%-18s PHP %,.2f\n", "Basic Salary:", emp.getBasicSalary()));
-                details.append(String.format("%-18s PHP %,.2f\n", "Hourly Rate:", emp.getHourlyRate()));
-                
-                // Format allowances
-                details.append(String.format("%-18s Rice (PHP %,.2f) | Phone (PHP %,.2f) | Clothing (PHP %,.2f)\n", 
-                        "Allowances:", 
-                        emp.getRiceAllowance(), 
-                        emp.getPhoneAllowance(), 
-                        emp.getClothingAllowance()));
+                boolean probationary = "Probationary".equalsIgnoreCase(emp.getStatus());
+                double standardPaidLeaveHours = probationary ? 0.0 : 40.0;
+                double recordedLeaveTakenHours = leaveCreditsService.getStoredLeaveTakenHours(empId);
+                double remainingPaidLeaveHours = Math.max(0.0, standardPaidLeaveHours - recordedLeaveTakenHours);
+                String eligibilityNote = probationary
+                        ? "Probationary employees are shown with 0.00 paid leave credits in this portal. Leave requests may still be filed for supervisor review as unpaid leave."
+                        : "Paid leave is shown here using the current portal policy baseline of 5 days or 40.00 hours per year.";
 
-                // Set the text and lock the text area
-                jTextArea1.setText(details.toString());
-                jTextArea1.setEditable(false);
+                StringBuilder html = new StringBuilder();
+
+                html.append("<html>");
+                html.append("<body style='font-family:Segoe UI; font-size:12px; margin:8px 10px; color:#222222;'>");
+                html.append("<div style='margin:8px 0 4px 0; font-size:12px; font-weight:bold;'>Government Identification</div>");
+                html.append(buildDetailLine("SSS No:", safeText(emp.getSssNumber())));
+                html.append(buildDetailLine("PhilHealth No:", safeText(emp.getPhilHealthNumber())));
+                html.append(buildDetailLine("TIN:", safeText(emp.getTinNumber())));
+                html.append(buildDetailLine("Pag-IBIG No:", safeText(emp.getPagIbigNumber())));
+
+                html.append("<div style='margin:14px 0 4px 0; font-size:12px; font-weight:bold;'>Compensation Overview</div>");
+                html.append(buildDetailLine("Basic Salary:", "₱" + formatMoney(emp.getBasicSalary())));
+                html.append(buildDetailLine("Hourly Rate:", "₱" + formatMoney(emp.getHourlyRate())));
+                html.append("<div style='margin:8px 0 2px 0; font-weight:bold;'>Allowances</div>");
+                html.append("<div style='margin-left:18px;'>");
+                html.append(buildDetailLine("Rice Allowance:", "₱" + formatMoney(emp.getRiceAllowance())));
+                html.append(buildDetailLine("Phone Allowance:", "₱" + formatMoney(emp.getPhoneAllowance())));
+                html.append(buildDetailLine("Clothing Allowance:", "₱" + formatMoney(emp.getClothingAllowance())));
+                html.append("</div>");
+
+                html.append("<div style='margin:14px 0 4px 0; font-size:12px; font-weight:bold;'>Leave Summary</div>");
+                html.append(buildDetailLine("Paid Leave Credits:", formatHours(standardPaidLeaveHours) + " hours"));
+                html.append(buildDetailLine("Recorded Leave Taken:", formatHours(recordedLeaveTakenHours) + " hours"));
+                html.append(buildDetailLine("Remaining Paid Leave Balance:", formatHours(remainingPaidLeaveHours) + " hours"));
+                html.append("<div style='margin-top:6px; color:#555555;'>" + escapeHtml(eligibilityNote) + "</div>");
+
+                html.append("</body>");
+                html.append("</html>");
+
+                if (homePanel != null) {
+                    homePanel.setDetailsHtml(html.toString());
+                    homePanel.setDeductionContext(emp.getBasicSalary(), Math.max(0.0, emp.getBasicSalary() / 2.0));
+                }
             }
         } catch (NumberFormatException e) {
             System.err.println("Could not parse user ID for dashboard: " + e.getMessage());
         }
+    }
+
+    // Annotation: Format label-value rows for the Home panel.
+    private String buildDetailLine(String label, String value) {
+        return "<div style='margin:4px 0;'><span style='font-family:Segoe UI; font-size:12px; font-weight:bold; min-width:180px; display:inline-block;'>" + escapeHtml(label) + "</span>"
+                + "<span style='font-family:Courier New; font-size:12px;'>" + escapeHtml(value) + "</span></div>";
+    }
+
+// Annotation: Format money for display.
+    private String formatMoney(double amount) {
+        return String.format("%,.2f", amount);
+    }
+
+// Annotation: Format leave hour values for display.
+    private String formatHours(double hours) {
+        return String.format("%,.2f", hours);
+    }
+
+// Annotation: Prevent null output in detail fields.
+    private String safeText(String value) {
+        return value == null || value.trim().isEmpty() ? "N/A" : value.trim();
+    }
+
+// Annotation: Escape HTML special characters in values.
+    private String escapeHtml(String value) {
+        if (value == null) {
+            return "";
+        }
+        return value.replace("&", "&amp;")
+                .replace("<", "&lt;")
+                .replace(">", "&gt;");
     }
 
     private void updateDateTimeLabels() {

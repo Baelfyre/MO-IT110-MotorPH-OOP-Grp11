@@ -1,12 +1,10 @@
 package com.motorph.ui.swing;
 
 import com.motorph.domain.enums.Role;
+import com.motorph.domain.models.Employee;
 import com.motorph.domain.models.User;
 import com.motorph.ops.it.ItOps;
-import com.motorph.ops.it.ItOpsImpl;
-import com.motorph.repository.UserRepository;
-import com.motorph.repository.csv.CsvUserRepository;
-import com.motorph.service.LogService;
+import com.motorph.service.EmployeeService;
 
 import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
@@ -21,11 +19,11 @@ public class ITPanel extends JPanel {
 
     private final User currentUser;
 
-    private final UserRepository userRepo;
+    private final EmployeeService employeeService;
     private final ItOps itOps;
 
     private final DefaultTableModel model = new DefaultTableModel(
-            new Object[]{"Username", "EmpID", "Roles", "Locked"}, 0
+            new Object[]{"Username", "Name", "Roles", "Locked"}, 0
     ) {
         @Override
         public boolean isCellEditable(int row, int col) {
@@ -41,10 +39,10 @@ public class ITPanel extends JPanel {
     private final JButton btnResetDefault = new JButton("Reset Default Password");
     private final JButton btnResetCustom = new JButton("Reset Custom Password");
 
-    public ITPanel(User currentUser) {
+    public ITPanel(User currentUser, EmployeeService employeeService, ItOps itOps) {
         this.currentUser = currentUser;
-        this.userRepo = new CsvUserRepository();
-        this.itOps = new ItOpsImpl(userRepo, new LogService());
+        this.employeeService = employeeService;
+        this.itOps = itOps;
 
         buildUi();
         applyPermissions();
@@ -92,11 +90,16 @@ public class ITPanel extends JPanel {
     private void loadUsers() {
         model.setRowCount(0);
 
-        List<User> users = userRepo.findAll();
+        List<User> users = itOps.listUsers();
         for (User u : users) {
+            String fullName = "N/A";
+            Employee emp = employeeService.getEmployee(u.getId());
+            if (emp != null) {
+                fullName = emp.getFirstName() + " " + emp.getLastName();
+            }
             model.addRow(new Object[]{
                     u.getUsername(),
-                    u.getId(),
+                    fullName,
                     String.valueOf(u.getRoles()),
                     u.isLocked() ? "Yes" : "No"
             });

@@ -32,6 +32,7 @@ public class PayrollService {
     private final DeductionStrategy deductionStrategy;
     private final PayslipRepository payslipRepo;
     private final AuditRepository auditRepo;
+    private final LeaveCreditsService leaveCreditsService;
 
     private static final LocalTime WORK_START = LocalTime.of(8, 0);
     private static final LocalTime WORK_END = LocalTime.of(17, 0);
@@ -43,15 +44,17 @@ public class PayrollService {
             TimeEntryRepository timeEntryRepo,
             DeductionStrategy deductionStrategy,
             PayslipRepository payslipRepo,
-            AuditRepository auditRepo) {
+            AuditRepository auditRepo,
+            LeaveCreditsService leaveCreditsService) {
         this.empRepo = empRepo;
         this.timeEntryRepo = timeEntryRepo;
         this.deductionStrategy = deductionStrategy;
         this.payslipRepo = payslipRepo;
         this.auditRepo = auditRepo;
+        this.leaveCreditsService = leaveCreditsService;
     }
 
-    // Annotation: Generates and saves payslip for employee and pay period.
+    // Annotation: Base overload for standard payroll processing.
     public Payslip generatePayslip(int empId, PayPeriod period, int processedByUserId) {
         if (empId <= 0 || period == null) {
             return null;
@@ -67,7 +70,7 @@ public class PayrollService {
             return null;
         }
 
-        Payslip payslip = computePayslip(emp, period, comp, processedByUserId);
+        Payslip payslip = computePayslip(emp, period, comp, processedByUserId, 0.0);
         if (payslip == null) {
             return null;
         }
@@ -81,12 +84,28 @@ public class PayrollService {
         return payslip;
     }
 
-    // Annotation: Compatibility overload for older callers.
+    // Annotation: Overloaded method for standard generation without explicit processor.
     public Payslip generatePayslip(int empId, PayPeriod period) {
         return generatePayslip(empId, period, 0);
     }
 
-    private Payslip computePayslip(Employee emp, PayPeriod period, Compensation comp, int processedByUserId) {
+    // Annotation: Overloaded method for generation with optional bonus amount.
+    public Payslip generatePayslip(int empId, PayPeriod period, double bonusAmount) {
+        if (empId <= 0 || period == null) {
+            return null;
+        }
+        Employee emp = empRepo.findById(empId);
+        if (emp == null || emp.getCompensation() == null) {
+            return null;
+        }
+        Payslip payslip = computePayslip(emp, period, emp.getCompensation(), 0, bonusAmount);
+        if (payslip == null || !payslipRepo.save(payslip)) {
+            return null;
+        }
+        return payslip;
+    }
+
+    private Payslip computePayslip(Employee emp, PayPeriod period, Compensation comp, int processedByUserId, double bonusAmount) {
         int empId = emp.getEmployeeNumber();
         List<TimeEntry> entries = timeEntryRepo.findByEmployeeAndPeriod(empId, period);
 
@@ -123,7 +142,7 @@ public class PayrollService {
         double phone = comp.getPhoneAllowance() / 2.0;
         double clothing = comp.getClothingAllowance() / 2.0;
 
-        double gross = semiMonthlyBasic + rice + phone + clothing + totalOvertimePay;
+        double gross = semiMonthlyBasic + rice + phone + clothing + totalOvertimePay + Math.max(0.0, bonusAmount);
 
         double payAfterTimeDeduction = Math.max(0.0, gross - totalLateDeduction);
 
@@ -139,6 +158,10 @@ public class PayrollService {
         double net = Math.max(0.0, gross - totalDeductions);
 
         String txId = buildTransactionId(empId, period);
+
+        double leaveCredits = leaveCreditsService == null ? 0.0 : leaveCreditsService.getStoredLeaveCreditsHours(empId);
+        double leaveTaken = leaveCreditsService == null ? 0.0 : leaveCreditsService.getStoredLeaveTakenHours(empId);
+        double leaveBalance = leaveCreditsService == null ? 0.0 : leaveCreditsService.getStoredRemainingHours(empId);
 
         return new Payslip(
                 txId,
@@ -163,7 +186,10 @@ public class PayrollService {
                 totalDeductions,
                 net,
                 processedByUserId,
-                LocalDateTime.now()
+                LocalDateTime.now(),
+                leaveCredits,
+                leaveTaken,
+                leaveBalance
         );
     }
 

@@ -42,7 +42,7 @@ public class CsvPayslipRepository implements PayslipRepository {
             = "Payslip_ID,Transaction_ID,EmployeeID,LastName,FirstName,PayPeriodStart,PayPeriodEnd,"
             + "BasicSalary,RiceAllowance,PhoneAllowance,ClothingAllowance,GrossSemiMonthlyRate,"
             + "HourlyRate,TotalHoursWorked,GrossIncome,SSS,PhilHealth,Pagibig,WithholdingTax,"
-            + "TotalDeductions,NetPay,ProcessedBy,DateProcessed";
+            + "TotalDeductions,NetPay,ProcessedBy,DateProcessed,LeaveCredits,LeaveTaken,RemainingLeaveBalance";
 
     @Override
     public boolean save(Payslip p) {
@@ -90,7 +90,10 @@ public class CsvPayslipRepository implements PayslipRepository {
                 + fmt(p.getTotalDeductions()) + ","
                 + fmt(p.getNetPay()) + ","
                 + escape(processedBy) + ","
-                + escape(dateProcessed);
+                + escape(dateProcessed) + ","
+                + fmt(p.getLeaveCreditsSnapshot()) + ","
+                + fmt(p.getLeaveTakenSnapshot()) + ","
+                + fmt(p.getLeaveBalanceSnapshot());
 
         try (BufferedWriter bw = new BufferedWriter(new FileWriter(file, true))) {
             bw.newLine();
@@ -226,7 +229,7 @@ public class CsvPayslipRepository implements PayslipRepository {
 
     private Payslip parsePayslipRow(String row) {
         String[] data = row.split(CSV_SPLIT_REGEX, -1);
-        // Expected columns based on HEADER: 23
+        // Expected columns based on HEADER: 23 old, 26 new
         if (data.length < 23) {
             return null;
         }
@@ -261,6 +264,9 @@ public class CsvPayslipRepository implements PayslipRepository {
 
         int processedBy = parseIntSafe(data[21]);
         LocalDateTime processedAt = parseDateTimeSafe(clean(data[22]));
+        double leaveCredits = data.length >= 24 ? parseDoubleSafe(data[23]) : 0.0;
+        double leaveTaken = data.length >= 25 ? parseDoubleSafe(data[24]) : 0.0;
+        double leaveBal = data.length >= 26 ? parseDoubleSafe(data[25]) : Math.max(0.0, leaveCredits - leaveTaken);
 
         // Late deduction and overtime pay are not stored in the CSV snapshot format.
         return new Payslip(
@@ -286,7 +292,10 @@ public class CsvPayslipRepository implements PayslipRepository {
                 totalDed,
                 net,
                 processedBy,
-                processedAt
+                processedAt,
+                leaveCredits,
+                leaveTaken,
+                leaveBal
         );
     }
 

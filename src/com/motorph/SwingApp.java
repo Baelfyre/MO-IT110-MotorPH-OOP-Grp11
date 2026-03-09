@@ -18,6 +18,8 @@ import com.motorph.ops.time.TimeOps;
 import com.motorph.ops.time.TimeOpsImpl;
 import com.motorph.ops.it.ItOps;
 import com.motorph.ops.it.ItOpsImpl;
+import com.motorph.ops.leave.LeaveOps;
+import com.motorph.ops.leave.LeaveOpsImpl;
 
 import com.motorph.repository.AuditRepository;
 import com.motorph.repository.EmployeeRepository;
@@ -32,12 +34,17 @@ import com.motorph.repository.csv.CsvPayslipRepository;
 import com.motorph.repository.csv.CsvTimeRepository;
 import com.motorph.repository.csv.CsvUserRepository;
 import com.motorph.repository.csv.CsvPayrollApprovalRepository;
+import com.motorph.repository.csv.CsvLeaveRepository;
+import com.motorph.repository.csv.CsvLeaveCreditsRepository;
+import com.motorph.repository.csv.CsvAddressReferenceRepository;
 
 import com.motorph.service.AuthService;
 import com.motorph.service.EmployeeService;
 import com.motorph.service.LogService;
 import com.motorph.service.PayrollService;
 import com.motorph.service.TimeService;
+import com.motorph.service.LeaveService;
+import com.motorph.service.LeaveCreditsService;
 
 import com.motorph.service.strategy.DeductionStrategy;
 import com.motorph.service.strategy.PayDeductionStrategy;
@@ -62,18 +69,23 @@ public class SwingApp {
         AuditRepository auditRepo = new CsvAuditRepository();
         PayslipRepository payslipRepo = new CsvPayslipRepository();
         PayrollApprovalRepository approvalRepo = new CsvPayrollApprovalRepository();
+        com.motorph.repository.LeaveRepository leaveRepo = new CsvLeaveRepository();
+        com.motorph.repository.LeaveCreditsRepository leaveCreditsRepo = new CsvLeaveCreditsRepository();
+        CsvAddressReferenceRepository addressRepo = new CsvAddressReferenceRepository(java.nio.file.Paths.get(com.motorph.repository.csv.DataPaths.ADDRESS_REFERENCE_CSV));
 
 // Services
         TimeService timeService = new TimeService(timeRepo);
         AuthService authService = new AuthService(userRepo);
         LogService logService = new LogService();
         EmployeeService employeeService = new EmployeeService(empRepo);
+        LeaveService leaveService = new LeaveService(leaveRepo);
+        LeaveCreditsService leaveCreditsService = new LeaveCreditsService(leaveCreditsRepo, leaveService);
 
         DeductionStrategy deductionStrategy = new PayDeductionStrategy();
-        PayrollService payrollService = new PayrollService(empRepo, timeRepo, deductionStrategy, payslipRepo, auditRepo);
+        PayrollService payrollService = new PayrollService(empRepo, timeRepo, deductionStrategy, payslipRepo, auditRepo, leaveCreditsService);
 
 // Ops
-        TimeOps timeOps = new TimeOpsImpl(timeService, timeRepo, logService);
+        TimeOps timeOps = new TimeOpsImpl(timeService, timeRepo, approvalRepo, logService);
         PayrollOps payrollOps = new PayrollOpsImpl(payrollService, empRepo, logService, approvalRepo);
         DtrApprovalOps dtrApprovalOps = new DtrApprovalOpsImpl(approvalRepo, auditRepo);
         PayslipOps payslipOps = new PayslipOpsImpl(payslipRepo, logService);
@@ -81,11 +93,13 @@ public class SwingApp {
                 employeeService,
                 timeRepo,
                 approvalRepo,
+                leaveRepo,
                 dtrApprovalOps,
                 logService
         );
         HROps hrOps = new HROpsImpl(empRepo, employeeService, userRepo, logService);
         ItOps itOps = new ItOpsImpl(userRepo, logService);
+        LeaveOps leaveOps = new LeaveOpsImpl(leaveRepo, leaveCreditsService, logService);
 
         //Initialize the AuthOps layer
         AuthOps authOps = new AuthOpsImpl(authService, logService);
@@ -96,7 +110,7 @@ public class SwingApp {
             com.motorph.ui.swing.UiHelper.UiThemeHelper.useFlatLaf();
 
             // Pass the successfully wired backend directly into the UI
-            com.motorph.ui.swing.LoginPanel login = new com.motorph.ui.swing.LoginPanel(authOps, employeeService, timeOps, hrOps);
+            com.motorph.ui.swing.LoginPanel login = new com.motorph.ui.swing.LoginPanel(authOps, employeeService, timeOps, hrOps, payrollOps, payslipOps, supervisorOps, leaveOps, itOps, leaveCreditsService, addressRepo);
             login.setVisible(true);
         });
         // UI wiring goes here (later)

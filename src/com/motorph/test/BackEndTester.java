@@ -11,6 +11,8 @@ import com.motorph.repository.csv.CsvPayslipRepository;
 import com.motorph.repository.csv.CsvTimeRepository;
 import com.motorph.repository.csv.DataPaths;
 
+import com.motorph.service.LeaveCreditsService;
+import com.motorph.service.LeaveService;
 import com.motorph.service.PayrollService;
 import com.motorph.service.strategy.DeductionStrategy;
 import com.motorph.service.strategy.PayDeductionStrategy;
@@ -75,7 +77,7 @@ public class BackEndTester {
             CsvAuditRepository auditRepo = new CsvAuditRepository();
             DeductionStrategy strategy = new PayDeductionStrategy();
 
-            PayrollService payrollService = new PayrollService(empRepo, timeRepo, strategy, payslipRepo, auditRepo);
+            PayrollService payrollService = new PayrollService(empRepo, timeRepo, strategy, payslipRepo, auditRepo, new LeaveCreditsService(new com.motorph.repository.csv.CsvLeaveCreditsRepository(), new LeaveService(new com.motorph.repository.csv.CsvLeaveRepository())));
 
             // Clean any previous leftovers from earlier tester runs
             deleteIfExists(dtrFile);

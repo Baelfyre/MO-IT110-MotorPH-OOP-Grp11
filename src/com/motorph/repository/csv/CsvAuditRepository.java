@@ -55,6 +55,7 @@ public class CsvAuditRepository implements AuditRepository {
 
         String row
                 = escape(auditId) + ","
+                + escape("") + ","
                 + escape(targetTable) + ","
                 + escape(recordId) + ","
                 + escape(performedBy) + ","
@@ -92,7 +93,7 @@ public class CsvAuditRepository implements AuditRepository {
 
     private void writeHeader() {
         try (BufferedWriter bw = new BufferedWriter(new FileWriter(DataPaths.AUDIT_LOG_CSV, false))) {
-            bw.write("Audit_ID,Target_Table,Record_ID,Performed_By,Timestamp,Old_Value,New_Value");
+            bw.write("Audit_ID,Category,Target_Table,Record_ID,Performed_By,Timestamp,Old_Value,New_Value");
         } catch (Exception e) {
             // File creation failures are ignored.
         }

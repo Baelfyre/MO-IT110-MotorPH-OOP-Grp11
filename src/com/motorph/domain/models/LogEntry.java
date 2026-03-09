@@ -20,12 +20,18 @@ public class LogEntry {
 
     private int id;
     private LocalDateTime timestamp;
+    private String category;
     private String user;
     private String action;
     private String details;
 
     public LogEntry(int id, LocalDateTime timestamp, String user, String action, String details) {
+        this(id, "", timestamp, user, action, details);
+    }
+
+    public LogEntry(int id, String category, LocalDateTime timestamp, String user, String action, String details) {
         this.id = id;
+        this.category = category;
         this.timestamp = timestamp;
         this.user = user;
         this.action = action;
@@ -38,6 +44,10 @@ public class LogEntry {
 
     public LocalDateTime getTimestamp() {
         return timestamp;
+    }
+
+    public String getCategory() {
+        return category;
     }
 
     public String getUser() {
@@ -60,6 +70,7 @@ public class LogEntry {
         String ts = (timestamp == null) ? "" : timestamp.format(TS_FMT);
 
         return id + ","
+                + escape(category) + ","
                 + escape(ts) + ","
                 + escape(user) + ","
                 + escape(action) + ","

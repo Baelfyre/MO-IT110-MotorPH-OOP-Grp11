@@ -1,0 +1,2 @@
+Payslip_ID,Transaction_ID,EmployeeID,LastName,FirstName,PayPeriodStart,PayPeriodEnd,BasicSalary,RiceAllowance,PhoneAllowance,ClothingAllowance,GrossSemiMonthlyRate,HourlyRate,TotalHoursWorked,GrossIncome,SSS,PhilHealth,Pagibig,WithholdingTax,TotalDeductions,NetPay,ProcessedBy,DateProcessed,LeaveCredits,LeaveTaken,RemainingLeaveBalance
+PS-TX-10013-240616-240630,TX-10013-240616-240630,10013,Farala,Martha,6/16/2024,6/30/2024,24000.00,1500.00,500.00,500.00,12000.00,142.86,86.32,14666.69,625.00,313.81,100.00,0.00,3153.14,11513.56,10003,6/30/2024 18:00,40.00,24.00,16.00

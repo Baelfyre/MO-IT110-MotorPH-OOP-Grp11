@@ -1,0 +1,2 @@
+Payslip_ID,Transaction_ID,EmployeeID,LastName,FirstName,PayPeriodStart,PayPeriodEnd,BasicSalary,RiceAllowance,PhoneAllowance,ClothingAllowance,GrossSemiMonthlyRate,HourlyRate,TotalHoursWorked,GrossIncome,SSS,PhilHealth,Pagibig,WithholdingTax,TotalDeductions,NetPay,ProcessedBy,DateProcessed,LeaveCredits,LeaveTaken,RemainingLeaveBalance
+PS-TX-10011-240601-240615,TX-10011-240601-240615,10011,Salcedo,Anthony,6/1/2024,6/15/2024,50825.00,1500.00,1000.00,1000.00,25413.00,302.53,81.82,29771.82,1275.00,638.91,100.00,541.93,6771.09,23000.73,10003,6/15/2024 18:00,40.00,24.00,16.00

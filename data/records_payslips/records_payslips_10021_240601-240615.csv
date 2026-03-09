@@ -1,0 +1,2 @@
+Payslip_ID,Transaction_ID,EmployeeID,LastName,FirstName,PayPeriodStart,PayPeriodEnd,BasicSalary,RiceAllowance,PhoneAllowance,ClothingAllowance,GrossSemiMonthlyRate,HourlyRate,TotalHoursWorked,GrossIncome,SSS,PhilHealth,Pagibig,WithholdingTax,TotalDeductions,NetPay,ProcessedBy,DateProcessed,LeaveCredits,LeaveTaken,RemainingLeaveBalance
+PS-TX-10021-240601-240615,TX-10021-240601-240615,10021,Lazaro,Darlene,6/1/2024,6/15/2024,23250.00,1500.00,500.00,500.00,11625.00,138.39,79.55,13428.56,575.00,285.37,100.00,0.00,2973.94,10454.62,10003,6/15/2024 18:00,0.00,24.00,0.00

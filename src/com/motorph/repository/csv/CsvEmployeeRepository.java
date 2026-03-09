@@ -44,10 +44,8 @@ public class CsvEmployeeRepository implements EmployeeRepository {
 
                 String[] data = line.split(CSV_SPLIT_REGEX, -1);
 
-                // Accept:
-                // - 19 columns (new)
-                // - 20 columns (legacy, last column is leaveCredits)
-                if (data.length == 19 || data.length == 20) {
+                // Accept the employee master row using the current project columns.
+                if (data.length >= 19) {
                     Employee emp = parseEmployee(data);
                     if (emp != null) {
                         employees.add(emp);
@@ -253,7 +251,6 @@ public class CsvEmployeeRepository implements EmployeeRepository {
             double grossSemi = parseCurrency(data[17]);
             double hourly = parseCurrency(data[18]);
 
-            // data[19] is legacy leaveCredits, intentionally ignored
             Employee emp;
             if ("PROBATIONARY".equalsIgnoreCase(status)) {
                 emp = new com.motorph.domain.models.ProbationaryEmployee(id, last, first);

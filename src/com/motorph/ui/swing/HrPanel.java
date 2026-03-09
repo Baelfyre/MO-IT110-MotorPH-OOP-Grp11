@@ -8,14 +8,7 @@ import com.motorph.domain.enums.Role;
 import com.motorph.domain.models.Employee;
 import com.motorph.domain.models.User;
 import com.motorph.ops.hr.HROps;
-import com.motorph.ops.hr.HROpsImpl;
-import com.motorph.repository.EmployeeRepository;
-import com.motorph.repository.UserRepository;
-import com.motorph.repository.csv.CsvEmployeeRepository;
-import com.motorph.repository.csv.CsvUserRepository;
 import com.motorph.repository.csv.DataPaths;
-import com.motorph.service.EmployeeService;
-import com.motorph.service.LogService;
 
 import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
@@ -58,14 +51,9 @@ public class HrPanel extends JPanel {
     private final JButton btnDelete = new JButton("Delete");
     private final JButton btnLogs = new JButton("System Logs");
 
-    public HrPanel(User currentUser) {
+    public HrPanel(User currentUser, HROps hrOps) {
         this.currentUser = currentUser;
-
-        EmployeeRepository empRepo = new CsvEmployeeRepository();
-        EmployeeService employeeService = new EmployeeService(empRepo);
-        UserRepository userRepo = new CsvUserRepository();
-        LogService logService = new LogService();
-        this.hrOps = new HROpsImpl(empRepo, employeeService, userRepo, logService);
+        this.hrOps = hrOps;
 
         buildUi();
         applyPermissions();

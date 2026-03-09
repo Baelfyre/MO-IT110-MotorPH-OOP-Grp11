@@ -1,0 +1,2 @@
+Payslip_ID,Transaction_ID,EmployeeID,LastName,FirstName,PayPeriodStart,PayPeriodEnd,BasicSalary,RiceAllowance,PhoneAllowance,ClothingAllowance,GrossSemiMonthlyRate,HourlyRate,TotalHoursWorked,GrossIncome,SSS,PhilHealth,Pagibig,WithholdingTax,TotalDeductions,NetPay,ProcessedBy,DateProcessed,LeaveCredits,LeaveTaken,RemainingLeaveBalance
+PS-TX-10000-240601-240615,TX-10000-240601-240615,10000,Super,Admin,6/1/2024,6/15/2024,80000.00,1500.00,2000.00,1000.00,40000.00,476.19,89.13,47686.50,1750.00,1011.61,100.00,3567.42,13651.25,34035.25,10003,6/15/2024 18:00,40.00,24.00,16.00

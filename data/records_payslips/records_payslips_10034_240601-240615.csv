@@ -1,0 +1,2 @@
+Payslip_ID,Transaction_ID,EmployeeID,LastName,FirstName,PayPeriodStart,PayPeriodEnd,BasicSalary,RiceAllowance,PhoneAllowance,ClothingAllowance,GrossSemiMonthlyRate,HourlyRate,TotalHoursWorked,GrossIncome,SSS,PhilHealth,Pagibig,WithholdingTax,TotalDeductions,NetPay,ProcessedBy,DateProcessed,LeaveCredits,LeaveTaken,RemainingLeaveBalance
+PS-TX-10034-240601-240615,TX-10034-240601-240615,10034,Santos,Beatriz,6/1/2024,6/15/2024,52670.00,1500.00,1000.00,1000.00,26335.00,313.51,78.65,29972.59,1225.00,610.33,100.00,328.93,7823.84,22148.75,10003,6/15/2024 18:00,40.00,40.00,0.00

@@ -1,0 +1,2 @@
+Payslip_ID,Transaction_ID,EmployeeID,LastName,FirstName,PayPeriodStart,PayPeriodEnd,BasicSalary,RiceAllowance,PhoneAllowance,ClothingAllowance,GrossSemiMonthlyRate,HourlyRate,TotalHoursWorked,GrossIncome,SSS,PhilHealth,Pagibig,WithholdingTax,TotalDeductions,NetPay,ProcessedBy,DateProcessed,LeaveCredits,LeaveTaken,RemainingLeaveBalance
+PS-TX-10012-240601-240615,TX-10012-240601-240615,10012,Lopez,Josie,6/1/2024,6/15/2024,38475.00,1500.00,800.00,800.00,19238.00,229.02,74.67,21302.80,875.00,439.05,100.00,0.00,5154.71,16148.09,10003,6/15/2024 18:00,40.00,16.00,24.00

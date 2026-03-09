@@ -7,7 +7,6 @@ package com.motorph.service;
 import com.motorph.domain.enums.Role;
 import com.motorph.domain.models.Employee;
 import com.motorph.repository.EmployeeRepository;
-import com.motorph.repository.csv.CsvEmployeeRepository;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -28,10 +27,6 @@ public class EmployeeService {
 
     // Key: Supervisor display name (example: "Garcia, Manuel III"), Value: direct subordinates
     private final Map<String, List<Employee>> supervisorMap = new HashMap<>();
-
-    public EmployeeService() {
-        this(new CsvEmployeeRepository());
-    }
 
     public EmployeeService(EmployeeRepository employeeRepo) {
         this.employeeRepo = employeeRepo;
@@ -83,7 +78,6 @@ public class EmployeeService {
         List<Employee> subs = supervisorMap.getOrDefault(key, new ArrayList<>());
         return new ArrayList<>(subs);
     }
-
     public Role determineRoleFromPosition(String position) {
         if (position == null) {
             return Role.EMPLOYEE;

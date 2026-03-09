@@ -1,0 +1,2 @@
+Payslip_ID,Transaction_ID,EmployeeID,LastName,FirstName,PayPeriodStart,PayPeriodEnd,BasicSalary,RiceAllowance,PhoneAllowance,ClothingAllowance,GrossSemiMonthlyRate,HourlyRate,TotalHoursWorked,GrossIncome,SSS,PhilHealth,Pagibig,WithholdingTax,TotalDeductions,NetPay,ProcessedBy,DateProcessed,LeaveCredits,LeaveTaken,RemainingLeaveBalance
+PS-TX-10015-240601-240615,TX-10015-240601-240615,10015,Romualdez,Fredrick,6/1/2024,6/15/2024,53500.00,1500.00,1000.00,1000.00,26750.00,318.45,83.57,31160.38,1375.00,684.93,100.00,880.89,6803.84,24356.54,10003,6/15/2024 18:00,40.00,16.00,24.00

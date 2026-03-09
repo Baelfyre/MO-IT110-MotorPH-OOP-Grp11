@@ -5,6 +5,7 @@
 package com.motorph.repository.csv;
 
 import com.motorph.domain.models.LogEntry;
+import com.motorph.repository.LogRepository;
 
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
@@ -17,11 +18,12 @@ import java.io.FileWriter;
  *
  * @author ACER
  */
-public class CsvLogRepository {
+public class CsvLogRepository implements LogRepository {
 
-    private static final String HEADER = "Log_ID,Timestamp,User,Action,Details";
+    private static final String HEADER = "Log_ID,LogCategory,Timestamp,User,Action,Details";
     private static final String CSV_SPLIT_REGEX = ",(?=(?:[^\"]*\"[^\"]*\")*[^\"]*$)";
 
+    @Override
     public boolean save(LogEntry entry) {
         if (entry == null) {
             return false;

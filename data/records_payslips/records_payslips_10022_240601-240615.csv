@@ -1,0 +1,2 @@
+Payslip_ID,Transaction_ID,EmployeeID,LastName,FirstName,PayPeriodStart,PayPeriodEnd,BasicSalary,RiceAllowance,PhoneAllowance,ClothingAllowance,GrossSemiMonthlyRate,HourlyRate,TotalHoursWorked,GrossIncome,SSS,PhilHealth,Pagibig,WithholdingTax,TotalDeductions,NetPay,ProcessedBy,DateProcessed,LeaveCredits,LeaveTaken,RemainingLeaveBalance
+PS-TX-10022-240601-240615,TX-10022-240601-240615,10022,Delos Santos,Kolby,6/1/2024,6/15/2024,24000.00,1500.00,500.00,500.00,12000.00,142.86,78.05,14062.52,550.00,277.16,100.00,0.00,3903.41,10159.11,10003,6/15/2024 18:00,0.00,24.00,0.00

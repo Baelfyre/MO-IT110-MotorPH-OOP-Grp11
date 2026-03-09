@@ -44,6 +44,22 @@ public class LeaveCreditsService {
         return Math.max(0.0, credits.getLeaveCreditsHours() - takenYtd);
     }
 
+
+    public double getStoredLeaveCreditsHours(int empId) {
+        var credits = creditsRepo.findByEmpId(empId);
+        return credits == null ? 0.0 : credits.getLeaveCreditsHours();
+    }
+
+    public double getStoredLeaveTakenHours(int empId) {
+        var credits = creditsRepo.findByEmpId(empId);
+        return credits == null ? 0.0 : credits.getLeaveTakenHours();
+    }
+
+    public double getStoredRemainingHours(int empId) {
+        var credits = creditsRepo.findByEmpId(empId);
+        return credits == null ? 0.0 : credits.getRemainingHours();
+    }
+
     public boolean syncLeaveTakenYearToDate(int empId, PayPeriod period) {
         double takenYtd = getLeaveTakenYearToDate(empId, period);
         return creditsRepo.updateLeaveTaken(empId, takenYtd);
