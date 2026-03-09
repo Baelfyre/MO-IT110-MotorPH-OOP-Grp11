@@ -12,19 +12,17 @@ import com.motorph.repository.EmployeeRepository;
 import com.motorph.repository.PayrollApprovalRepository;
 import com.motorph.service.LogService;
 import com.motorph.service.PayrollService;
-
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Coordinates payroll processing, logging, and bulk execution.
+ * Handles payroll execution flow through the ops layer.
  *
- * DTR approval and payroll approval are tracked in the shared records_payroll
- * CSV.
+ * Keeps UI calls separate from service and repository access.
  *
- * @author ACER
+ * @author OngoJ.
  */
 public class PayrollOpsImpl implements PayrollOps {
 
@@ -33,6 +31,9 @@ public class PayrollOpsImpl implements PayrollOps {
     private final LogService logService;
     private final PayrollApprovalRepository approvalRepo;
 
+    /**
+     * Initializes payroll dependencies.
+     */
     public PayrollOpsImpl(PayrollService payrollService,
             EmployeeRepository empRepo,
             LogService logService,
@@ -43,27 +44,35 @@ public class PayrollOpsImpl implements PayrollOps {
         this.approvalRepo = approvalRepo;
     }
 
+    /**
+     * Resolves the active semi-monthly payroll period.
+     */
     @Override
     public PayPeriod resolvePeriod(LocalDate date) {
         return PayPeriod.fromDateSemiMonthly(date);
     }
 
+    /**
+     * Loads payroll queue rows for the selected period.
+     */
     @Override
-    public java.util.List<PayrollQueueItem> listEmployeesForPeriod(PayPeriod period) {
-        java.util.List<Employee> employees = empRepo.findAll();
-        java.util.List<PayrollQueueItem> out = new java.util.ArrayList<>();
+    public List<PayrollQueueItem> listEmployeesForPeriod(PayPeriod period) {
+        List<Employee> employees = empRepo.findAll();
+        List<PayrollQueueItem> out = new ArrayList<>();
         if (period == null) {
             return out;
         }
-        for (Employee e : employees) {
-            if (e == null) {
+
+        for (Employee employee : employees) {
+            if (employee == null) {
                 continue;
             }
-            int empId = e.getEmployeeNumber();
+
+            int empId = employee.getEmployeeNumber();
             approvalRepo.ensureRowExists(empId, period);
             out.add(new PayrollQueueItem(
                     empId,
-                    e.getLastName() + ", " + e.getFirstName(),
+                    employee.getLastName() + ", " + employee.getFirstName(),
                     approvalRepo.getDtrStatus(empId, period),
                     approvalRepo.getPayrollStatus(empId, period)
             ));
@@ -71,69 +80,20 @@ public class PayrollOpsImpl implements PayrollOps {
         return out;
     }
 
+    /**
+     * Processes payroll for one employee only.
+     */
     @Override
     public Payslip processPayrollForEmployee(int empId, PayPeriod period, int processedByUserId) {
-        if (period == null) {
-            logService.recordAction(
-                    String.valueOf(processedByUserId),
-                    "PAYROLL_FAILED",
-                    "Payroll failed. Period is null for EmpID=" + empId
-            );
-            return null;
-        }
-
-        // Shared approval tracker row exists for this empId + period.
-        approvalRepo.ensureRowExists(empId, period);
-
-        // Prevent duplicate payroll runs once already approved for the same period.
-        ApprovalStatus payrollStatus = approvalRepo.getPayrollStatus(empId, period);
-        if (payrollStatus == ApprovalStatus.APPROVED) {
-            logService.recordAction(
-                    String.valueOf(processedByUserId),
-                    "PAYROLL_SKIPPED_ALREADY_APPROVED",
-                    "Skipped payroll for EmpID=" + empId + " Period=" + period.toKey() + " Payroll_Status=" + payrollStatus.name()
-            );
-            return null;
-        }
-
-        // DTR approval gate applied before payroll execution.
-        ApprovalStatus dtrStatus = approvalRepo.getDtrStatus(empId, period);
-        if (dtrStatus != ApprovalStatus.APPROVED) {
-            logService.recordAction(
-                    String.valueOf(processedByUserId),
-                    "PAYROLL_SKIPPED_DTR_NOT_APPROVED",
-                    "Skipped payroll for EmpID=" + empId + " Period=" + period.toKey() + " DTR_Status=" + dtrStatus.name()
-            );
-            return null;
-        }
-
-        Payslip p = payrollService.generatePayslip(empId, period, processedByUserId);
-
-        logService.recordAction(
-                String.valueOf(processedByUserId),
-                (p != null) ? "PAYROLL_OK" : "PAYROLL_FAILED",
-                (p != null)
-                        ? ("Processed payroll for EmpID=" + empId + " TX=" + p.getTransactionId())
-                        : ("Payroll failed for EmpID=" + empId + " Period=" + period.toKey())
-        );
-
-        // Payroll approval is recorded after a successful payslip snapshot.
-        if (p != null) {
-            approvalRepo.upsertPayrollApproval(
-                    empId,
-                    period,
-                    processedByUserId,
-                    ApprovalStatus.APPROVED,
-                    LocalDateTime.now()
-            );
-        }
-
-        return p;
+        PayrollExecutionResult result = processEmployeePayroll(empId, period, processedByUserId);
+        return result.getPayslip();
     }
 
+    /**
+     * Processes payroll for all employees in the selected period.
+     */
     @Override
     public List<PayrollRunResult> processPayrollForPeriod(PayPeriod period, int processedByUserId) {
-        List<Employee> employees = empRepo.findAll();
         List<PayrollRunResult> results = new ArrayList<>();
 
         if (period == null) {
@@ -145,61 +105,18 @@ public class PayrollOpsImpl implements PayrollOps {
             return results;
         }
 
-        for (Employee e : employees) {
-            int empId = e.getEmployeeNumber();
-
-            // Shared approval tracker row exists for this empId + period.
-            approvalRepo.ensureRowExists(empId, period);
-
-            ApprovalStatus payrollStatus = approvalRepo.getPayrollStatus(empId, period);
-            if (payrollStatus == ApprovalStatus.APPROVED) {
-                results.add(new PayrollRunResult(
-                        empId,
-                        "",
-                        false,
-                        "Skipped. Payroll already approved (" + payrollStatus.name() + ")."
-                ));
-
-                logService.recordAction(
-                        String.valueOf(processedByUserId),
-                        "PAYROLL_SKIPPED_ALREADY_APPROVED",
-                        "Skipped payroll for EmpID=" + empId + " Period=" + period.toKey() + " Payroll_Status=" + payrollStatus.name()
-                );
+        List<Employee> employees = empRepo.findAll();
+        for (Employee employee : employees) {
+            if (employee == null) {
                 continue;
             }
 
-            ApprovalStatus dtrStatus = approvalRepo.getDtrStatus(empId, period);
-            if (dtrStatus != ApprovalStatus.APPROVED) {
-                results.add(new PayrollRunResult(
-                        empId,
-                        "",
-                        false,
-                        "Skipped. DTR not approved (" + dtrStatus.name() + ")."
-                ));
-
-                logService.recordAction(
-                        String.valueOf(processedByUserId),
-                        "PAYROLL_SKIPPED_DTR_NOT_APPROVED",
-                        "Skipped payroll for EmpID=" + empId + " Period=" + period.toKey() + " DTR_Status=" + dtrStatus.name()
-                );
-                continue;
-            }
-
-            Payslip p = payrollService.generatePayslip(empId, period, processedByUserId);
-
-            if (p != null) {
-                results.add(new PayrollRunResult(empId, p.getTransactionId(), true, "Payslip snapshot saved."));
-
-                approvalRepo.upsertPayrollApproval(
-                        empId,
-                        period,
-                        processedByUserId,
-                        ApprovalStatus.APPROVED,
-                        LocalDateTime.now()
-                );
-            } else {
-                results.add(new PayrollRunResult(empId, "", false, "Payslip generation or save failed."));
-            }
+            PayrollExecutionResult result = processEmployeePayroll(
+                    employee.getEmployeeNumber(),
+                    period,
+                    processedByUserId
+            );
+            results.add(result.toRunResult());
         }
 
         logService.recordAction(
@@ -209,5 +126,140 @@ public class PayrollOpsImpl implements PayrollOps {
         );
 
         return results;
+    }
+
+    /**
+     * Runs the shared payroll flow for one employee.
+     */
+    private PayrollExecutionResult processEmployeePayroll(int empId, PayPeriod period, int processedByUserId) {
+        if (period == null) {
+            logService.recordAction(
+                    String.valueOf(processedByUserId),
+                    "PAYROLL_FAILED",
+                    "Payroll failed. Period is null for EmpID=" + empId
+            );
+            return PayrollExecutionResult.failed(empId, "", "Payroll failed. Period is null.");
+        }
+
+        approvalRepo.ensureRowExists(empId, period);
+
+        ApprovalStatus payrollStatus = approvalRepo.getPayrollStatus(empId, period);
+        if (payrollStatus == ApprovalStatus.APPROVED) {
+            logService.recordAction(
+                    String.valueOf(processedByUserId),
+                    "PAYROLL_SKIPPED_ALREADY_APPROVED",
+                    "Skipped payroll for EmpID=" + empId + " Period=" + period.toKey() + " Payroll_Status=" + payrollStatus.name()
+            );
+            return PayrollExecutionResult.failed(
+                    empId,
+                    "",
+                    "Skipped. Payroll already approved (" + payrollStatus.name() + ")."
+            );
+        }
+
+        ApprovalStatus dtrStatus = approvalRepo.getDtrStatus(empId, period);
+        if (dtrStatus != ApprovalStatus.APPROVED) {
+            logService.recordAction(
+                    String.valueOf(processedByUserId),
+                    "PAYROLL_SKIPPED_DTR_NOT_APPROVED",
+                    "Skipped payroll for EmpID=" + empId + " Period=" + period.toKey() + " DTR_Status=" + dtrStatus.name()
+            );
+            return PayrollExecutionResult.failed(
+                    empId,
+                    "",
+                    "Skipped. DTR not approved (" + dtrStatus.name() + ")."
+            );
+        }
+
+        Payslip payslip = payrollService.generatePayslip(empId, period, processedByUserId);
+        if (payslip == null) {
+            logService.recordAction(
+                    String.valueOf(processedByUserId),
+                    "PAYROLL_FAILED",
+                    "Payroll failed for EmpID=" + empId + " Period=" + period.toKey()
+            );
+            return PayrollExecutionResult.failed(empId, "", "Payslip generation or save failed.");
+        }
+
+        approvalRepo.upsertPayrollApproval(
+                empId,
+                period,
+                processedByUserId,
+                ApprovalStatus.APPROVED,
+                LocalDateTime.now()
+        );
+
+        logService.recordAction(
+                String.valueOf(processedByUserId),
+                "PAYROLL_OK",
+                "Processed payroll for EmpID=" + empId + " TX=" + payslip.getTransactionId()
+        );
+
+        return PayrollExecutionResult.success(
+                empId,
+                payslip,
+                "Payslip snapshot saved."
+        );
+    }
+
+    /**
+     * Keeps one employee payroll result in a single object.
+     */
+    private static final class PayrollExecutionResult {
+
+        private final int employeeId;
+        private final Payslip payslip;
+        private final boolean success;
+        private final String transactionId;
+        private final String message;
+
+        /**
+         * Stores the payroll execution result.
+         */
+        private PayrollExecutionResult(int employeeId,
+                Payslip payslip,
+                boolean success,
+                String transactionId,
+                String message) {
+            this.employeeId = employeeId;
+            this.payslip = payslip;
+            this.success = success;
+            this.transactionId = transactionId;
+            this.message = message;
+        }
+
+        /**
+         * Builds a successful execution result.
+         */
+        private static PayrollExecutionResult success(int employeeId, Payslip payslip, String message) {
+            return new PayrollExecutionResult(
+                    employeeId,
+                    payslip,
+                    true,
+                    payslip == null ? "" : payslip.getTransactionId(),
+                    message
+            );
+        }
+
+        /**
+         * Builds a failed execution result.
+         */
+        private static PayrollExecutionResult failed(int employeeId, String transactionId, String message) {
+            return new PayrollExecutionResult(employeeId, null, false, transactionId, message);
+        }
+
+        /**
+         * Returns the generated payslip.
+         */
+        private Payslip getPayslip() {
+            return payslip;
+        }
+
+        /**
+         * Converts the result into a batch output row.
+         */
+        private PayrollRunResult toRunResult() {
+            return new PayrollRunResult(employeeId, transactionId, success, message);
+        }
     }
 }

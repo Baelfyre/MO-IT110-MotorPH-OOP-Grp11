@@ -4,6 +4,7 @@
  */
 package com.motorph.ui.swing;
 
+import com.motorph.domain.enums.ApprovalStatus;
 import com.motorph.domain.models.PayPeriod;
 import com.motorph.domain.models.Payslip;
 import com.motorph.domain.models.User;
@@ -21,6 +22,7 @@ import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.text.DecimalFormat;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Date;
 import java.util.List;
@@ -38,14 +40,16 @@ import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
 
 /**
- * Payroll processing panel.
+ * Displays payroll queue, processing actions, and payslip preview.
  *
- * @author ACER
+ * @author OngoJ.
  */
 public class PayrollPanel extends javax.swing.JPanel {
 
     private static final int COL_EMP_ID = 0;
     private static final int COL_PAYSLIP = 4;
+    private static final String ACTION_VIEW = "View";
+    private static final String ACTION_NONE = "-";
 
     private final User currentUser;
     private final PayrollOps payrollOps;
@@ -57,6 +61,9 @@ public class PayrollPanel extends javax.swing.JPanel {
     private final DefaultTableModel model = new DefaultTableModel(
             new Object[]{"EmpID", "Employee", "DTR Status", "Payroll Status", "Payslip"}, 0
     ) {
+        /**
+         * Keeps the table read-only.
+         */
         @Override
         public boolean isCellEditable(int row, int col) {
             return false;
@@ -64,10 +71,16 @@ public class PayrollPanel extends javax.swing.JPanel {
     };
     private final JTable tbl = new JTable(model);
 
+    /**
+     * Overloaded constructor for screens without payslip preview.
+     */
     public PayrollPanel(User currentUser, PayrollOps payrollOps) {
         this(currentUser, payrollOps, null);
     }
 
+    /**
+     * Overloaded constructor for screens with payslip preview support.
+     */
     public PayrollPanel(User currentUser, PayrollOps payrollOps, PayslipOps payslipOps) {
         this.currentUser = currentUser;
         this.payrollOps = payrollOps;
@@ -77,6 +90,9 @@ public class PayrollPanel extends javax.swing.JPanel {
         setActivePeriod(LocalDate.now());
     }
 
+    /**
+     * Builds the payroll screen layout and actions.
+     */
     private void buildUi() {
         setLayout(new BorderLayout(10, 10));
 
@@ -120,6 +136,9 @@ public class PayrollPanel extends javax.swing.JPanel {
         btnProcessAll.addActionListener(e -> onProcessAll());
     }
 
+    /**
+     * Installs the payslip action column behavior.
+     */
     private void installPayslipLinkColumn() {
         if (tbl.getColumnModel().getColumnCount() <= COL_PAYSLIP) {
             return;
@@ -131,6 +150,9 @@ public class PayrollPanel extends javax.swing.JPanel {
         tbl.getColumnModel().getColumn(COL_PAYSLIP).setCellRenderer(new PayslipLinkRenderer());
 
         tbl.addMouseListener(new MouseAdapter() {
+            /**
+             * Opens the saved payslip when the link cell is clicked.
+             */
             @Override
             public void mouseClicked(MouseEvent e) {
                 int viewRow = tbl.rowAtPoint(e.getPoint());
@@ -146,13 +168,16 @@ public class PayrollPanel extends javax.swing.JPanel {
 
                 int modelRow = tbl.convertRowIndexToModel(viewRow);
                 Object value = model.getValueAt(modelRow, COL_PAYSLIP);
-                if ("View".equals(String.valueOf(value))) {
+                if (ACTION_VIEW.equals(String.valueOf(value))) {
                     onViewPayslip(modelRow);
                 }
             }
         });
 
         tbl.addMouseMotionListener(new MouseAdapter() {
+            /**
+             * Changes cursor only for clickable payslip cells.
+             */
             @Override
             public void mouseMoved(MouseEvent e) {
                 int viewRow = tbl.rowAtPoint(e.getPoint());
@@ -165,23 +190,32 @@ public class PayrollPanel extends javax.swing.JPanel {
                 int modelCol = tbl.convertColumnIndexToModel(viewCol);
                 int modelRow = tbl.convertRowIndexToModel(viewRow);
                 Object value = modelCol == COL_PAYSLIP ? model.getValueAt(modelRow, COL_PAYSLIP) : null;
-                boolean clickable = "View".equals(String.valueOf(value));
-                tbl.setCursor(clickable ? Cursor.getPredefinedCursor(Cursor.HAND_CURSOR) : Cursor.getDefaultCursor());
+                boolean clickable = ACTION_VIEW.equals(String.valueOf(value));
+                tbl.setCursor(clickable
+                        ? Cursor.getPredefinedCursor(Cursor.HAND_CURSOR)
+                        : Cursor.getDefaultCursor());
             }
         });
     }
 
+    /**
+     * Sets the active payroll period and refreshes the table.
+     */
     private void setActivePeriod(LocalDate date) {
         activePeriod = payrollOps.resolvePeriod(date);
         lblPeriod.setText("Period: " + activePeriod.getStartDate() + " to " + activePeriod.getEndDate());
         reload();
     }
 
+    /**
+     * Reloads payroll rows for the active period.
+     */
     private void reload() {
         model.setRowCount(0);
         if (activePeriod == null) {
             return;
         }
+
         List<PayrollQueueItem> rows = payrollOps.listEmployeesForPeriod(activePeriod);
         for (PayrollQueueItem row : rows) {
             model.addRow(new Object[]{
@@ -189,11 +223,21 @@ public class PayrollPanel extends javax.swing.JPanel {
                     row.getEmployeeName(),
                     row.getDtrStatus().name(),
                     row.getPayrollStatus().name(),
-                    row.getPayrollStatus().name().equals("APPROVED") ? "View" : "-"
+                    hasApprovedPayroll(row) ? ACTION_VIEW : ACTION_NONE
             });
         }
     }
 
+    /**
+     * Checks if the row already has an approved payroll record.
+     */
+    private boolean hasApprovedPayroll(PayrollQueueItem row) {
+        return row != null && row.getPayrollStatus() == ApprovalStatus.APPROVED;
+    }
+
+    /**
+     * Reads the selected employee ID from the table.
+     */
     private Integer selectedEmpId() {
         int viewRow = tbl.getSelectedRow();
         if (viewRow < 0) {
@@ -211,12 +255,16 @@ public class PayrollPanel extends javax.swing.JPanel {
         }
     }
 
+    /**
+     * Processes payroll for the selected employee.
+     */
     private void onProcessSelected() {
         Integer empId = selectedEmpId();
         if (empId == null) {
             UiDialogs.warn(this, "Select an employee first.");
             return;
         }
+
         Payslip payslip = payrollOps.processPayrollForEmployee(empId, activePeriod, actorId());
         if (payslip != null) {
             UiDialogs.info(this, "Payroll processed. Transaction ID: " + payslip.getTransactionId());
@@ -226,12 +274,18 @@ public class PayrollPanel extends javax.swing.JPanel {
         }
     }
 
+    /**
+     * Processes payroll for all eligible employees.
+     */
     private void onProcessAll() {
         List<PayrollRunResult> results = payrollOps.processPayrollForPeriod(activePeriod, actorId());
         showResults(results);
         reload();
     }
 
+    /**
+     * Opens the saved payslip for the selected row.
+     */
     private void onViewPayslip(int modelRow) {
         if (payslipOps == null) {
             UiDialogs.warn(this, "Payslip view is not available in this screen.");
@@ -260,6 +314,9 @@ public class PayrollPanel extends javax.swing.JPanel {
         showPayslipDialog(payslip);
     }
 
+    /**
+     * Shows a payslip preview dialog.
+     */
     private void showPayslipDialog(Payslip payslip) {
         JTextPane txtPayslip = new JTextPane();
         txtPayslip.setEditable(false);
@@ -280,6 +337,9 @@ public class PayrollPanel extends javax.swing.JPanel {
         dlg.setVisible(true);
     }
 
+    /**
+     * Builds the payslip preview markup.
+     */
     private String buildPayslipHtml(Payslip payslip) {
         String periodText = payslip.getPeriod() == null
                 ? "-"
@@ -319,6 +379,9 @@ public class PayrollPanel extends javax.swing.JPanel {
         return html.toString();
     }
 
+    /**
+     * Adds one detail row to the payslip preview table.
+     */
     private void appendRow(StringBuilder html, String leftLabel, String leftValue, String rightLabel, String rightValue) {
         html.append("<tr>")
                 .append(cellLabel(leftLabel))
@@ -328,27 +391,45 @@ public class PayrollPanel extends javax.swing.JPanel {
                 .append("</tr>");
     }
 
+    /**
+     * Formats one label cell in the payslip preview.
+     */
     private String cellLabel(String value) {
         return "<td style='padding:6px; font-weight:bold; width:18%; border:1px solid #d9d9d9; background:#f5f7fb;'>" + safe(value) + "</td>";
     }
 
+    /**
+     * Formats one value cell in the payslip preview.
+     */
     private String cellValue(String value) {
         return "<td style='padding:6px; width:32%; border:1px solid #d9d9d9;'>" + safe(value) + "</td>";
     }
 
+    /**
+     * Builds one payslip section title.
+     */
     private String sectionTitle(String title) {
         return "<div style='margin-top:14px; margin-bottom:6px; font-size:14px; font-weight:bold; color:#1f3f75;'>" + safe(title) + "</div>";
     }
 
+    /**
+     * Formats one labeled amount line.
+     */
     private String amountLine(String label, double amount) {
         return "<div style='padding:3px 0;'><span style='display:inline-block; min-width:180px; font-weight:bold;'>" + safe(label) + "</span>" + peso(amount) + "</div>";
     }
 
+    /**
+     * Formats peso values for preview.
+     */
     private String peso(double value) {
         DecimalFormat format = new DecimalFormat("#,##0.00");
         return "₱" + format.format(value);
     }
 
+    /**
+     * Formats date values for preview.
+     */
     private String fmtDate(LocalDate date) {
         if (date == null) {
             return "-";
@@ -356,28 +437,44 @@ public class PayrollPanel extends javax.swing.JPanel {
         return date.format(DateTimeFormatter.ofPattern("MM/dd/yyyy", Locale.US));
     }
 
-    private String fmtDateTime(java.time.LocalDateTime value) {
+    /**
+     * Formats date-time values for preview.
+     */
+    private String fmtDateTime(LocalDateTime value) {
         if (value == null) {
             return "-";
         }
         return value.format(DateTimeFormatter.ofPattern("MM/dd/yyyy hh:mm a", Locale.US));
     }
 
+    /**
+     * Returns a safe text value for preview.
+     */
     private String safe(String value) {
         return value == null ? "" : value.trim();
     }
 
+    /**
+     * Returns the current user ID for audit logging.
+     */
     private int actorId() {
         return currentUser == null ? 0 : currentUser.getId();
     }
 
+    /**
+     * Shows batch processing results in a dialog.
+     */
     private void showResults(List<PayrollRunResult> results) {
         DefaultTableModel resultModel = new DefaultTableModel(new Object[]{"EmpID", "Transaction", "Success", "Message"}, 0) {
+            /**
+             * Keeps the result table read-only.
+             */
             @Override
             public boolean isCellEditable(int row, int col) {
                 return false;
             }
         };
+
         for (PayrollRunResult result : results) {
             resultModel.addRow(new Object[]{
                     result.getEmployeeId(),
@@ -386,6 +483,7 @@ public class PayrollPanel extends javax.swing.JPanel {
                     result.getMessage()
             });
         }
+
         JTable table = new JTable(resultModel);
         JDialog dlg = new JDialog(SwingUtilities.getWindowAncestor(this), "Payroll Run Results", JDialog.ModalityType.APPLICATION_MODAL);
         JPanel south = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 10));
@@ -412,18 +510,24 @@ public class PayrollPanel extends javax.swing.JPanel {
         );
     }
 
+    /**
+     * Renders the payslip action link in the table.
+     */
     private static final class PayslipLinkRenderer extends DefaultTableCellRenderer {
 
+        /**
+         * Overrides cell rendering for the payslip action column.
+         */
         @Override
         protected void setValue(Object value) {
             String text = value == null ? "" : String.valueOf(value);
             setHorizontalAlignment(CENTER);
-            if ("View".equals(text)) {
+            if (ACTION_VIEW.equals(text)) {
                 setForeground(new Color(0, 102, 204));
                 setText("<html><u>View</u></html>");
             } else {
                 setForeground(Color.GRAY);
-                setText("-");
+                setText(ACTION_NONE);
             }
         }
     }
