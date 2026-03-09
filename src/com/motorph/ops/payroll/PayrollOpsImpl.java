@@ -49,6 +49,29 @@ public class PayrollOpsImpl implements PayrollOps {
     }
 
     @Override
+    public java.util.List<PayrollQueueItem> listEmployeesForPeriod(PayPeriod period) {
+        java.util.List<Employee> employees = empRepo.findAll();
+        java.util.List<PayrollQueueItem> out = new java.util.ArrayList<>();
+        if (period == null) {
+            return out;
+        }
+        for (Employee e : employees) {
+            if (e == null) {
+                continue;
+            }
+            int empId = e.getEmployeeNumber();
+            approvalRepo.ensureRowExists(empId, period);
+            out.add(new PayrollQueueItem(
+                    empId,
+                    e.getLastName() + ", " + e.getFirstName(),
+                    approvalRepo.getDtrStatus(empId, period),
+                    approvalRepo.getPayrollStatus(empId, period)
+            ));
+        }
+        return out;
+    }
+
+    @Override
     public Payslip processPayrollForEmployee(int empId, PayPeriod period, int processedByUserId) {
         if (period == null) {
             logService.recordAction(

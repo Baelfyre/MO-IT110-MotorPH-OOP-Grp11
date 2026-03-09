@@ -24,4 +24,6 @@ public interface ItOps {
     boolean unlockAccount(String username, int performedByUserId);
 
     boolean setLockStatus(String username, boolean locked, int performedByUserId);
+
+    String getLastActionMessage();
 }

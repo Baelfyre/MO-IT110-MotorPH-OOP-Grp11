@@ -12,6 +12,12 @@ import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileReader;
 import java.io.FileWriter;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.List;
+import java.util.Locale;
 
 /**
  * CSV-backed system activity log repository.
@@ -22,6 +28,7 @@ public class CsvLogRepository implements LogRepository {
 
     private static final String HEADER = "Log_ID,LogCategory,Timestamp,User,Action,Details";
     private static final String CSV_SPLIT_REGEX = ",(?=(?:[^\"]*\"[^\"]*\")*[^\"]*$)";
+    private static final DateTimeFormatter TS_FMT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss", Locale.US);
 
     @Override
     public boolean save(LogEntry entry) {
@@ -42,6 +49,48 @@ public class CsvLogRepository implements LogRepository {
         } catch (Exception e) {
             return false;
         }
+    }
+
+    @Override
+    public List<LogEntry> findAll() {
+        ensureHeader();
+        List<LogEntry> out = new ArrayList<>();
+        File file = new File(DataPaths.SYSTEM_LOG_CSV);
+        if (!file.exists()) {
+            return out;
+        }
+
+        try (BufferedReader br = new BufferedReader(new FileReader(file))) {
+            String line = br.readLine();
+            if (line == null) {
+                return out;
+            }
+
+            while ((line = br.readLine()) != null) {
+                if (line.trim().isEmpty()) {
+                    continue;
+                }
+
+                String[] data = line.split(CSV_SPLIT_REGEX, -1);
+                if (data.length < 6) {
+                    continue;
+                }
+
+                int id = parseInt(clean(data[0]), 0);
+                String category = clean(data[1]);
+                LocalDateTime timestamp = parseTimestamp(clean(data[2]));
+                String user = clean(data[3]);
+                String action = clean(data[4]);
+                String details = clean(data[5]);
+
+                out.add(new LogEntry(id, category, timestamp, user, action, details));
+            }
+        } catch (Exception e) {
+            return new ArrayList<>();
+        }
+
+        out.sort(Comparator.comparing(LogEntry::getId).reversed());
+        return out;
     }
 
     private void ensureHeader() {
@@ -84,7 +133,7 @@ public class CsvLogRepository implements LogRepository {
                 String[] data = line.split(CSV_SPLIT_REGEX, -1);
                 if (data.length > 0) {
                     try {
-                        last = Integer.parseInt(data[0].replace("\"", "").trim());
+                        last = Integer.parseInt(clean(data[0]));
                     } catch (NumberFormatException ignored) {
                         // invalid id rows are ignored
                     }
@@ -95,5 +144,35 @@ public class CsvLogRepository implements LogRepository {
         }
 
         return last + 1;
+    }
+
+    private String clean(String value) {
+        if (value == null) {
+            return "";
+        }
+        String v = value.trim();
+        if (v.startsWith("\"") && v.endsWith("\"") && v.length() >= 2) {
+            v = v.substring(1, v.length() - 1).replace("\"\"", "\"");
+        }
+        return v;
+    }
+
+    private int parseInt(String raw, int fallback) {
+        try {
+            return Integer.parseInt(raw);
+        } catch (Exception e) {
+            return fallback;
+        }
+    }
+
+    private LocalDateTime parseTimestamp(String raw) {
+        if (raw == null || raw.isBlank()) {
+            return LocalDateTime.MIN;
+        }
+        try {
+            return LocalDateTime.parse(raw, TS_FMT);
+        } catch (Exception e) {
+            return LocalDateTime.MIN;
+        }
     }
 }
