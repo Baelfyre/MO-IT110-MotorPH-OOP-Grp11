@@ -85,20 +85,28 @@ public class MainDashboard extends javax.swing.JFrame {
     }
 
     private void customizeSidebar() {
-        // Null-safe fallback
-        boolean hasHR = currentUser != null && currentUser.getRoles().contains(Role.HR);
-        boolean hasPayroll = currentUser != null && currentUser.getRoles().contains(Role.PAYROLL);
-        boolean hasIT = currentUser != null && currentUser.getRoles().contains(Role.IT);
+        if (currentUser == null) {
+            jButton3.setVisible(false);
+            jButton2.setVisible(false);
+            jButton9.setVisible(false);
+            jButton7.setVisible(false);
+            return;
+        }
 
-        // 1. ROLE-BASED FEATURES 
-        // Explicitly set true OR false so they don't get stuck hidden on a UI refresh
-        jButton3.setVisible(hasHR);                // Employee Management = HR only
-        jButton2.setVisible(hasPayroll);           // Payroll Management = Payroll only
-        jButton9.setVisible(hasIT);                // System Maintenance
+        // 1. PERMISSION-BASED RBAC
+        // Checks capabilities rather than hardcoded role names.
+        boolean canManageEmployees = currentUser.hasPermission("CAN_MANAGE_EMPLOYEES");
+        boolean canProcessPayroll = currentUser.hasPermission("CAN_PROCESS_PAYROLL");
+        boolean canManageIT = currentUser.hasPermission("CAN_LOCK_ACCOUNTS");
+        
+        // 2. APPLY RESTRICTIONS TO BUTTONS
+        jButton3.setVisible(canManageEmployees);   // Employee Management (HR/Admin)
+        jButton2.setVisible(canProcessPayroll);    // Payroll Management (Finance/Admin)
+        jButton9.setVisible(canManageIT);          // System Maintenance (IT/Admin)
 
-        // 2. DYNAMIC MANAGER CHECK
-        boolean isASupervisor = (currentUser != null)
-                && employeeService.isSupervisor(currentUser.getUsername());
+        // 3. DYNAMIC MANAGER CHECK
+        boolean isASupervisor = employeeService.isSupervisor(currentUser.getUsername()) 
+                             || currentUser.hasPermission("CAN_APPROVE_DTR");
 
         jButton7.setVisible(isASupervisor);        // Attendance Management
     }

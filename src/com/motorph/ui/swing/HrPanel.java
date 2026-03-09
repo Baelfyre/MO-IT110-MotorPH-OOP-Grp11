@@ -100,24 +100,18 @@ public class HrPanel extends JPanel {
     }
 
     private void applyPermissions() {
-        boolean hasHR = currentUser != null && currentUser.getRoles().contains(Role.HR);
-        boolean hasIT = currentUser != null && currentUser.getRoles().contains(Role.IT);
-
-        boolean canCrud = hasHR || hasIT;
-        boolean canDelete = hasIT;
-
-        btnAdd.setEnabled(canCrud);
-        btnEdit.setEnabled(canCrud);
-        btnDelete.setEnabled(canDelete);
-
-        // Annotation: Hide actions for non-HR/IT roles.
-        if (!canCrud) {
+        if (currentUser == null) {
             btnAdd.setVisible(false);
             btnEdit.setVisible(false);
-        }
-        if (!canDelete) {
             btnDelete.setVisible(false);
+            return;
         }
+        // Annotation: Permission-based RBAC instead of hardcoded roles.
+        boolean canManage = currentUser.hasPermission("CAN_MANAGE_EMPLOYEES");
+
+        btnAdd.setVisible(canManage);
+        btnEdit.setVisible(canManage);
+        btnDelete.setVisible(canManage);
     }
 
     private void applyFilter() {
@@ -174,17 +168,23 @@ public class HrPanel extends JPanel {
             return;
         }
 
-        Employee emp = form.buildEmployeeOrNull(this);
+        // Updated to pass hrOps and true for duplicate ID checking
+        Employee emp = form.buildEmployeeOrNull(this, hrOps, true);
         if (emp == null) {
-            return;
+            return; // Validation failed inside the form
         }
 
-        boolean ok = hrOps.createEmployee(emp, currentUser == null ? 0 : currentUser.getId());
-        if (ok) {
-            UiDialogs.info(this, "Employee created.");
-            loadEmployees();
-        } else {
-            UiDialogs.error(this, "Create failed. Check duplicates or required fields.");
+        try {
+            boolean ok = hrOps.createEmployee(emp, currentUser);
+            if (ok) {
+                UiDialogs.info(this, "Employee created.");
+                loadEmployees();
+            } else {
+                UiDialogs.error(this, "Create failed. Check duplicates or required fields.");
+            }
+        } catch (SecurityException ex) {
+            // Catches the backend RBAC check to prevent crashes
+            UiDialogs.error(this, ex.getMessage());
         }
     }
 
@@ -216,7 +216,7 @@ public class HrPanel extends JPanel {
             return;
         }
 
-        boolean ok = hrOps.updateEmployee(updated, currentUser == null ? 0 : currentUser.getId());
+        boolean ok = hrOps.updateEmployee(updated, currentUser);
         if (ok) {
             UiDialogs.info(this, "Employee updated.");
             loadEmployees();
@@ -237,7 +237,7 @@ public class HrPanel extends JPanel {
             return;
         }
 
-        boolean ok = hrOps.deleteEmployee(empId, currentUser == null ? 0 : currentUser.getId());
+        boolean ok = hrOps.deleteEmployee(empId, currentUser);
         if (ok) {
             UiDialogs.info(this, "Employee deleted.");
             loadEmployees();

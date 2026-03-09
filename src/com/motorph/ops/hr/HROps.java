@@ -5,22 +5,16 @@
 package com.motorph.ops.hr;
 
 import com.motorph.domain.models.Employee;
+import com.motorph.domain.models.User;
 import java.util.List;
 
-/**
- *
- * @author ACER
- */
 public interface HROps {
-
     List<Employee> listEmployees(boolean includeArchived);
-
     Employee getEmployee(int empId);
-
-    boolean createEmployee(Employee emp, int performedByUserId);
-
-    boolean updateEmployee(Employee emp, int performedByUserId);
-
-    boolean deleteEmployee(int empId, int performedByUserId);
-
+    
+    // Pass the User object instead of int performedByUserId
+    boolean createEmployee(Employee emp, User currentUser);
+    boolean updateEmployee(Employee emp, User currentUser);
+    boolean deleteEmployee(int empId, User currentUser);
+    boolean isEmployeeIdDuplicate(int empId);
 }

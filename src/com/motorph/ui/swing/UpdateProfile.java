@@ -254,7 +254,7 @@ public class UpdateProfile extends JPanel {
             currentEmployee.setPhoneNumber(txtPhone.getText().trim());
 
             int performerId = Integer.parseInt(currentUser.getUsername());
-            boolean success = hrOps.updateEmployee(currentEmployee, performerId);
+            boolean success = hrOps.updateEmployee(currentEmployee, currentUser);
 
             if (success) {
                 JOptionPane.showMessageDialog(this, "Profile updated successfully!", "Success", JOptionPane.INFORMATION_MESSAGE);

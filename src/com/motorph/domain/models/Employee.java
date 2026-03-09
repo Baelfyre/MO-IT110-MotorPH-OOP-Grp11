@@ -59,6 +59,9 @@ public abstract class Employee {
     }
 
     public void setLastName(String lastName) {
+        if (lastName == null || lastName.trim().isEmpty()) {
+            throw new IllegalArgumentException("Last name cannot be empty.");
+        }
         this.lastName = safe(lastName);
     }
 
@@ -223,6 +226,9 @@ public abstract class Employee {
     }
 
     public void setBasicSalary(double basicSalary) {
+        if (basicSalary < 0) {
+            throw new IllegalArgumentException("Basic salary cannot be negative.");
+        }
         if (this.compensation == null) {
             this.compensation = new Compensation();
         }

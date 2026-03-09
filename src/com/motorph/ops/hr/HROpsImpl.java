@@ -67,7 +67,17 @@ public class HROpsImpl implements HROps {
     }
 
     @Override
-    public boolean createEmployee(Employee emp, int performedByUserId) {
+    public boolean createEmployee(Employee emp, User currentUser) {
+        // 1. BACKEND RBAC VERIFICATION
+        if (currentUser == null || !currentUser.hasPermission("CAN_MANAGE_EMPLOYEES")) {
+            logService.recordAction(
+                currentUser != null ? String.valueOf(currentUser.getId()) : "UNKNOWN",
+                "SECURITY_VIOLATION",
+                "Unauthorized attempt to create an employee."
+            );
+            throw new SecurityException("Access Denied: You do not have permission to create employees.");
+        }
+
         if (emp == null) {
             return false;
         }
@@ -78,7 +88,7 @@ public class HROpsImpl implements HROps {
         // deny duplicate employee
         if (empRepo.findById(empId) != null) {
             logService.recordAction(
-                    String.valueOf(performedByUserId),
+                    String.valueOf(currentUser.getId()),
                     "HR_CREATE_DENIED_DUPLICATE",
                     "Denied create. Employee already exists EmpID=" + empId
             );
@@ -88,7 +98,7 @@ public class HROpsImpl implements HROps {
         // deny duplicate login before writing employee
         if (userRepo.findByUsername(username) != null) {
             logService.recordAction(
-                    String.valueOf(performedByUserId),
+                    String.valueOf(currentUser.getId()),
                     "HR_CREATE_DENIED_LOGIN_DUPLICATE",
                     "Denied create. Username already exists Username=" + username
             );
@@ -103,7 +113,7 @@ public class HROpsImpl implements HROps {
         User login = new User(
                 empId,
                 username,
-                DataPaths.DEFAULT_PASSWORD,
+                com.motorph.repository.csv.DataPaths.DEFAULT_PASSWORD,
                 employeeService.determineRoleFromPosition(emp.getPosition()),
                 false
         );
@@ -111,7 +121,7 @@ public class HROpsImpl implements HROps {
 
         // combined audit log
         logService.recordAction(
-                String.valueOf(performedByUserId),
+                String.valueOf(currentUser.getId()),
                 "HR_CREATE_OK",
                 "Created employee profile and login. EmpID=" + empId
                 + ", Username=" + username
@@ -123,7 +133,17 @@ public class HROpsImpl implements HROps {
     }
 
     @Override
-    public boolean updateEmployee(Employee emp, int performedByUserId) {
+    public boolean updateEmployee(Employee emp, User currentUser) {
+        // 1. BACKEND RBAC VERIFICATION
+        if (currentUser == null || !currentUser.hasPermission("CAN_MANAGE_EMPLOYEES")) {
+            logService.recordAction(
+                currentUser != null ? String.valueOf(currentUser.getId()) : "UNKNOWN",
+                "SECURITY_VIOLATION",
+                "Unauthorized attempt to update employee ID: " + (emp != null ? emp.getId() : "N/A")
+            );
+            throw new SecurityException("Access Denied: You do not have permission to update employees.");
+        }
+
         if (emp == null) {
             return false;
         }
@@ -135,30 +155,33 @@ public class HROpsImpl implements HROps {
         }
 
         logService.recordAction(
-                String.valueOf(performedByUserId),
+                String.valueOf(currentUser.getId()),
                 ok ? "HR_UPDATE_OK" : "HR_UPDATE_FAILED",
                 "Update employee EmpID=" + emp.getId()
         );
 
         return ok;
     }
-
+    
     @Override
-    public boolean deleteEmployee(int empId, int performedByUserId) {
+    public boolean deleteEmployee(int empId, User currentUser) {
+        // 1. BACKEND RBAC VERIFICATION
+        if (currentUser == null || !currentUser.hasPermission("CAN_MANAGE_EMPLOYEES")) {
+            logService.recordAction(
+                currentUser != null ? String.valueOf(currentUser.getId()) : "UNKNOWN",
+                "SECURITY_VIOLATION",
+                "Unauthorized attempt to delete employee ID: " + empId
+            );
+            throw new SecurityException("Access Denied: You do not have permission to delete employees.");
+        }
 
+        // 2. Normal deletion logic continues here...
         Employee existing = empRepo.findById(empId);
         if (existing == null) {
-            logService.recordAction(
-                    String.valueOf(performedByUserId),
-                    "HR_DELETE_DENIED_NOT_FOUND",
-                    "Denied delete. Employee not found EmpID=" + empId
-            );
             return false;
         }
 
         boolean empDeleted = empRepo.delete(empId);
-
-        // delete login as well to prevent orphan accounts
         String username = String.valueOf(empId);
         boolean loginDeleted = userRepo.deleteByUsername(username);
 
@@ -167,14 +190,16 @@ public class HROpsImpl implements HROps {
         }
 
         logService.recordAction(
-                String.valueOf(performedByUserId),
+                String.valueOf(currentUser.getId()),
                 empDeleted ? "HR_DELETE_OK" : "HR_DELETE_FAILED",
-                "Deleted employee and login. EmpID=" + empId
-                + ", Username=" + username
-                + ", EmployeeDeleted=" + empDeleted
-                + ", LoginDeleted=" + loginDeleted
+                "Deleted employee. EmpID=" + empId
         );
 
         return empDeleted;
+    }
+    @Override
+    public boolean isEmployeeIdDuplicate(int empId) {
+        // Query the repository to see if the employee ID is already taken
+        return empRepo.findById(empId) != null;
     }
 }
