@@ -28,15 +28,19 @@ public class LogService {
         this.logRepo = logRepo;
     }
 
-    public void recordAction(String user, String action, String details) {
+        public void recordAction(String user, String action, String details) {
+        LocalDateTime now = LocalDateTime.now();
+        String category = inferCategory(action);
+
         LogEntry entry = new LogEntry(
-            0,
-            inferCategory(action),
-            LocalDateTime.now(),
-            user,
-            action,
-            details
+                0,
+                category,
+                now,
+                user == null ? "" : user.trim(),
+                action == null ? "" : action.trim(),
+                details == null ? "" : details.trim()
         );
+
         logRepo.save(entry);
     }
 
@@ -81,6 +85,32 @@ public class LogService {
                 }
             }
         }
+        return out;
+    }
+    
+    public List<LogEntry> getLogsForUserByActionPrefix(String user, String actionPrefix) {
+        List<LogEntry> out = new ArrayList<>();
+
+        String actor = user == null ? "" : user.trim();
+        String prefix = actionPrefix == null ? "" : actionPrefix.trim().toUpperCase(Locale.US);
+
+        if (actor.isEmpty() || prefix.isEmpty()) {
+            return out;
+        }
+
+        for (LogEntry entry : logRepo.findAll()) {
+            if (entry == null) {
+                continue;
+            }
+
+            String currentUser = entry.getUser() == null ? "" : entry.getUser().trim();
+            String currentAction = entry.getAction() == null ? "" : entry.getAction().trim().toUpperCase(Locale.US);
+
+            if (actor.equals(currentUser) && currentAction.startsWith(prefix)) {
+                out.add(entry);
+            }
+        }
+
         return out;
     }
 

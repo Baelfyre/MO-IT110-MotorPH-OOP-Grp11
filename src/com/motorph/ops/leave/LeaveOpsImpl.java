@@ -53,7 +53,13 @@ public class LeaveOpsImpl implements LeaveOps {
     public boolean requestLeave(int empId, String firstName, String lastName,
             LocalDate date, LocalTime start, LocalTime end, boolean allowUnpaidFallback) {
 
-        String validationMessage = leaveService.validateLeaveRequest(date, start, end);
+        
+        PayPeriod period = PayPeriod.fromDateSemiMonthly(date);
+        double remainingCredits = creditsService.getRemainingCreditsYearToDate(empId, period);
+
+        String validationMessage = leaveService.validateLeaveRequest(
+                date, start, end, remainingCredits, allowUnpaidFallback
+        );
         if (validationMessage != null) {
             lastRequestMessage = validationMessage;
             logService.recordAction(String.valueOf(empId), "LEAVE_REQUEST_FAILED", validationMessage);
@@ -117,6 +123,11 @@ public class LeaveOpsImpl implements LeaveOps {
         return creditsService.getStoredLeaveCreditsHours(empId);
     }
 
+    @Override
+    public double calculateLeaveHours(LocalTime start, LocalTime end) {
+        return leaveService.calculateHours(start, end);
+    }
+    
     @Override
     public boolean syncLeaveTakenYtd(int empId, PayPeriod period) {
         return creditsService.syncLeaveTakenYearToDate(empId, period);

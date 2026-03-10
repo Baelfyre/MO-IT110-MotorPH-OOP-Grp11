@@ -98,7 +98,15 @@ public class SupervisorPanel extends JPanel {
         top.add(btnLeaveApproval);
         top.add(btnLogs);
 
-        add(top, BorderLayout.NORTH);
+        JScrollPane topScroll = new JScrollPane(
+            top,
+            JScrollPane.VERTICAL_SCROLLBAR_NEVER,
+            JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED
+        );
+        topScroll.setBorder(BorderFactory.createEmptyBorder());
+        topScroll.getHorizontalScrollBar().setUnitIncrement(16);
+
+        add(topScroll, BorderLayout.NORTH);
         add(new JScrollPane(tbl), BorderLayout.CENTER);
 
         btnSetPeriod.addActionListener(e -> {
@@ -419,7 +427,10 @@ public class SupervisorPanel extends JPanel {
     }
 
     private void showLogs() {
-        List<LogEntry> logs = logService.getLogsByActionKeys("SUPERVISOR_", "DTR_", "TIME_");
+        List<LogEntry> logs = logService.getLogsForUserByActionPrefix(
+                String.valueOf(supervisorEmpId()),
+                "SUPERVISOR_"
+        );
         JDialog dlg = new JDialog(SwingUtilities.getWindowAncestor(this), "Supervisor Logs", Dialog.ModalityType.APPLICATION_MODAL);
         DefaultTableModel logModel = new DefaultTableModel(new Object[]{"Log_ID", "Timestamp", "User", "Action", "Details"}, 0) {
             @Override

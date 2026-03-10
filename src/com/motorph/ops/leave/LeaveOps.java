@@ -28,6 +28,8 @@ public interface LeaveOps {
     double getLeaveRemainingYtd(int empId, PayPeriod period);
 
     double getStoredLeaveCreditsHours(int empId);
+    
+    double calculateLeaveHours(LocalTime start, LocalTime end);
 
     boolean syncLeaveTakenYtd(int empId, PayPeriod period);
     

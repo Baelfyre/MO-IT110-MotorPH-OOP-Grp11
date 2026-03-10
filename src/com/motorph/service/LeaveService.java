@@ -108,6 +108,37 @@ public class LeaveService {
         }
         return null;
     }
+    
+    // To validate Leave request
+        public String validateLeaveRequest(
+            LocalDate date,
+            LocalTime start,
+            LocalTime end,
+            double remainingCreditsHours,
+            boolean allowUnpaidFallback
+    ) {
+        String basicError = validateLeaveRequest(date, start, end);
+        if (basicError != null) {
+            return basicError;
+        }
+
+        double requestedHours = calculateHours(start, end);
+
+        if (requestedHours <= 0.0) {
+            return "Leave request hours must be greater than zero.";
+        }
+
+        if (requestedHours > remainingCreditsHours && !allowUnpaidFallback) {
+            return String.format(
+                    java.util.Locale.US,
+                    "Requested leave is %.2f hours but only %.2f paid leave hours remain.",
+                    requestedHours,
+                    remainingCreditsHours
+            );
+        }
+
+        return null;
+    }
 
     public boolean isWeekend(LocalDate date) {
         if (date == null) {
