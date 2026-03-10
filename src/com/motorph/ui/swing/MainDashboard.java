@@ -44,6 +44,7 @@ public class MainDashboard extends javax.swing.JFrame {
     private JPanel mainContentPanel;
     private HomePanel homePanel;
     private Timer clockTimer;
+    private Timer workedHoursTimer;
     private final TimeOps timeOps;
     private final HROps hrOps;
     private final PayrollOps payrollOps;
@@ -857,6 +858,8 @@ public class MainDashboard extends javax.swing.JFrame {
         if (currentUser == null) {
             jLabel13.setText("Time In: ");
             jLabel15.setText("Time Out: ");
+            jLabel21.setText("-");
+            stopWorkedHoursTimer();
             return;
         }
 
@@ -866,6 +869,8 @@ public class MainDashboard extends javax.swing.JFrame {
         } catch (NumberFormatException e) {
             jLabel13.setText("Time In: ");
             jLabel15.setText("Time Out: ");
+            jLabel21.setText("-");
+            stopWorkedHoursTimer();
             return;
         }
 
@@ -875,13 +880,17 @@ public class MainDashboard extends javax.swing.JFrame {
 
         String timeInText = "";
         String timeOutText = "";
+        LocalTime timeIn = null;
+        LocalTime timeOut = null;
 
         for (TimeEntry entry : entries) {
             if (entry.getDate() != null && entry.getDate().equals(today)) {
                 if (entry.getTimeIn() != null) {
+                    timeIn = entry.getTimeIn();
                     timeInText = entry.getTimeIn().format(timeFmt);
                 }
                 if (entry.getTimeOut() != null) {
+                    timeOut = entry.getTimeOut();
                     timeOutText = entry.getTimeOut().format(timeFmt);
                 }
                 break;
@@ -890,6 +899,53 @@ public class MainDashboard extends javax.swing.JFrame {
 
         jLabel13.setText("Time In: " + timeInText);
         jLabel15.setText("Time Out: " + timeOutText);
+
+        updateWorkedHoursLabel(timeIn, timeOut);
+
+        // Refresh worked-hours display every hour while clocked-in.
+        if (timeIn != null && timeOut == null) {
+            startWorkedHoursTimer();
+        } else {
+            stopWorkedHoursTimer();
+        }
+    }
+
+    private void updateWorkedHoursLabel(LocalTime timeIn, LocalTime timeOut) {
+        if (timeIn == null) {
+            jLabel21.setText("-");
+            return;
+        }
+
+        LocalTime end = (timeOut != null) ? timeOut : LocalTime.now();
+        long minutes = java.time.Duration.between(timeIn, end).toMinutes();
+        if (minutes < 0) {
+            minutes = 0;
+        }
+
+        // Mirror payroll lunch-break rule: subtract 60 minutes if worked > 4 hours.
+        if (minutes > 240) {
+            minutes -= 60;
+        }
+
+        double hours = Math.max(0.0, minutes / 60.0);
+        jLabel21.setText(String.format(java.util.Locale.US, "%.2f", hours));
+    }
+
+    private void startWorkedHoursTimer() {
+        if (workedHoursTimer != null && workedHoursTimer.isRunning()) {
+            return;
+        }
+        // Hourly refresh is sufficient; also keeps UI responsive without constant file reads.
+        workedHoursTimer = new Timer(60 * 60 * 1000, e -> loadTodayAttendanceLabels());
+        workedHoursTimer.setInitialDelay(60 * 60 * 1000);
+        workedHoursTimer.start();
+    }
+
+    private void stopWorkedHoursTimer() {
+        if (workedHoursTimer != null) {
+            workedHoursTimer.stop();
+            workedHoursTimer = null;
+        }
     }
 
     private void openUpdateProfileDialog() {
@@ -1045,6 +1101,7 @@ public class MainDashboard extends javax.swing.JFrame {
         if (clockTimer != null) {
             clockTimer.stop();
         }
+        stopWorkedHoursTimer();
         super.dispose();
     }
 }
