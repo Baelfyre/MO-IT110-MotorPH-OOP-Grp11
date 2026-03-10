@@ -4,6 +4,7 @@
  */
 package com.motorph.service;
 
+import com.motorph.domain.enums.LeaveStatus;
 import com.motorph.domain.models.LeaveRequest;
 import com.motorph.domain.models.PayPeriod;
 import com.motorph.repository.LeaveRepository;
@@ -18,8 +19,6 @@ import java.util.Set;
 /**
  * Computes leave usage in hours for payroll. Dedupe and workday filtering are
  * applied at the service layer.
- *
- * @author ACER
  */
 public class LeaveService {
 
@@ -41,6 +40,11 @@ public class LeaveService {
 
         for (LeaveRequest r : rows) {
             if (r == null || r.getDate() == null) {
+                continue;
+            }
+
+            // --- CRITICAL SAFETY NET: Only count APPROVED leaves for Payroll ---
+            if (r.getStatus() != LeaveStatus.APPROVED) {
                 continue;
             }
 
@@ -76,15 +80,11 @@ public class LeaveService {
 
         long minutes = Duration.between(start, end).toMinutes();
 
-        // Leave usage is measured as work-hours; long spans exclude a lunch break.
         if (minutes > 240) {
             minutes -= 60;
         }
 
         double hours = Math.max(0.0, minutes / 60.0);
-
-        // Daily leave consumption is constrained to a standard workday.
         return Math.min(hours, 8.0);
     }
-
 }

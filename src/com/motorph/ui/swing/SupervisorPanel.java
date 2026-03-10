@@ -260,7 +260,7 @@ public class SupervisorPanel extends JPanel {
 
         String note = JOptionPane.showInputDialog(dlg, status == LeaveStatus.APPROVED ? "Approval note (optional):" : "Rejection note (optional):", "Leave Decision", JOptionPane.PLAIN_MESSAGE);
         if (note == null) {
-            note = "";
+            return;
         }
 
         try {
