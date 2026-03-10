@@ -142,13 +142,18 @@ public class PayslipPanel extends JPanel {
     }
 
     private void viewLatest() {
-        Payslip p = payslipOps.viewLatestPayslip(empId());
-        if (p == null) {
+        try {
+            Payslip p = payslipOps.viewLatestPayslip(empId(), currentUser);
+            if (p == null) {
+                clearDetails();
+                UiDialogs.warn(this, "No payslip found.");
+                return;
+            }
+            showPayslip(p);
+        } catch (SecurityException ex) {
+            UiDialogs.error(this, ex.getMessage());
             clearDetails();
-            UiDialogs.warn(this, "No payslip found.");
-            return;
         }
-        showPayslip(p);
     }
 
     private void viewPeriod() {
@@ -156,21 +161,31 @@ public class PayslipPanel extends JPanel {
             UiDialogs.warn(this, "Set the period first.");
             return;
         }
-        Payslip p = payslipOps.viewPayslipForPeriod(empId(), activePeriod);
-        if (p == null) {
+        try {
+            Payslip p = payslipOps.viewPayslipForPeriod(empId(), activePeriod, currentUser);
+            if (p == null) {
+                clearDetails();
+                UiDialogs.warn(this, "No payslip found for this period.");
+                return;
+            }
+            showPayslip(p);
+        } catch (SecurityException ex) {
+            UiDialogs.error(this, ex.getMessage());
             clearDetails();
-            UiDialogs.warn(this, "No payslip found for this period.");
-            return;
         }
-        showPayslip(p);
     }
 
     private void refreshHistory() {
         historyModel.setRowCount(0);
-        List<Payslip> list = payslipOps.listPayslipHistory(empId());
-        for (Payslip p : list) {
-            String periodKey = (p.getPeriod() == null) ? "" : p.getPeriod().toKey();
-            historyModel.addRow(new Object[]{p.getTransactionId(), periodKey, peso(p.getNetPay())});
+        try {
+            List<Payslip> list = payslipOps.listPayslipHistory(empId(), currentUser);
+            for (Payslip p : list) {
+                String periodKey = (p.getPeriod() == null) ? "" : p.getPeriod().toKey();
+                historyModel.addRow(new Object[]{p.getTransactionId(), periodKey, peso(p.getNetPay())});
+            }
+        } catch (SecurityException ex) {
+            // Silently fail or show error if they can't view history
+            UiDialogs.error(this, ex.getMessage());
         }
     }
 
@@ -185,12 +200,16 @@ public class PayslipPanel extends JPanel {
         String tx = String.valueOf(txObj).trim();
         if (tx.isEmpty()) return;
 
-        List<Payslip> list = payslipOps.listPayslipHistory(empId());
-        for (Payslip p : list) {
-            if (tx.equals(p.getTransactionId())) {
-                showPayslip(p);
-                return;
+        try {
+            List<Payslip> list = payslipOps.listPayslipHistory(empId(), currentUser);
+            for (Payslip p : list) {
+                if (tx.equals(p.getTransactionId())) {
+                    showPayslip(p);
+                    return;
+                }
             }
+        } catch (SecurityException ex) {
+             UiDialogs.error(this, ex.getMessage());
         }
     }
 
