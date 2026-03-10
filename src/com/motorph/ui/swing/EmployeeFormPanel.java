@@ -4,16 +4,21 @@
  */
 package com.motorph.ui.swing;
 
+import com.motorph.domain.enums.JobPosition;
 import com.motorph.domain.models.Employee;
-
+import com.motorph.domain.models.ProbationaryEmployee;
+import com.motorph.domain.models.RegularEmployee;
+import com.motorph.utils.ValidationUtil;
 import com.toedter.calendar.JDateChooser;
 
 import javax.swing.*;
+import javax.swing.event.DocumentEvent;
+import javax.swing.event.DocumentListener;
 import java.awt.*;
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.Date;
-import com.motorph.ui.swing.UiHelper.SwingFormHelper;
-
+import java.util.List;
 
 /**
  *
@@ -35,8 +40,8 @@ public class EmployeeFormPanel extends JPanel {
     private final JTextField txtPagibig = new JTextField(16);
 
     private final JComboBox<String> cbStatus = new JComboBox<>(new String[]{"Regular", "Probationary", "Archived"});
-    private final JTextField txtPosition = new JTextField(22);
-    private final JTextField txtSupervisor = new JTextField(22);
+    private final JComboBox<String> cbPosition = new JComboBox<>();
+    private final JComboBox<String> cbSupervisor = new JComboBox<>();
 
     private final JTextField txtBasicSalary = new JTextField(12);
     private final JTextField txtRice = new JTextField(12);
@@ -44,6 +49,7 @@ public class EmployeeFormPanel extends JPanel {
     private final JTextField txtClothingAllow = new JTextField(12);
     private final JTextField txtGrossSemi = new JTextField(12);
     private final JTextField txtHourlyRate = new JTextField(12);
+    private final JTextField txtLeaveCreditsSummary = new JTextField(20);
 
     public EmployeeFormPanel() {
         setLayout(new BorderLayout());
@@ -54,6 +60,19 @@ public class EmployeeFormPanel extends JPanel {
 
         // Annotation: Date chooser provides a calendar popup for convenience.
         dcBirthday.setDateFormatString("MM/dd/yyyy");
+        if (dcBirthday.getDateEditor() instanceof com.toedter.calendar.JTextFieldDateEditor editor) {
+            editor.setEditable(false);
+        }
+
+        txtEmpNo.setEditable(false);
+        txtGrossSemi.setEditable(false);
+        txtHourlyRate.setEditable(false);
+        txtLeaveCreditsSummary.setEditable(false);
+
+        setReadOnlyStyle(txtEmpNo);
+        setReadOnlyStyle(txtGrossSemi);
+        setReadOnlyStyle(txtHourlyRate);
+        setReadOnlyStyle(txtLeaveCreditsSummary);
 
         SwingForm.addLabel(form, gbc, 0, r, "Employee #:");
         SwingForm.addField(form, gbc, 1, r, txtEmpNo);
@@ -86,9 +105,9 @@ public class EmployeeFormPanel extends JPanel {
         SwingForm.addLabel(form, gbc, 0, r, "Pag-IBIG #:");
         SwingForm.addField(form, gbc, 1, r, txtPagibig);
         SwingForm.addLabel(form, gbc, 2, r, "Position:");
-        SwingForm.addField(form, gbc, 3, r, txtPosition);
+        SwingForm.addField(form, gbc, 3, r, cbPosition);
         SwingForm.addLabel(form, gbc, 4, r, "Supervisor:");
-        SwingForm.addField(form, gbc, 5, r, txtSupervisor);
+        SwingForm.addField(form, gbc, 5, r, cbSupervisor);
         r++;
 
         SwingForm.addLabel(form, gbc, 0, r, "Basic Salary:");
@@ -107,12 +126,119 @@ public class EmployeeFormPanel extends JPanel {
         SwingForm.addField(form, gbc, 5, r, txtHourlyRate);
         r++;
 
+        SwingForm.addLabel(form, gbc, 0, r, "Leave Credits:");
+        SwingForm.addFieldSpan(form, gbc, 1, r, 5, txtLeaveCreditsSummary);
+
         add(form, BorderLayout.CENTER);
+
+        installDerivedPayListeners();
+        installStatusListener();
+        loadDefaultPositions();
+        seedDefaultSupervisor();
+        refreshDerivedPayFields();
+        refreshLeaveCreditsSummary();
     }
 
-    // Annotation: Enables or disables editing of Employee # based on flow.
+    private void setReadOnlyStyle(JTextField field) {
+        field.setBackground(new Color(240, 240, 240));
+    }
+
+    private void loadDefaultPositions() {
+        cbPosition.removeAllItems();
+        for (JobPosition jobPosition : JobPosition.values()) {
+            cbPosition.addItem(jobPosition.getLabel());
+        }
+    }
+
+    private void seedDefaultSupervisor() {
+        cbSupervisor.removeAllItems();
+        cbSupervisor.addItem("N/A");
+        cbSupervisor.setSelectedIndex(0);
+    }
+
+    private void installDerivedPayListeners() {
+        DocumentListener listener = new DocumentListener() {
+            @Override
+            public void insertUpdate(DocumentEvent e) {
+                refreshDerivedPayFields();
+            }
+
+            @Override
+            public void removeUpdate(DocumentEvent e) {
+                refreshDerivedPayFields();
+            }
+
+            @Override
+            public void changedUpdate(DocumentEvent e) {
+                refreshDerivedPayFields();
+            }
+        };
+
+        txtBasicSalary.getDocument().addDocumentListener(listener);
+    }
+
+    private void installStatusListener() {
+        cbStatus.addActionListener(e -> refreshLeaveCreditsSummary());
+    }
+
+    private void refreshDerivedPayFields() {
+        double basic = safeMoney(txtBasicSalary.getText());
+        double grossSemi = basic > 0.0 ? basic / 2.0 : 0.0;
+        double hourly = basic > 0.0 ? basic / 26.0 / 8.0 : 0.0;
+
+        txtGrossSemi.setText(formatMoney(grossSemi));
+        txtHourlyRate.setText(formatMoney(hourly));
+    }
+
+    private void refreshLeaveCreditsSummary() {
+        String status = selectedValue(cbStatus);
+        if ("Probationary".equalsIgnoreCase(status)) {
+            txtLeaveCreditsSummary.setText("Default seeded leave credits: 0.00 hrs");
+        } else if ("Archived".equalsIgnoreCase(status)) {
+            txtLeaveCreditsSummary.setText("No new leave credits will be seeded for archived status.");
+        } else {
+            txtLeaveCreditsSummary.setText("Default seeded leave credits: 40.00 hrs");
+        }
+    }
+
+    // Annotation: Keeps Employee # read-only in both add and edit flows.
     public void setEmployeeNumberEditable(boolean editable) {
         txtEmpNo.setEditable(editable);
+    }
+
+    public void setSuggestedEmployeeNumber(int empId) {
+        txtEmpNo.setText(empId > 0 ? String.valueOf(empId) : "");
+    }
+
+    public void setPositionOptions(List<String> positions) {
+        cbPosition.removeAllItems();
+        if (positions == null || positions.isEmpty()) {
+            loadDefaultPositions();
+            return;
+        }
+        for (String position : positions) {
+            cbPosition.addItem(position);
+        }
+    }
+
+    public void setSupervisorOptions(List<String> supervisors) {
+        cbSupervisor.removeAllItems();
+        cbSupervisor.addItem("N/A");
+        if (supervisors != null) {
+            for (String supervisor : supervisors) {
+                if (supervisor == null || supervisor.trim().isEmpty()) {
+                    continue;
+                }
+                if (!"N/A".equalsIgnoreCase(supervisor.trim())) {
+                    cbSupervisor.addItem(supervisor.trim());
+                }
+            }
+        }
+        cbSupervisor.setSelectedIndex(0);
+    }
+
+    public void setLeaveCreditsSummary(String summary) {
+        txtLeaveCreditsSummary.setText(summary == null ? "" : summary);
     }
 
     // Annotation: Loads an Employee record into the form fields.
@@ -142,15 +268,16 @@ public class EmployeeFormPanel extends JPanel {
         txtPagibig.setText(nullToEmpty(e.getPagIbigNumber()));
 
         cbStatus.setSelectedItem(nullToEmpty(e.getStatus()));
-        txtPosition.setText(nullToEmpty(e.getPosition()));
-        txtSupervisor.setText(nullToEmpty(e.getImmediateSupervisor()));
+        cbPosition.setSelectedItem(nullToEmpty(e.getPosition()));
+        cbSupervisor.setSelectedItem(nullToEmpty(e.getImmediateSupervisor()).isEmpty() ? "N/A" : nullToEmpty(e.getImmediateSupervisor()));
 
-        txtBasicSalary.setText(String.valueOf(e.getBasicSalary()));
-        txtRice.setText(String.valueOf(e.getRiceAllowance()));
-        txtPhoneAllow.setText(String.valueOf(e.getPhoneAllowance()));
-        txtClothingAllow.setText(String.valueOf(e.getClothingAllowance()));
-        txtGrossSemi.setText(String.valueOf(e.getGrossSemiMonthlyRate()));
-        txtHourlyRate.setText(String.valueOf(e.getHourlyRate()));
+        txtBasicSalary.setText(formatMoney(e.getBasicSalary()));
+        txtRice.setText(formatMoney(e.getRiceAllowance()));
+        txtPhoneAllow.setText(formatMoney(e.getPhoneAllowance()));
+        txtClothingAllow.setText(formatMoney(e.getClothingAllowance()));
+        txtGrossSemi.setText(formatMoney(e.getGrossSemiMonthlyRate()));
+        txtHourlyRate.setText(formatMoney(e.getHourlyRate()));
+        refreshLeaveCreditsSummary();
     }
 
     // Annotation: Clears all form fields.
@@ -166,14 +293,16 @@ public class EmployeeFormPanel extends JPanel {
         txtTIN.setText("");
         txtPagibig.setText("");
         cbStatus.setSelectedIndex(0);
-        txtPosition.setText("");
-        txtSupervisor.setText("");
+        if (cbPosition.getItemCount() > 0) {
+            cbPosition.setSelectedIndex(0);
+        }
+        cbSupervisor.setSelectedIndex(0);
         txtBasicSalary.setText("");
         txtRice.setText("");
         txtPhoneAllow.setText("");
         txtClothingAllow.setText("");
-        txtGrossSemi.setText("");
-        txtHourlyRate.setText("");
+        refreshDerivedPayFields();
+        refreshLeaveCreditsSummary();
     }
 
     // Annotation: Builds an Employee object from the form values.
@@ -189,33 +318,46 @@ public class EmployeeFormPanel extends JPanel {
 
         String last = txtLastName.getText().trim();
         String first = txtFirstName.getText().trim();
-        if (last.isEmpty() || first.isEmpty()) {
-            UiDialogs.error(parentForErrors, "First Name and Last Name are required.");
+        LocalDate bday = LocalDates.toLocalDate(dcBirthday.getDate());
+        String position = selectedValue(cbPosition);
+        String supervisor = selectedValue(cbSupervisor);
+
+        List<String> errors = new ArrayList<>(ValidationUtil.validateEmployeeFields(
+                last,
+                first,
+                bday,
+                txtPhone.getText(),
+                txtSSS.getText(),
+                txtPhilHealth.getText(),
+                txtTIN.getText(),
+                txtPagibig.getText(),
+                position,
+                supervisor,
+                txtBasicSalary.getText(),
+                txtRice.getText(),
+                txtPhoneAllow.getText(),
+                txtClothingAllow.getText()
+        ));
+
+        if (!errors.isEmpty()) {
+            UiDialogs.error(parentForErrors, String.join("\n", errors));
             return null;
         }
 
-        LocalDate bday = LocalDates.toLocalDate(dcBirthday.getDate());
+        double basic = safeMoney(txtBasicSalary.getText());
+        double rice = safeMoney(txtRice.getText());
+        double phoneAllow = safeMoney(txtPhoneAllow.getText());
+        double clothing = safeMoney(txtClothingAllow.getText());
+        double grossSemi = safeMoney(txtGrossSemi.getText());
+        double hourly = safeMoney(txtHourlyRate.getText());
 
-        double basic = parseMoney(parentForErrors, txtBasicSalary, "Basic Salary");
-        if (Double.isNaN(basic)) return null;
-        double rice = parseMoney(parentForErrors, txtRice, "Rice Allowance");
-        if (Double.isNaN(rice)) return null;
-        double phoneAllow = parseMoney(parentForErrors, txtPhoneAllow, "Phone Allowance");
-        if (Double.isNaN(phoneAllow)) return null;
-        double clothing = parseMoney(parentForErrors, txtClothingAllow, "Clothing Allowance");
-        if (Double.isNaN(clothing)) return null;
-        double grossSemi = parseMoney(parentForErrors, txtGrossSemi, "Gross Semi-Monthly Rate");
-        if (Double.isNaN(grossSemi)) return null;
-        double hourly = parseMoney(parentForErrors, txtHourlyRate, "Hourly Rate");
-        if (Double.isNaN(hourly)) return null;
+        String status = selectedValue(cbStatus);
 
-        String status = String.valueOf(cbStatus.getSelectedItem());
-
-        com.motorph.domain.models.Employee emp;
+        Employee emp;
         if ("Probationary".equalsIgnoreCase(status)) {
-            emp = new com.motorph.domain.models.ProbationaryEmployee(empNo, last, first);
+            emp = new ProbationaryEmployee(empNo, last, first);
         } else {
-            emp = new com.motorph.domain.models.RegularEmployee(empNo, last, first);
+            emp = new RegularEmployee(empNo, last, first);
         }
 
         emp.setBirthday(bday);
@@ -228,8 +370,8 @@ public class EmployeeFormPanel extends JPanel {
         emp.setPagIbigNumber(txtPagibig.getText().trim());
 
         emp.setStatus(status);
-        emp.setPosition(txtPosition.getText().trim());
-        emp.setImmediateSupervisor(txtSupervisor.getText().trim());
+        emp.setPosition(position);
+        emp.setImmediateSupervisor("N/A".equalsIgnoreCase(supervisor) ? "N/A" : supervisor);
 
         emp.setBasicSalary(basic);
         emp.setRiceAllowance(rice);
@@ -241,17 +383,24 @@ public class EmployeeFormPanel extends JPanel {
         return emp;
     }
 
-    private double parseMoney(Component parent, JTextField field, String label) {
-        String raw = field.getText().trim();
-        if (raw.isEmpty()) {
+    private String selectedValue(JComboBox<String> comboBox) {
+        Object value = comboBox.getSelectedItem();
+        return value == null ? "" : value.toString().trim();
+    }
+
+    private double safeMoney(String raw) {
+        if (raw == null || raw.trim().isEmpty()) {
             return 0.0;
         }
         try {
-            return Double.parseDouble(raw.replace(",", ""));
+            return Double.parseDouble(raw.replace(",", "").trim());
         } catch (NumberFormatException ex) {
-            UiDialogs.error(parent, label + " must be a number.");
-            return Double.NaN;
+            return 0.0;
         }
+    }
+
+    private String formatMoney(double value) {
+        return String.format(java.util.Locale.US, "%.2f", value);
     }
 
     private String nullToEmpty(String s) {

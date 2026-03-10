@@ -8,6 +8,7 @@ import com.motorph.domain.enums.ApprovalStatus;
 import com.motorph.domain.models.PayPeriod;
 import com.motorph.domain.models.TimeEntry;
 
+import java.time.LocalDate;
 import java.util.List;
 
 /**
@@ -26,5 +27,10 @@ public interface TimeOps {
     List<TimeEntry> viewMyTimeEntriesForPeriod(int empId, PayPeriod period);
 
     ApprovalStatus getMyDtrStatus(int empId, PayPeriod period);
-}
 
+    TimeEntry getEntryForDate(int empId, LocalDate date);
+
+    double getWorkedHours(TimeEntry entry);
+
+    boolean isWorkedDurationTooShort(TimeEntry entry);
+}

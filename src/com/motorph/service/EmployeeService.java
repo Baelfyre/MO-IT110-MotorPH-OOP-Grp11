@@ -88,11 +88,14 @@ public class EmployeeService {
         if (p.contains("HR")) {
             return Role.HR;
         }
-        if (p.contains("PAYROLL") || p.contains("FINANCE")) {
+        if (p.contains("PAYROLL") || p.contains("FINANCE") || p.contains("ACCOUNTING") || p.contains("ACCOUNT MANAGER") || p.contains("ACCOUNT TEAM LEADER") || p.contains("CHIEF FINANCE OFFICER")) {
             return Role.PAYROLL;
         }
-        if (p.equals("IT OPERATIONS AND SYSTEMS")) {
+        if (p.contains("IT")) {
             return Role.IT;
+        }
+        if (p.contains("CHIEF") || p.contains("CEO") || p.contains("COO") || p.contains("CMO") || p.contains("TEAM LEADER") || p.contains("MANAGER") || p.contains("HEAD")) {
+            return Role.SUPERVISOR;
         }
 
         return Role.EMPLOYEE;

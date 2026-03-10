@@ -23,7 +23,7 @@ public class SelfServicePanel extends JPanel {
         JButton btnAttendance = new JButton("My Attendance");
         JButton btnLeave = new JButton("Request Leave / View Leave Requests");
         JButton btnUpdate = new JButton("Update Address and Contact Information");
-        JButton btnPayslip = new JButton("View Payslip Details");
+        JButton btnPayslip = new JButton("View Payroll Details");
         JButton btnHome = new JButton("Back to Home");
 
         btnAttendance.addActionListener(e -> openAttendance.run());
