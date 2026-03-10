@@ -7,21 +7,17 @@ package com.motorph.ops.it;
 import com.motorph.domain.models.User;
 import java.util.List;
 
-/**
- *
- * @author ACER
- */
 public interface ItOps {
 
     List<User> listUsers();
 
-    boolean resetPasswordToDefault(String username, int performedByUserId);
+    boolean resetPasswordToDefault(String username, User currentUser);
 
-    boolean resetPassword(String username, String newPassword, int performedByUserId);
+    boolean resetPassword(String username, String newPassword, User currentUser);
 
-    boolean lockAccount(String username, int performedByUserId);
+    boolean lockAccount(String username, User currentUser);
 
-    boolean unlockAccount(String username, int performedByUserId);
+    boolean unlockAccount(String username, User currentUser);
 
-    boolean setLockStatus(String username, boolean locked, int performedByUserId);
+    boolean setLockStatus(String username, boolean locked, User currentUser);
 }

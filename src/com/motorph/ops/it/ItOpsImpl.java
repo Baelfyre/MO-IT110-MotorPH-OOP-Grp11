@@ -10,10 +10,6 @@ import java.util.List;
 import com.motorph.repository.csv.DataPaths;
 import com.motorph.service.LogService;
 
-/**
- *
- * @author ACER
- */
 public class ItOpsImpl implements ItOps {
 
     private final UserRepository userRepo;
@@ -30,17 +26,28 @@ public class ItOpsImpl implements ItOps {
     }
 
     @Override
-    public boolean resetPasswordToDefault(String username, int performedByUserId) {
-        return resetPasswordInternal(username, DataPaths.DEFAULT_PASSWORD, performedByUserId, true);
+    public boolean resetPasswordToDefault(String username, User currentUser) {
+        return resetPasswordInternal(username, DataPaths.DEFAULT_PASSWORD, currentUser, true);
     }
 
     @Override
-    public boolean resetPassword(String username, String newPassword, int performedByUserId) {
-        return resetPasswordInternal(username, newPassword, performedByUserId, false);
+    public boolean resetPassword(String username, String newPassword, User currentUser) {
+        return resetPasswordInternal(username, newPassword, currentUser, false);
     }
 
-    private boolean resetPasswordInternal(String username, String newPassword, int performedByUserId, boolean isDefault) {
-        String actor = String.valueOf(performedByUserId);
+    // VERIFICATION 1: Placed in the internal method that handles all password resets
+    private boolean resetPasswordInternal(String username, String newPassword, User currentUser, boolean isDefault) {
+        // --- 1. BACKEND RBAC VERIFICATION ---
+        if (currentUser == null || !currentUser.hasPermission("CAN_RESET_PASSWORD")) {
+            logService.recordAction(
+                currentUser != null ? String.valueOf(currentUser.getId()) : "UNKNOWN",
+                "SECURITY_VIOLATION",
+                "Unauthorized attempt to reset password for user: " + username
+            );
+            throw new SecurityException("Access Denied: You do not have IT permissions to reset passwords.");
+        }
+
+        String actor = String.valueOf(currentUser.getId());
         String uname = safeTrim(username);
         String pass = safeTrim(newPassword);
 
@@ -73,19 +80,36 @@ public class ItOpsImpl implements ItOps {
     }
 
     @Override
-    public boolean lockAccount(String username, int performedByUserId) {
-        return setLockStatus(username, true, performedByUserId);
+    public boolean lockAccount(String username, User currentUser) {
+        return setLockStatus(username, true, currentUser);
     }
 
     @Override
-    public boolean unlockAccount(String username, int performedByUserId) {
-        return setLockStatus(username, false, performedByUserId);
+    public boolean unlockAccount(String username, User currentUser) {
+        return setLockStatus(username, false, currentUser);
     }
 
+    // VERIFICATION 2: Placed directly in the overridden method that handles all locks/unlocks
     @Override
-    public boolean setLockStatus(String username, boolean locked, int performedByUserId) {
-        String actor = String.valueOf(performedByUserId);
+    public boolean setLockStatus(String username, boolean locked, User currentUser) {
+        // --- 1. BACKEND RBAC VERIFICATION ---
+        if (currentUser == null || !currentUser.hasPermission("CAN_LOCK_ACCOUNTS")) {
+            logService.recordAction(
+                currentUser != null ? String.valueOf(currentUser.getId()) : "UNKNOWN",
+                "SECURITY_VIOLATION",
+                "Unauthorized attempt to modify account lock status for user: " + username
+            );
+            throw new SecurityException("Access Denied: You do not have IT permissions to lock or unlock accounts.");
+        }
+
+        String actor = String.valueOf(currentUser.getId());
         String uname = safeTrim(username);
+
+        // --- 2. PREVENT SELF-LOCKOUT ---
+        if (locked && currentUser.getUsername().equalsIgnoreCase(uname)) {
+            logService.recordAction(actor, "IT_SET_LOCK_FAILED", "Admin attempted to lock their own account.");
+            throw new SecurityException("Action Denied: You cannot lock your own account.");
+        }
 
         if (uname.isEmpty()) {
             logService.recordAction(actor, "IT_SET_LOCK_FAILED", "Blank username.");

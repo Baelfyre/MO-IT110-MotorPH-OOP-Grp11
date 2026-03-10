@@ -127,7 +127,7 @@ public class ITPanel extends JPanel {
             return;
         }
 
-        boolean ok = itOps.setLockStatus(username, lock, actorId());
+        boolean ok = itOps.setLockStatus(username, lock, currentUser);
         if (ok) {
             UiDialogs.info(this, lock ? "Account locked." : "Account unlocked.");
             loadUsers();
@@ -143,7 +143,7 @@ public class ITPanel extends JPanel {
             return;
         }
 
-        boolean ok = itOps.resetPasswordToDefault(username, actorId());
+        boolean ok = itOps.resetPasswordToDefault(username, currentUser);
         if (ok) {
             UiDialogs.info(this, "Password reset to default.");
             loadUsers();
@@ -170,7 +170,7 @@ public class ITPanel extends JPanel {
             return;
         }
 
-        boolean ok = itOps.resetPassword(username, newPass, actorId());
+        boolean ok = itOps.resetPassword(username, newPass, currentUser);
         if (ok) {
             UiDialogs.info(this, "Password updated.");
             loadUsers();
