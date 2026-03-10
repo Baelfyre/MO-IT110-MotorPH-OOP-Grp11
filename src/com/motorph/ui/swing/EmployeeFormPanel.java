@@ -13,6 +13,9 @@ import java.awt.*;
 import java.time.LocalDate;
 import java.util.Date;
 import com.motorph.ui.swing.UiHelper.SwingFormHelper;
+import com.motorph.ops.hr.HROps;
+import com.motorph.utils.ValidationUtil;
+import com.motorph.ui.swing.UiDialogs;
 
 
 /**
@@ -177,7 +180,9 @@ public class EmployeeFormPanel extends JPanel {
     }
 
     // Annotation: Builds an Employee object from the form values.
-    public Employee buildEmployeeOrNull(Component parentForErrors) {
+    // Annotation: Builds an Employee object from the form values.
+    // Now requires HROps for duplicate checking, and a flag for new employee creation.
+    public Employee buildEmployeeOrNull(Component parentForErrors, HROps hrOps, boolean isNewEmployee) {
         String empNoStr = txtEmpNo.getText().trim();
         int empNo;
         try {
@@ -187,6 +192,15 @@ public class EmployeeFormPanel extends JPanel {
             return null;
         }
 
+        // --- 1. NEW DUPLICATE ID CHECK ---
+        if (isNewEmployee && hrOps != null) {
+            if (hrOps.isEmployeeIdDuplicate(empNo)) {
+                UiDialogs.error(parentForErrors, "Employee ID " + empNo + " already exists. Please use a different ID.");
+                return null;
+            }
+        }
+
+        // --- 2. REQUIRED FIELDS CHECK ---
         String last = txtLastName.getText().trim();
         String first = txtFirstName.getText().trim();
         if (last.isEmpty() || first.isEmpty()) {
@@ -196,6 +210,32 @@ public class EmployeeFormPanel extends JPanel {
 
         LocalDate bday = LocalDates.toLocalDate(dcBirthday.getDate());
 
+        // --- 3. MILESTONE 2: STRICT GOVERNMENT ID VALIDATION ---
+        String sss = txtSSS.getText().trim();
+        if (!ValidationUtil.isValidSssFormat(sss) && !sss.isEmpty()) {
+            UiDialogs.error(parentForErrors, "Invalid SSS Format. Use XX-XXXXXXX-X");
+            return null;
+        }
+
+        String philHealth = txtPhilHealth.getText().trim();
+        if (!ValidationUtil.isValidPhilHealthFormat(philHealth) && !philHealth.isEmpty()) {
+            UiDialogs.error(parentForErrors, "Invalid PhilHealth Format. Use XX-XXXXXXXXX-X");
+            return null;
+        }
+
+        String tin = txtTIN.getText().trim();
+        if (!ValidationUtil.isValidTinFormat(tin) && !tin.isEmpty()) {
+            UiDialogs.error(parentForErrors, "Invalid TIN Format. Use XXX-XXX-XXX-XXX");
+            return null;
+        }
+
+        String pagibig = txtPagibig.getText().trim();
+        if (!ValidationUtil.isValidPagIbigFormat(pagibig) && !pagibig.isEmpty()) {
+            UiDialogs.error(parentForErrors, "Invalid Pag-IBIG Format. Use XXXX-XXXX-XXXX");
+            return null;
+        }
+
+        // --- 4. NUMERIC PAYROLL VALIDATION ---
         double basic = parseMoney(parentForErrors, txtBasicSalary, "Basic Salary");
         if (Double.isNaN(basic)) return null;
         double rice = parseMoney(parentForErrors, txtRice, "Rice Allowance");
@@ -211,6 +251,7 @@ public class EmployeeFormPanel extends JPanel {
 
         String status = String.valueOf(cbStatus.getSelectedItem());
 
+        // --- 5. BUILD EMPLOYEE OBJECT ---
         com.motorph.domain.models.Employee emp;
         if ("Probationary".equalsIgnoreCase(status)) {
             emp = new com.motorph.domain.models.ProbationaryEmployee(empNo, last, first);
@@ -222,10 +263,10 @@ public class EmployeeFormPanel extends JPanel {
         emp.setAddress(txtAddress.getText().trim());
         emp.setPhoneNumber(txtPhone.getText().trim());
 
-        emp.setSssNumber(txtSSS.getText().trim());
-        emp.setPhilHealthNumber(txtPhilHealth.getText().trim());
-        emp.setTinNumber(txtTIN.getText().trim());
-        emp.setPagIbigNumber(txtPagibig.getText().trim());
+        emp.setSssNumber(sss);
+        emp.setPhilHealthNumber(philHealth);
+        emp.setTinNumber(tin);
+        emp.setPagIbigNumber(pagibig);
 
         emp.setStatus(status);
         emp.setPosition(txtPosition.getText().trim());

@@ -211,7 +211,7 @@ public class HrPanel extends JPanel {
             return;
         }
 
-        Employee updated = form.buildEmployeeOrNull(this);
+        Employee updated = form.buildEmployeeOrNull(this, hrOps, false);
         if (updated == null) {
             return;
         }
