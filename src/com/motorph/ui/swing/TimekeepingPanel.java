@@ -7,6 +7,7 @@ package com.motorph.ui.swing;
 import com.motorph.domain.models.PayPeriod;
 import com.motorph.domain.models.TimeEntry;
 import com.motorph.domain.models.User;
+import com.motorph.service.TimeService;
 import com.toedter.calendar.JDateChooser;
 import com.toedter.calendar.JTextFieldDateEditor;
 
@@ -33,6 +34,7 @@ public class TimekeepingPanel extends JPanel {
     private final JDateChooser dcAnyDate = new JDateChooser();
     private final JLabel lblPeriod = new JLabel("Period: -");
     private final JLabel lblDtrStatus = new JLabel("DTR Status: -");
+    private final JLabel lblWorkedHours = new JLabel("Worked today (hrs): -");
     private PayPeriod activePeriod;
 
     private final DefaultTableModel model = new DefaultTableModel(
@@ -74,6 +76,7 @@ public class TimekeepingPanel extends JPanel {
         top.add(btnSetPeriod);
         top.add(lblPeriod);
         top.add(lblDtrStatus);
+        top.add(lblWorkedHours);
         top.add(btnClockIn);
         top.add(btnClockOut);
         top.add(btnRefresh);
@@ -118,6 +121,23 @@ public class TimekeepingPanel extends JPanel {
                     t.getTimeOut() == null ? "" : t.getTimeOut().format(TIME_FMT)
             });
         }
+        refreshWorkedHoursLabel();
+    }
+
+    private void refreshWorkedHoursLabel() {
+        TimeEntry todayEntry = timeOps.getEntryForDate(empId(), LocalDate.now());
+        if (todayEntry == null || todayEntry.getTimeIn() == null) {
+            lblWorkedHours.setText("Worked today (hrs): -");
+            return;
+        }
+
+        double hours = timeOps.getWorkedHours(todayEntry);
+        if (todayEntry.getTimeOut() == null) {
+            lblWorkedHours.setText("Worked today (hrs): In progress");
+            return;
+        }
+
+        lblWorkedHours.setText(String.format(Locale.US, "Worked today (hrs): %.2f", hours));
     }
 
     private void onClockIn() {
@@ -147,6 +167,12 @@ public class TimekeepingPanel extends JPanel {
         boolean ok = timeOps.clockOut(empId);
         if (ok) {
             UiDialogs.info(this, "Time Out recorded.");
+            TimeEntry todayEntry = timeOps.getEntryForDate(empId, LocalDate.now());
+            if (timeOps.isWorkedDurationTooShort(todayEntry)) {
+                UiDialogs.warn(this, "Recorded work duration is below the minimum review threshold of "
+                        + TimeService.MIN_VALID_WORK_HOURS
+                        + " hour(s). Please contact the supervisor for DTR correction.");
+            }
             if (isOutsideWorkingHours()) {
                 UiDialogs.warn(this, "Logged out beyond working hours. Time was recorded but may require supervisor approval.");
             }

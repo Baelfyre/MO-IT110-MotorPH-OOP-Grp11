@@ -122,7 +122,7 @@ public class MainDashboard extends javax.swing.JFrame {
                 this::openUpdateProfileDialog
         ), "SELF_SERVICE");
         mainContentPanel.add(new HrPanel(currentUser, hrOps), "HR");
-        mainContentPanel.add(new PayrollPanel(currentUser, payrollOps), "PAYROLL");
+        mainContentPanel.add(new PayrollPanel(currentUser, payrollOps, payslipOps), "PAYROLL");
         mainContentPanel.add(new TimekeepingPanel(currentUser, timeOps), "ATTENDANCE");
         mainContentPanel.add(new LeavePanel(currentUser, leaveOps, employeeService), "LEAVE");
         mainContentPanel.add(new SupervisorPanel(currentUser, supervisorOps), "SUPERVISOR");
@@ -743,6 +743,18 @@ public class MainDashboard extends javax.swing.JFrame {
         if (success) {
             JOptionPane.showMessageDialog(this, "Clock Out successful!", "Success", JOptionPane.INFORMATION_MESSAGE);
 
+            TimeEntry todayEntry = timeOps.getEntryForDate(empId, LocalDate.now());
+            if (timeOps.isWorkedDurationTooShort(todayEntry)) {
+                JOptionPane.showMessageDialog(
+                        this,
+                        "Recorded work duration is below the minimum review threshold of "
+                        + com.motorph.service.TimeService.MIN_VALID_WORK_HOURS
+                        + " hour(s). Please contact the supervisor for DTR correction.",
+                        "Notice",
+                        JOptionPane.WARNING_MESSAGE
+                );
+            }
+
             if (isOutsideWorkingHours()) {
                 JOptionPane.showMessageDialog(
                         this,
@@ -852,11 +864,12 @@ public class MainDashboard extends javax.swing.JFrame {
         return day == DayOfWeek.SATURDAY || day == DayOfWeek.SUNDAY;
     }
 
-    // Annotation: Loads today's time-in and time-out into the sidebar labels.
+    // Annotation: Loads today's time-in, time-out, and total worked hours into the sidebar labels.
     private void loadTodayAttendanceLabels() {
         if (currentUser == null) {
             jLabel13.setText("Time In: ");
             jLabel15.setText("Time Out: ");
+            jLabel21.setText("-");
             return;
         }
 
@@ -866,30 +879,32 @@ public class MainDashboard extends javax.swing.JFrame {
         } catch (NumberFormatException e) {
             jLabel13.setText("Time In: ");
             jLabel15.setText("Time Out: ");
+            jLabel21.setText("-");
             return;
         }
 
-        List<TimeEntry> entries = timeOps.viewMyTimeEntries(empId);
         LocalDate today = LocalDate.now();
         DateTimeFormatter timeFmt = DateTimeFormatter.ofPattern("hh:mm:ss a");
+        TimeEntry entry = timeOps.getEntryForDate(empId, today);
 
         String timeInText = "";
         String timeOutText = "";
+        String workedText = "-";
 
-        for (TimeEntry entry : entries) {
-            if (entry.getDate() != null && entry.getDate().equals(today)) {
-                if (entry.getTimeIn() != null) {
-                    timeInText = entry.getTimeIn().format(timeFmt);
-                }
-                if (entry.getTimeOut() != null) {
-                    timeOutText = entry.getTimeOut().format(timeFmt);
-                }
-                break;
+        if (entry != null) {
+            if (entry.getTimeIn() != null) {
+                timeInText = entry.getTimeIn().format(timeFmt);
+                workedText = "In progress";
+            }
+            if (entry.getTimeOut() != null) {
+                timeOutText = entry.getTimeOut().format(timeFmt);
+                workedText = String.format(java.util.Locale.US, "%.2f hrs", timeOps.getWorkedHours(entry));
             }
         }
 
         jLabel13.setText("Time In: " + timeInText);
         jLabel15.setText("Time Out: " + timeOutText);
+        jLabel21.setText(workedText);
     }
 
     private void openUpdateProfileDialog() {

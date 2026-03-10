@@ -4,18 +4,20 @@
  */
 package com.motorph.ui.swing;
 
+import com.motorph.domain.enums.JobPosition;
 import com.motorph.domain.enums.Role;
 import com.motorph.domain.models.Employee;
+import com.motorph.domain.models.LogEntry;
 import com.motorph.domain.models.User;
 import com.motorph.ops.hr.HROps;
-import com.motorph.repository.csv.DataPaths;
+import com.motorph.service.LogService;
 
 import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
 import javax.swing.table.TableRowSorter;
 import java.awt.*;
-import java.io.BufferedReader;
-import java.io.FileReader;
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 
 /**
@@ -29,6 +31,7 @@ public class HrPanel extends JPanel {
 
     private final User currentUser;
     private final HROps hrOps;
+    private final LogService logService;
 
     private final JTextField txtSearch = new JTextField(14);
     private final JCheckBox chkIncludeArchived = new JCheckBox("Include Archived");
@@ -52,8 +55,13 @@ public class HrPanel extends JPanel {
     private final JButton btnLogs = new JButton("System Logs");
 
     public HrPanel(User currentUser, HROps hrOps) {
+        this(currentUser, hrOps, new LogService());
+    }
+
+    public HrPanel(User currentUser, HROps hrOps, LogService logService) {
         this.currentUser = currentUser;
         this.hrOps = hrOps;
+        this.logService = logService;
 
         buildUi();
         applyPermissions();
@@ -166,8 +174,9 @@ public class HrPanel extends JPanel {
 
     // Annotation: Opens a dialog and creates employee profile plus auto-login via HROps.
     private void onAdd() {
-        EmployeeFormPanel form = new EmployeeFormPanel();
-        form.setEmployeeNumberEditable(true);
+        EmployeeFormPanel form = buildPreparedForm(null);
+        form.setSuggestedEmployeeNumber(nextEmployeeId());
+        form.setEmployeeNumberEditable(false);
 
         int r = JOptionPane.showConfirmDialog(this, form, "Add Employee", JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE);
         if (r != JOptionPane.OK_OPTION) {
@@ -202,7 +211,7 @@ public class HrPanel extends JPanel {
             return;
         }
 
-        EmployeeFormPanel form = new EmployeeFormPanel();
+        EmployeeFormPanel form = buildPreparedForm(existing);
         form.setEmployee(existing);
         form.setEmployeeNumberEditable(false);
 
@@ -221,7 +230,7 @@ public class HrPanel extends JPanel {
             UiDialogs.info(this, "Employee updated.");
             loadEmployees();
         } else {
-            UiDialogs.error(this, "Update failed.");
+            UiDialogs.error(this, "Update failed. HR self-edit is blocked and only the assigned supervisor should update HR records.");
         }
     }
 
@@ -246,9 +255,65 @@ public class HrPanel extends JPanel {
         }
     }
 
-    // Annotation: Displays system logs from system_logs.csv.
+    private EmployeeFormPanel buildPreparedForm(Employee existing) {
+        EmployeeFormPanel form = new EmployeeFormPanel();
+        form.setPositionOptions(positionOptions());
+        form.setSupervisorOptions(supervisorOptions(existing == null ? null : existing.getId()));
+        if (existing != null) {
+            String creditsHint = "Probationary".equalsIgnoreCase(existing.getStatus())
+                    ? "Current leave credits: 0.00 hrs"
+                    : "Current leave credits: seeded from leave credits file";
+            form.setLeaveCreditsSummary(creditsHint);
+        }
+        return form;
+    }
+
+    private List<String> positionOptions() {
+        List<String> positions = new ArrayList<>();
+        for (JobPosition position : JobPosition.values()) {
+            positions.add(position.getLabel());
+        }
+        positions.sort(String.CASE_INSENSITIVE_ORDER);
+        return positions;
+    }
+
+    private List<String> supervisorOptions(Integer excludeEmpId) {
+        List<Employee> employees = hrOps.listEmployees(false);
+        List<String> supervisors = new ArrayList<>();
+        for (Employee employee : employees) {
+            if (employee == null) {
+                continue;
+            }
+            if (excludeEmpId != null && employee.getId() == excludeEmpId) {
+                continue;
+            }
+            JobPosition position = JobPosition.fromLabel(employee.getPosition());
+            if (position != null && position.isSupervisorEligible()) {
+                supervisors.add(employee.getLastName() + ", " + employee.getFirstName());
+            }
+        }
+        supervisors.sort(String.CASE_INSENSITIVE_ORDER);
+        return supervisors;
+    }
+
+    private int nextEmployeeId() {
+        List<Employee> employees = hrOps.listEmployees(true);
+        int max = 10000;
+        for (Employee employee : employees) {
+            if (employee != null && employee.getId() > max) {
+                max = employee.getId();
+            }
+        }
+        return max + 1;
+    }
+
+    // Annotation: Displays HR-scoped logs from system_logs.csv.
     private void showSystemLogs() {
-        JDialog dlg = new JDialog(SwingUtilities.getWindowAncestor(this), "System Logs", Dialog.ModalityType.APPLICATION_MODAL);
+        List<LogEntry> logs = new ArrayList<>();
+        logs.addAll(logService.getLogsByCategory("HR"));
+        logs.sort(Comparator.comparing(LogEntry::getId).reversed());
+
+        JDialog dlg = new JDialog(SwingUtilities.getWindowAncestor(this), "HR Logs", Dialog.ModalityType.APPLICATION_MODAL);
 
         DefaultTableModel logModel = new DefaultTableModel(
                 new Object[]{"Log_ID", "Timestamp", "User", "Action", "Details"}, 0
@@ -262,7 +327,15 @@ public class HrPanel extends JPanel {
         JTable t = new JTable(logModel);
         t.setAutoResizeMode(JTable.AUTO_RESIZE_OFF);
 
-        loadSystemLogs(logModel);
+        for (LogEntry entry : logs) {
+            logModel.addRow(new Object[]{
+                    entry.getId(),
+                    entry.getTimestamp(),
+                    entry.getUser(),
+                    entry.getAction(),
+                    entry.getDetails()
+            });
+        }
 
         dlg.setContentPane(SwingForm.wrapNorthCenterSouth(
                 null,
@@ -280,48 +353,6 @@ public class HrPanel extends JPanel {
         close.addActionListener(e -> dlg.dispose());
         p.add(close);
         return p;
-    }
-
-    private void loadSystemLogs(DefaultTableModel logModel) {
-        logModel.setRowCount(0);
-        try (BufferedReader br = new BufferedReader(new FileReader(DataPaths.SYSTEM_LOG_CSV))) {
-            String header = br.readLine();
-            if (header == null) {
-                return;
-            }
-
-            String line;
-            while ((line = br.readLine()) != null) {
-                if (line.trim().isEmpty()) {
-                    continue;
-                }
-                String[] d = line.split(",(?=(?:[^\"]*\"[^\"]*\")*[^\"]*$)", -1);
-                if (d.length < 5) {
-                    continue;
-                }
-                logModel.addRow(new Object[]{
-                    unquote(d[0]),
-                    unquote(d[1]),
-                    unquote(d[2]),
-                    unquote(d[3]),
-                    unquote(d[4])
-                });
-            }
-        } catch (Exception e) {
-            UiDialogs.error(this, "Unable to read system logs.");
-        }
-    }
-
-    private String unquote(String s) {
-        if (s == null) {
-            return "";
-        }
-        String v = s.trim();
-        if (v.startsWith("\"") && v.endsWith("\"") && v.length() >= 2) {
-            v = v.substring(1, v.length() - 1);
-            v = v.replace("\"\"", "\"");
-        }
-        return v;
     }
 
     /**

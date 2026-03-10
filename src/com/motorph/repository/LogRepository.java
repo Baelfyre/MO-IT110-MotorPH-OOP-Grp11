@@ -5,6 +5,7 @@
 package com.motorph.repository;
 
 import com.motorph.domain.models.LogEntry;
+import java.util.List;
 
 /**
  *
@@ -13,4 +14,6 @@ import com.motorph.domain.models.LogEntry;
 public interface LogRepository {
 
     boolean save(LogEntry entry);
+
+    List<LogEntry> findAll();
 }

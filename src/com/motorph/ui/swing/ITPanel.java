@@ -2,9 +2,11 @@ package com.motorph.ui.swing;
 
 import com.motorph.domain.enums.Role;
 import com.motorph.domain.models.Employee;
+import com.motorph.domain.models.LogEntry;
 import com.motorph.domain.models.User;
 import com.motorph.ops.it.ItOps;
 import com.motorph.service.EmployeeService;
+import com.motorph.service.LogService;
 
 import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
@@ -21,6 +23,7 @@ public class ITPanel extends JPanel {
 
     private final EmployeeService employeeService;
     private final ItOps itOps;
+    private final LogService logService;
 
     private final DefaultTableModel model = new DefaultTableModel(
             new Object[]{"Username", "Name", "Roles", "Locked"}, 0
@@ -38,11 +41,17 @@ public class ITPanel extends JPanel {
     private final JButton btnUnlock = new JButton("Unlock");
     private final JButton btnResetDefault = new JButton("Reset Default Password");
     private final JButton btnResetCustom = new JButton("Reset Custom Password");
+    private final JButton btnLogs = new JButton("System Logs");
 
     public ITPanel(User currentUser, EmployeeService employeeService, ItOps itOps) {
+        this(currentUser, employeeService, itOps, new LogService());
+    }
+
+    public ITPanel(User currentUser, EmployeeService employeeService, ItOps itOps, LogService logService) {
         this.currentUser = currentUser;
         this.employeeService = employeeService;
         this.itOps = itOps;
+        this.logService = logService;
 
         buildUi();
         applyPermissions();
@@ -58,6 +67,7 @@ public class ITPanel extends JPanel {
         top.add(btnUnlock);
         top.add(btnResetDefault);
         top.add(btnResetCustom);
+        top.add(btnLogs);
 
         tbl.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
 
@@ -69,6 +79,7 @@ public class ITPanel extends JPanel {
         btnUnlock.addActionListener(e -> onSetLock(false));
         btnResetDefault.addActionListener(e -> onResetDefault());
         btnResetCustom.addActionListener(e -> onResetCustom());
+        btnLogs.addActionListener(e -> showLogs());
     }
 
     private void applyPermissions() {
@@ -78,12 +89,14 @@ public class ITPanel extends JPanel {
         btnUnlock.setEnabled(isIT);
         btnResetDefault.setEnabled(isIT);
         btnResetCustom.setEnabled(isIT);
+        btnLogs.setEnabled(isIT);
 
         if (!isIT) {
             btnLock.setVisible(false);
             btnUnlock.setVisible(false);
             btnResetDefault.setVisible(false);
             btnResetCustom.setVisible(false);
+            btnLogs.setVisible(false);
         }
     }
 
@@ -129,10 +142,10 @@ public class ITPanel extends JPanel {
 
         boolean ok = itOps.setLockStatus(username, lock, actorId());
         if (ok) {
-            UiDialogs.info(this, lock ? "Account locked." : "Account unlocked.");
+            UiDialogs.info(this, itOps.getLastActionMessage());
             loadUsers();
         } else {
-            UiDialogs.error(this, "Lock status update failed.");
+            UiDialogs.error(this, itOps.getLastActionMessage().isEmpty() ? "Lock status update failed." : itOps.getLastActionMessage());
         }
     }
 
@@ -145,10 +158,10 @@ public class ITPanel extends JPanel {
 
         boolean ok = itOps.resetPasswordToDefault(username, actorId());
         if (ok) {
-            UiDialogs.info(this, "Password reset to default.");
+            UiDialogs.info(this, itOps.getLastActionMessage());
             loadUsers();
         } else {
-            UiDialogs.error(this, "Reset failed.");
+            UiDialogs.error(this, itOps.getLastActionMessage().isEmpty() ? "Reset failed." : itOps.getLastActionMessage());
         }
     }
 
@@ -164,18 +177,52 @@ public class ITPanel extends JPanel {
             return;
         }
 
-        newPass = newPass.trim();
-        if (newPass.isEmpty()) {
-            UiDialogs.warn(this, "Password cannot be blank.");
-            return;
-        }
-
         boolean ok = itOps.resetPassword(username, newPass, actorId());
         if (ok) {
-            UiDialogs.info(this, "Password updated.");
+            UiDialogs.info(this, itOps.getLastActionMessage());
             loadUsers();
         } else {
-            UiDialogs.error(this, "Reset failed.");
+            UiDialogs.error(this, itOps.getLastActionMessage().isEmpty() ? "Reset failed." : itOps.getLastActionMessage());
         }
+    }
+
+    private void showLogs() {
+        List<LogEntry> logs = logService.getLogsByCategory("IT");
+        showLogDialog("IT Logs", logs);
+    }
+
+    private void showLogDialog(String title, List<LogEntry> logs) {
+        JDialog dlg = new JDialog(SwingUtilities.getWindowAncestor(this), title, Dialog.ModalityType.APPLICATION_MODAL);
+        DefaultTableModel logModel = new DefaultTableModel(
+                new Object[]{"Log_ID", "Timestamp", "User", "Action", "Details"}, 0
+        ) {
+            @Override
+            public boolean isCellEditable(int row, int col) {
+                return false;
+            }
+        };
+
+        JTable logTable = new JTable(logModel);
+        logTable.setAutoResizeMode(JTable.AUTO_RESIZE_OFF);
+
+        for (LogEntry entry : logs) {
+            logModel.addRow(new Object[]{
+                    entry.getId(),
+                    entry.getTimestamp(),
+                    entry.getUser(),
+                    entry.getAction(),
+                    entry.getDetails()
+            });
+        }
+
+        JPanel south = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 10));
+        JButton close = new JButton("Close");
+        close.addActionListener(e -> dlg.dispose());
+        south.add(close);
+
+        dlg.setContentPane(SwingForm.wrapNorthCenterSouth(null, new JScrollPane(logTable), south));
+        dlg.setSize(900, 500);
+        dlg.setLocationRelativeTo(this);
+        dlg.setVisible(true);
     }
 }
