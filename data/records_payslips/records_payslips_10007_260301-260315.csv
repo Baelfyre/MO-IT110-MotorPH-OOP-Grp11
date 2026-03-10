@@ -1,0 +1,2 @@
+Payslip_ID,Transaction_ID,EmployeeID,LastName,FirstName,PayPeriodStart,PayPeriodEnd,BasicSalary,RiceAllowance,PhoneAllowance,ClothingAllowance,GrossSemiMonthlyRate,HourlyRate,TotalHoursWorked,GrossIncome,SSS,PhilHealth,Pagibig,WithholdingTax,TotalDeductions,NetPay,ProcessedBy,DateProcessed,LeaveCredits,LeaveTaken,RemainingLeaveBalance
+PS-TX-10007-260301-260315,TX-10007-260301-260315,10007,San Jose,Brad,3/1/2026,3/15/2026,50000,1500,800,800,21488,255.80,0,26550,1325,663.75,100,725.65,2814.40,23735.60,10011,3/11/2026 1:43,40,48,0

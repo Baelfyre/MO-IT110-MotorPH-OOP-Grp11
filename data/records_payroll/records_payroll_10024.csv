@@ -1,2 +1,3 @@
 Transaction_ID,Employee_ID,Pay_Period_Start,Pay_Period_End,DTR_Approved_By,DTR_Status,DTR_Approved_Date,Payroll_Approved_By,Payroll_Status,Payroll_Approved_Date
 TX-10024-240616-240630,10024,6/16/2024,6/30/2024,10016,REJECTED,3/8/2026 9:34,,PENDING,
+TX-10024-260301-260315,10024,3/1/2026,3/15/2026,,PENDING,,,PENDING,
