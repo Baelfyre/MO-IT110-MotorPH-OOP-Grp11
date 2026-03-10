@@ -28,6 +28,7 @@ public class CsvLogRepository implements LogRepository {
 
     private static final String HEADER = "Log_ID,LogCategory,Timestamp,User,Action,Details";
     private static final String CSV_SPLIT_REGEX = ",(?=(?:[^\"]*\"[^\"]*\")*[^\"]*$)";
+    private static final DateTimeFormatter LEGACY_TS_FMT = DateTimeFormatter.ofPattern("M/d/yyyy H:mm", Locale.US);
     private static final DateTimeFormatter TS_FMT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss", Locale.US);
 
     @Override
@@ -165,14 +166,25 @@ public class CsvLogRepository implements LogRepository {
         }
     }
 
-    private LocalDateTime parseTimestamp(String raw) {
+        private LocalDateTime parseTimestamp(String raw) {
         if (raw == null || raw.isBlank()) {
             return LocalDateTime.MIN;
         }
+
+        String value = raw.trim();
+
         try {
-            return LocalDateTime.parse(raw, TS_FMT);
-        } catch (Exception e) {
-            return LocalDateTime.MIN;
+            return LocalDateTime.parse(value, TS_FMT);
+        } catch (Exception ignored) {
+            // try legacy format next
         }
+
+        try {
+            return LocalDateTime.parse(value, LEGACY_TS_FMT);
+        } catch (Exception ignored) {
+            // fall through
+        }
+
+        return LocalDateTime.MIN;
     }
 }

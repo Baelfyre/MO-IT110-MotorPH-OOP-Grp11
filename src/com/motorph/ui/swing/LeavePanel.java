@@ -186,14 +186,28 @@ public class LeavePanel extends JPanel {
         String first = emp == null ? "" : emp.getFirstName();
         String last = emp == null ? "" : emp.getLastName();
 
+        double remainingCredits = leaveOps.getLeaveRemainingYtd(empId(), activePeriod);
+        double requestedHours = leaveOps.calculateLeaveHours(start, end);
+
         boolean allowUnpaidFallback = false;
-        if (leaveOps.getStoredLeaveCreditsHours(empId()) <= 0.0) {
-            boolean confirmed = UiDialogs.confirm(this,
-                    "Paid leave credits are 0. Continue and record this request through the unpaid leave confirmation path?");
+
+        if (requestedHours > remainingCredits) {
+            boolean confirmed = UiDialogs.confirm(
+                    this,
+                    String.format(
+                            Locale.US,
+                            "Requested leave is %.2f hours but only %.2f paid leave hours remain.%n%n"
+                            + "Do you want to continue through the unpaid leave confirmation path?",
+                            requestedHours,
+                            remainingCredits
+                    )
+            );
+
             if (!confirmed) {
                 UiDialogs.warn(this, "Leave request cancelled.");
                 return;
             }
+
             allowUnpaidFallback = true;
         }
 
