@@ -4,41 +4,85 @@
  */
 package com.motorph.ui.swing;
 
+import com.motorph.domain.models.PayPeriod;
 import com.motorph.domain.models.User;
 import com.motorph.ops.payroll.PayrollOps;
-import java.awt.BorderLayout;
-import javax.swing.JLabel;
-import javax.swing.JPanel;
+import com.motorph.ops.payroll.PayrollRunResult;
 
-/**
- * Payroll processing panel placeholder.
- *
- * @author ACER
- */
-public class PayrollPanel extends javax.swing.JPanel {
+import java.awt.BorderLayout;
+import java.awt.FlowLayout;
+import java.time.LocalDate;
+import java.util.List;
+import javax.swing.JButton;
+import javax.swing.JLabel;
+import javax.swing.JOptionPane;
+import javax.swing.JPanel;
+import javax.swing.JScrollPane;
+import javax.swing.JTextArea;
+
+public class PayrollPanel extends JPanel {
 
     private final User currentUser;
     private final PayrollOps payrollOps;
+    private final JTextArea txtResults;
+    private final JButton btnRunPayroll;
 
     public PayrollPanel(User currentUser, PayrollOps payrollOps) {
         this.currentUser = currentUser;
         this.payrollOps = payrollOps;
-        initComponents();
-        setLayout(new BorderLayout());
-        add(new JLabel("Payroll processing tools are available through authorized payroll actions."), BorderLayout.NORTH);
+        
+        setLayout(new BorderLayout(10, 10));
+
+        // Top Control Panel
+        JPanel topPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
+        topPanel.add(new JLabel("Payroll Management"));
+        
+        btnRunPayroll = new JButton("Run Batch Payroll (Current Period)");
+        topPanel.add(btnRunPayroll);
+        add(topPanel, BorderLayout.NORTH);
+
+        // Results Area
+        txtResults = new JTextArea();
+        txtResults.setEditable(false);
+        add(new JScrollPane(txtResults), BorderLayout.CENTER);
+
+        // UI RBAC: Hide button if they lack permission
+        if (currentUser == null || !currentUser.hasPermission("CAN_PROCESS_PAYROLL")) {
+            btnRunPayroll.setVisible(false);
+            txtResults.setText("You do not have permission to view or process payroll.");
+        }
+
+        // Action Listener with crash-prevention
+        btnRunPayroll.addActionListener(e -> runBatchPayroll());
     }
 
-    @SuppressWarnings("unchecked")
-    private void initComponents() {
-        javax.swing.GroupLayout layout = new javax.swing.GroupLayout(this);
-        this.setLayout(layout);
-        layout.setHorizontalGroup(
-            layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGap(0, 400, Short.MAX_VALUE)
-        );
-        layout.setVerticalGroup(
-            layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGap(0, 300, Short.MAX_VALUE)
-        );
+    private void runBatchPayroll() {
+        int confirm = JOptionPane.showConfirmDialog(this, 
+            "Are you sure you want to process payroll for all approved DTRs in the current period?", 
+            "Confirm Batch Run", JOptionPane.YES_NO_OPTION);
+            
+        if (confirm != JOptionPane.YES_OPTION) {
+            return;
+        }
+
+        txtResults.setText("Processing...\n");
+        PayPeriod currentPeriod = payrollOps.resolvePeriod(LocalDate.now());
+
+        try {
+            List<PayrollRunResult> results = payrollOps.processPayrollForPeriod(currentPeriod, currentUser);
+            
+            for (PayrollRunResult res : results) {
+                String status = res.isSuccess() ? "SUCCESS" : "SKIPPED/FAILED";
+                txtResults.append("EmpID: " + res.getEmployeeId() + " | " + status + " | " + res.getMessage() + "\n");
+            }
+            
+            txtResults.append("\nBatch process complete.");
+            
+        } catch (SecurityException ex) {
+            // Catches backend verification to prevent runtime crashes
+            UiDialogs.error(this, ex.getMessage());
+        } catch (Exception ex) {
+            UiDialogs.error(this, "An unexpected error occurred: " + ex.getMessage());
+        }
     }
 }

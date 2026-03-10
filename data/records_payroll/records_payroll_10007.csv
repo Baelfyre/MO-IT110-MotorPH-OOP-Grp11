@@ -1,2 +1,2 @@
 Transaction_ID,Employee_ID,Pay_Period_Start,Pay_Period_End,DTR_Approved_By,DTR_Status,DTR_Approved_Date,Payroll_Approved_By,Payroll_Status,Payroll_Approved_Date
-TX-10007-260301-260315,10007,3/1/2026,3/15/2026,,PENDING,,,PENDING,
+TX-10007-260301-260315,10007,3/1/2026,3/15/2026,10006,APPROVED,3/10/2026 22:48,,PENDING,
