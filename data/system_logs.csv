@@ -129,3 +129,10 @@ Log_ID,LogCategory,Timestamp,User,Action,Details
 127,IT,2026-03-10 23:30:47,10000,IT_UNLOCK_OK,Unlocked user: 10028
 128,IT,2026-03-10 23:31:00,10000,IT_LOCK_OK,Locked user: 10000
 129,IT,2026-03-10 23:31:05,10000,IT_UNLOCK_OK,Unlocked user: 10000
+130,SYSTEM,2026-03-10 23:36:27,10000,LOGIN_SUCCESS,User logged in successfully.
+131,PAYROLL,2026-03-10 23:36:28,10000,PAYSLIP_VIEW_HISTORY,Viewed payslip history for EmpID=10000 Count=2
+132,IT,2026-03-10 23:36:38,10000,IT_SET_LOCK_FAILED,Admin attempted to lock their own account.
+133,IT,2026-03-10 23:36:41,10000,IT_SET_LOCK_FAILED,Admin attempted to lock their own account.
+134,SYSTEM,2026-03-10 23:42:31,10000,LOGIN_SUCCESS,User logged in successfully.
+135,PAYROLL,2026-03-10 23:42:31,10000,PAYSLIP_VIEW_HISTORY,Viewed payslip history for EmpID=10000 Count=2
+136,IT,2026-03-10 23:42:39,10000,IT_SET_LOCK_FAILED,Admin attempted to lock their own account.

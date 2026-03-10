@@ -10,6 +10,7 @@ import com.motorph.domain.models.Employee;
 import com.motorph.domain.models.LeaveRequest;
 import com.motorph.domain.models.PayPeriod;
 import com.motorph.domain.models.TimeEntry;
+import com.motorph.domain.models.User;
 import com.motorph.ops.approval.DtrApprovalOps;
 import com.motorph.repository.LeaveRepository;
 import com.motorph.repository.PayrollApprovalRepository;
@@ -21,10 +22,6 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-/**
- *
- * @author ACER
- */
 public class SupervisorOpsImpl implements SupervisorOps {
 
     private final EmployeeService employeeService;
@@ -125,7 +122,19 @@ public class SupervisorOpsImpl implements SupervisorOps {
     }
 
     @Override
-    public boolean approveDirectReportDtr(int supervisorEmpId, int reportEmpId, PayPeriod period) {
+    public boolean approveDirectReportDtr(User currentUser, int reportEmpId, PayPeriod period) {
+        // --- 1. BACKEND RBAC VERIFICATION ---
+        if (currentUser == null || !currentUser.hasPermission("CAN_APPROVE_DTR")) {
+            throw new SecurityException("Access Denied: You do not have permission to approve DTRs.");
+        }
+
+        // --- 2. ANTI-SELF-APPROVAL CHECK ---
+        int supervisorEmpId = currentUser.getId();
+        if (supervisorEmpId == reportEmpId) {
+             logService.recordAction(String.valueOf(supervisorEmpId), "SECURITY_VIOLATION", "Attempted self-approval of DTR.");
+             throw new SecurityException("Action Denied: You cannot approve your own DTR. It must be approved by your manager.");
+        }
+
         if (period == null) {
             return false;
         }
@@ -137,7 +146,7 @@ public class SupervisorOpsImpl implements SupervisorOps {
                     "Denied DTR approve. Supervisor=" + supervisorEmpId
                     + " Report=" + reportEmpId + " Period=" + period.toKey()
             );
-            return false;
+            throw new SecurityException("Action Denied: Employee ID " + reportEmpId + " is not your direct report.");
         }
 
         boolean ok = dtrApprovalOps.approveDtr(reportEmpId, period, supervisorEmpId);
@@ -152,7 +161,18 @@ public class SupervisorOpsImpl implements SupervisorOps {
     }
 
     @Override
-    public boolean rejectDirectReportDtr(int supervisorEmpId, int reportEmpId, PayPeriod period) {
+    public boolean rejectDirectReportDtr(User currentUser, int reportEmpId, PayPeriod period) {
+        // --- 1. BACKEND RBAC VERIFICATION ---
+        if (currentUser == null || !currentUser.hasPermission("CAN_APPROVE_DTR")) {
+            throw new SecurityException("Access Denied: You do not have permission to reject DTRs.");
+        }
+
+        // --- 2. ANTI-SELF-APPROVAL CHECK ---
+        int supervisorEmpId = currentUser.getId();
+        if (supervisorEmpId == reportEmpId) {
+             throw new SecurityException("Action Denied: You cannot reject your own DTR.");
+        }
+
         if (period == null) {
             return false;
         }
@@ -164,7 +184,7 @@ public class SupervisorOpsImpl implements SupervisorOps {
                     "Denied DTR reject. Supervisor=" + supervisorEmpId
                     + " Report=" + reportEmpId + " Period=" + period.toKey()
             );
-            return false;
+             throw new SecurityException("Action Denied: Employee ID " + reportEmpId + " is not your direct report.");
         }
 
         boolean ok = dtrApprovalOps.rejectDtr(reportEmpId, period, supervisorEmpId);
@@ -199,7 +219,19 @@ public class SupervisorOpsImpl implements SupervisorOps {
     }
 
     @Override
-    public boolean decideDirectReportLeave(int supervisorEmpId, int reportEmpId, String leaveId, LeaveStatus status, String note) {
+    public boolean decideDirectReportLeave(User currentUser, int reportEmpId, String leaveId, LeaveStatus status, String note) {
+        // --- 1. BACKEND RBAC VERIFICATION ---
+        if (currentUser == null || !currentUser.hasPermission("CAN_APPROVE_LEAVE")) {
+            throw new SecurityException("Access Denied: You do not have permission to process leave requests.");
+        }
+
+        // --- 2. ANTI-SELF-APPROVAL CHECK ---
+        int supervisorEmpId = currentUser.getId();
+        if (supervisorEmpId == reportEmpId) {
+             logService.recordAction(String.valueOf(supervisorEmpId), "SECURITY_VIOLATION", "Attempted self-approval of Leave.");
+             throw new SecurityException("Action Denied: You cannot approve your own leave requests. It must be approved by your manager.");
+        }
+
         if (leaveId == null || leaveId.trim().isEmpty() || status == null) {
             return false;
         }
@@ -211,7 +243,7 @@ public class SupervisorOpsImpl implements SupervisorOps {
                     "Denied leave decision. Supervisor=" + supervisorEmpId
                     + " Report=" + reportEmpId + " LeaveId=" + leaveId
             );
-            return false;
+            throw new SecurityException("Action Denied: Employee ID " + reportEmpId + " is not your direct report.");
         }
 
         String reviewedAt = LocalDateTime.now().toString();

@@ -1,6 +1,5 @@
 package com.motorph.ui.swing;
 
-import com.motorph.domain.enums.Role;
 import com.motorph.domain.models.Employee;
 import com.motorph.domain.models.User;
 import com.motorph.ops.it.ItOps;
@@ -18,7 +17,6 @@ import java.util.List;
 public class ITPanel extends JPanel {
 
     private final User currentUser;
-
     private final EmployeeService employeeService;
     private final ItOps itOps;
 
@@ -72,19 +70,22 @@ public class ITPanel extends JPanel {
     }
 
     private void applyPermissions() {
-        boolean isIT = currentUser != null && currentUser.getRoles().contains(Role.IT);
-
-        btnLock.setEnabled(isIT);
-        btnUnlock.setEnabled(isIT);
-        btnResetDefault.setEnabled(isIT);
-        btnResetCustom.setEnabled(isIT);
-
-        if (!isIT) {
+        if (currentUser == null) {
             btnLock.setVisible(false);
             btnUnlock.setVisible(false);
             btnResetDefault.setVisible(false);
             btnResetCustom.setVisible(false);
+            return;
         }
+
+        // Advanced RBAC: Checking specific permissions instead of hardcoded roles
+        boolean canLock = currentUser.hasPermission("CAN_LOCK_ACCOUNTS");
+        boolean canReset = currentUser.hasPermission("CAN_RESET_PASSWORD");
+
+        btnLock.setVisible(canLock);
+        btnUnlock.setVisible(canLock);
+        btnResetDefault.setVisible(canReset);
+        btnResetCustom.setVisible(canReset);
     }
 
     private void loadUsers() {
@@ -116,10 +117,6 @@ public class ITPanel extends JPanel {
         return v == null ? null : String.valueOf(v).trim();
     }
 
-    private int actorId() {
-        return currentUser == null ? 0 : currentUser.getId();
-    }
-
     private void onSetLock(boolean lock) {
         String username = selectedUsername();
         if (username == null || username.isEmpty()) {
@@ -127,12 +124,17 @@ public class ITPanel extends JPanel {
             return;
         }
 
-        boolean ok = itOps.setLockStatus(username, lock, currentUser);
-        if (ok) {
-            UiDialogs.info(this, lock ? "Account locked." : "Account unlocked.");
-            loadUsers();
-        } else {
-            UiDialogs.error(this, "Lock status update failed.");
+        try {
+            boolean ok = itOps.setLockStatus(username, lock, currentUser);
+            if (ok) {
+                UiDialogs.info(this, lock ? "Account locked." : "Account unlocked.");
+                loadUsers();
+            } else {
+                UiDialogs.error(this, "Lock status update failed.");
+            }
+        } catch (SecurityException ex) {
+            // Catches the backend RBAC or self-lockout check
+            UiDialogs.error(this, ex.getMessage());
         }
     }
 
@@ -143,12 +145,17 @@ public class ITPanel extends JPanel {
             return;
         }
 
-        boolean ok = itOps.resetPasswordToDefault(username, currentUser);
-        if (ok) {
-            UiDialogs.info(this, "Password reset to default.");
-            loadUsers();
-        } else {
-            UiDialogs.error(this, "Reset failed.");
+        try {
+            boolean ok = itOps.resetPasswordToDefault(username, currentUser);
+            if (ok) {
+                UiDialogs.info(this, "Password reset to default.");
+                loadUsers();
+            } else {
+                UiDialogs.error(this, "Reset failed.");
+            }
+        } catch (SecurityException ex) {
+            // Catches the backend RBAC check
+            UiDialogs.error(this, ex.getMessage());
         }
     }
 
@@ -170,12 +177,17 @@ public class ITPanel extends JPanel {
             return;
         }
 
-        boolean ok = itOps.resetPassword(username, newPass, currentUser);
-        if (ok) {
-            UiDialogs.info(this, "Password updated.");
-            loadUsers();
-        } else {
-            UiDialogs.error(this, "Reset failed.");
+        try {
+            boolean ok = itOps.resetPassword(username, newPass, currentUser);
+            if (ok) {
+                UiDialogs.info(this, "Password updated.");
+                loadUsers();
+            } else {
+                UiDialogs.error(this, "Reset failed.");
+            }
+        } catch (SecurityException ex) {
+            // Catches the backend RBAC check
+            UiDialogs.error(this, ex.getMessage());
         }
     }
 }
