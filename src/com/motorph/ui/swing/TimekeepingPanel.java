@@ -14,7 +14,6 @@ import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
 import java.awt.*;
 import java.time.LocalDate;
-import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Date;
 import java.util.List;
@@ -46,8 +45,6 @@ public class TimekeepingPanel extends JPanel {
 
     private final JTable tbl = new JTable(model);
     private final JButton btnSetPeriod = new JButton("Set Period");
-    private final JButton btnClockIn = new JButton("Clock In");
-    private final JButton btnClockOut = new JButton("Clock Out");
     private final JButton btnRefresh = new JButton("Refresh");
 
     private static final DateTimeFormatter DATE_FMT = DateTimeFormatter.ofPattern("MM/dd/yyyy", Locale.US);
@@ -74,8 +71,12 @@ public class TimekeepingPanel extends JPanel {
         top.add(btnSetPeriod);
         top.add(lblPeriod);
         top.add(lblDtrStatus);
+<<<<<<< Updated upstream
         top.add(btnClockIn);
         top.add(btnClockOut);
+=======
+        top.add(lblWorkedHours);
+>>>>>>> Stashed changes
         top.add(btnRefresh);
 
         add(top, BorderLayout.NORTH);
@@ -89,8 +90,6 @@ public class TimekeepingPanel extends JPanel {
             }
             setActivePeriod(d);
         });
-        btnClockIn.addActionListener(e -> onClockIn());
-        btnClockOut.addActionListener(e -> onClockOut());
         btnRefresh.addActionListener(e -> reload());
     }
 
@@ -119,6 +118,7 @@ public class TimekeepingPanel extends JPanel {
             });
         }
     }
+<<<<<<< Updated upstream
 
     private void onClockIn() {
         int empId = empId();
@@ -179,4 +179,6 @@ public class TimekeepingPanel extends JPanel {
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
     // End of variables declaration//GEN-END:variables
+=======
+>>>>>>> Stashed changes
 }

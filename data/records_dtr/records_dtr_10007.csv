@@ -151,4 +151,8 @@ Attendance_ID,Employee #,Date,Log In,Log Out,First Name,Last Name
 10007-45653,10007,12/27/2024,8:33 AM,6:07 PM,Brad,San Jose
 10007-45656,10007,12/30/2024,10:37 AM,8:41 PM,Brad,San Jose
 10007-45657,10007,12/31/2024,8:10 AM,6:21 PM,Brad,San Jose
+<<<<<<< Updated upstream
 10007-46091,10007,3/10/2026,11:07 AM,11:07 AM,,
+=======
+10007-46092,10007,3/11/2026,3:00:14 PM,3:00:18 PM,Brad,San Jose
+>>>>>>> Stashed changes
