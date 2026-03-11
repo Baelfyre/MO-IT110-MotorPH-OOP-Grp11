@@ -23,6 +23,8 @@ public interface SupervisorOps {
     List<SupervisorDtrSummary> listDirectReportStatuses(int supervisorEmpId, PayPeriod period);
 
     List<TimeEntry> viewDirectReportTimeEntries(int supervisorEmpId, int reportEmpId, PayPeriod period);
+    
+    boolean updateDirectReportTimeEntry(int supervisorEmpId, int reportEmpId, LocalDate date, LocalTime timeIn, LocalTime timeOut);
 
     boolean approveDirectReportDtr(User currentUser, int reportEmpId, PayPeriod period);
 

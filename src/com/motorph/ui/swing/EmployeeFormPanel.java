@@ -4,6 +4,7 @@
  */
 package com.motorph.ui.swing;
 
+import java.util.List;
 import com.motorph.domain.enums.JobPosition;
 import com.motorph.domain.models.Employee;
 import com.motorph.domain.models.ProbationaryEmployee;
@@ -12,7 +13,6 @@ import com.motorph.repository.csv.CsvAddressReferenceRepository;
 import com.motorph.utils.AddressFormatter;
 import com.motorph.utils.AddressParser;
 import com.motorph.utils.InputRestrictionUtil;
-import com.motorph.utils.ValidationUtil;
 import com.toedter.calendar.JDateChooser;
 
 import javax.swing.*;
@@ -630,22 +630,6 @@ public class EmployeeFormPanel extends JPanel {
             UiDialogs.error(parentForErrors, "Invalid Pag-IBIG Format. Use XXXX-XXXX-XXXX");
             return null;
         }
-
-        // --- 4. NUMERIC PAYROLL VALIDATION ---
-        double basic = parseMoney(parentForErrors, txtBasicSalary, "Basic Salary");
-        if (Double.isNaN(basic)) return null;
-        double rice = parseMoney(parentForErrors, txtRice, "Rice Allowance");
-        if (Double.isNaN(rice)) return null;
-        double phoneAllow = parseMoney(parentForErrors, txtPhoneAllow, "Phone Allowance");
-        if (Double.isNaN(phoneAllow)) return null;
-        double clothing = parseMoney(parentForErrors, txtClothingAllow, "Clothing Allowance");
-        if (Double.isNaN(clothing)) return null;
-        double grossSemi = parseMoney(parentForErrors, txtGrossSemi, "Gross Semi-Monthly Rate");
-        if (Double.isNaN(grossSemi)) return null;
-        double hourly = parseMoney(parentForErrors, txtHourlyRate, "Hourly Rate");
-        if (Double.isNaN(hourly)) return null;
-
-        String status = String.valueOf(cbStatus.getSelectedItem());
 
         // --- 5. BUILD EMPLOYEE OBJECT ---
         com.motorph.domain.models.Employee emp;

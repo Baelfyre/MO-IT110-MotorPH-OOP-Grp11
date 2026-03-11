@@ -8,6 +8,9 @@ import com.motorph.domain.models.PayPeriod;
 import com.motorph.domain.models.User;
 import com.motorph.ops.payroll.PayrollOps;
 import com.motorph.ops.payroll.PayrollRunResult;
+import com.motorph.ops.payslip.PayslipOps;
+import java.awt.Color;
+import javax.swing.table.DefaultTableCellRenderer;
 
 import java.awt.BorderLayout;
 import java.awt.FlowLayout;

@@ -170,7 +170,7 @@ public class HrPanel extends JPanel {
 
     // Annotation: Opens a validation-safe dialog and creates employee profile plus auto-login via HROps.
     private void onAdd() {
-        EmployeeFormPanel form = new EmployeeFormPanel();
+        EmployeeFormPanel form = new EmployeeFormPanel(addressRepo);
         form.setEmployeeNumberEditable(true);
 
         int r = JOptionPane.showConfirmDialog(this, form, "Add Employee", JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE);
@@ -268,7 +268,7 @@ public class HrPanel extends JPanel {
         JButton btnCancel = new JButton("Cancel");
 
         btnOk.addActionListener(e -> {
-            Employee built = form.buildEmployeeOrNull(dialog);
+            Employee built = form.buildEmployeeOrNull(dialog, hrOps, false);
             if (built == null) {
                 return;
             }

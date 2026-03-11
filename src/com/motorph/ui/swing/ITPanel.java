@@ -201,4 +201,54 @@ public class ITPanel extends JPanel {
             UiDialogs.error(this, ex.getMessage());
         }
     }
+    
+    private void showLogs() {
+
+        List<LogEntry> logs = logService.getLogsByCategory("IT");
+
+        JDialog dlg = new JDialog(
+                SwingUtilities.getWindowAncestor(this),
+                "System Logs",
+                Dialog.ModalityType.APPLICATION_MODAL
+        );
+
+        DefaultTableModel logModel = new DefaultTableModel(
+                new Object[]{"Log_ID", "Timestamp", "User", "Action", "Details"}, 0
+        ) {
+            @Override
+            public boolean isCellEditable(int row, int col) {
+                return false;
+            }
+        };
+
+        JTable table = new JTable(logModel);
+        table.setAutoResizeMode(JTable.AUTO_RESIZE_OFF);
+
+        for (LogEntry entry : logs) {
+            logModel.addRow(new Object[]{
+                entry.getId(),
+                entry.getTimestamp(),
+                entry.getUser(),
+                entry.getAction(),
+                entry.getDetails()
+            });
+        }
+
+        JPanel south = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 10));
+        JButton close = new JButton("Close");
+        close.addActionListener(e -> dlg.dispose());
+        south.add(close);
+
+        dlg.setContentPane(
+                SwingForm.wrapNorthCenterSouth(
+                        null,
+                        new JScrollPane(table),
+                        south
+                )
+        );
+
+        dlg.setSize(900, 500);
+        dlg.setLocationRelativeTo(this);
+        dlg.setVisible(true);
+    }
 }

@@ -89,4 +89,55 @@ public class LeaveService {
         double hours = Math.max(0.0, minutes / 60.0);
         return Math.min(hours, 8.0);
     }
+    
+    public String validateLeaveRequest(LocalDate date, LocalTime start, LocalTime end) {
+        if (date == null) {
+            return "Leave date is required.";
+        }
+        if (start == null || end == null) {
+            return "Start and end time are required.";
+        }
+        if (!end.isAfter(start)) {
+            return "End time must be after start time.";
+        }
+        if (isWeekend(date)) {
+            return "Weekend leave requests are not allowed in self-service.";
+        }
+        if (calculateHours(start, end) <= 0.0) {
+            return "Leave request hours must be greater than zero.";
+        }
+        return null;
+    }
+
+    public String validateLeaveRequest(
+            LocalDate date,
+            LocalTime start,
+            LocalTime end,
+            double remainingCreditsHours,
+            boolean allowUnpaidFallback
+    ) {
+        String basicError = validateLeaveRequest(date, start, end);
+        if (basicError != null) {
+            return basicError;
+        }
+
+        double requestedHours = calculateHours(start, end);
+        if (requestedHours > remainingCreditsHours && !allowUnpaidFallback) {
+            return String.format(
+                    java.util.Locale.US,
+                    "Requested leave is %.2f hours but only %.2f paid leave hours remain.",
+                    requestedHours,
+                    remainingCreditsHours
+            );
+        }
+        return null;
+    }
+
+    public boolean isWeekend(LocalDate date) {
+        if (date == null) {
+            return false;
+        }
+        DayOfWeek dow = date.getDayOfWeek();
+        return dow == DayOfWeek.SATURDAY || dow == DayOfWeek.SUNDAY;
+    }
 }

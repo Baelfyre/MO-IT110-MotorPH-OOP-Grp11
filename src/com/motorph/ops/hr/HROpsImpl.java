@@ -100,7 +100,7 @@ public class HROpsImpl implements HROps {
         List<String> validationErrors = validateEmployeeBeforeSave(emp);
         if (!validationErrors.isEmpty()) {
             logService.recordAction(
-                    String.valueOf(performedByUserId),
+                    String.valueOf(currentUser.getId()),
                     "HR_CREATE_DENIED_VALIDATION",
                     "Denied create. " + String.join(" | ", validationErrors)
             );
@@ -179,16 +179,16 @@ public class HROpsImpl implements HROps {
         List<String> validationErrors = validateEmployeeBeforeSave(emp);
         if (!validationErrors.isEmpty()) {
             logService.recordAction(
-                    String.valueOf(performedByUserId),
+                    String.valueOf(currentUser.getId()),
                     "HR_UPDATE_DENIED_VALIDATION",
                     "Denied update. EmpID=" + emp.getId() + ". " + String.join(" | ", validationErrors)
             );
             return false;
         }
 
-        if (isRestrictedSelfHrAction(performedByUserId, emp.getId())) {
+        if (isRestrictedSelfHrAction(currentUser.getId(), emp.getId())) {
             logService.recordAction(
-                    String.valueOf(performedByUserId),
+                    String.valueOf(currentUser.getId()),
                     "HR_SELF_EDIT_DENIED",
                     "Denied self-edit for HR user. EmpID=" + emp.getId()
             );
