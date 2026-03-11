@@ -152,8 +152,4 @@ Attendance_ID,Employee #,Date,Log In,Log Out,First Name,Last Name
 10000-45656,10000,12/30/2024,9:29 AM,6:21 PM,Admin,Super
 10000-45657,10000,12/31/2024,9:27 AM,6:30 PM,Admin,Super
 10000-46090,10000,3/9/2026,11:12 AM,11:12 AM,,
-<<<<<<< Updated upstream
 10000-46091,10000,3/10/2026,11:46 AM,11:46 AM,,
-=======
-10000-46092,10000,3/11/2026,2:20 PM,2:20 PM,,
->>>>>>> Stashed changes

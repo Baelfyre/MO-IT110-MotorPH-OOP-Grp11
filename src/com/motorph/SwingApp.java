@@ -63,8 +63,8 @@ public class SwingApp {
     public static void main(String[] args) {
 
 // Repositories
+        TimeEntryRepository timeRepo = new CsvTimeRepository();
         EmployeeRepository empRepo = new CsvEmployeeRepository();
-        TimeEntryRepository timeRepo = new CsvTimeRepository(empRepo);
         UserRepository userRepo = new CsvUserRepository();
         AuditRepository auditRepo = new CsvAuditRepository();
         PayslipRepository payslipRepo = new CsvPayslipRepository();

@@ -30,9 +30,7 @@ public class CsvTimeRepository implements TimeEntryRepository {
 
     private static final String CSV_SPLIT_REGEX = ",(?=(?:[^\"]*\"[^\"]*\")*[^\"]*$)";
     private static final DateTimeFormatter DATE_FMT = DateTimeFormatter.ofPattern("M/d/yyyy", Locale.US);
-    // Include seconds to avoid clock-in/out appearing identical when done within the same minute.
-    private static final DateTimeFormatter TIME_FMT = DateTimeFormatter.ofPattern("h:mm:ss a", Locale.US);
-    private static final DateTimeFormatter TIME_FMT_LEGACY = DateTimeFormatter.ofPattern("h:mm a", Locale.US);
+    private static final DateTimeFormatter TIME_FMT = DateTimeFormatter.ofPattern("h:mm a", Locale.US);
 
     private static final String FILE_PREFIX = "records_dtr_";
     private static final String FILE_SUFFIX = ".csv";
@@ -41,6 +39,7 @@ public class CsvTimeRepository implements TimeEntryRepository {
             = "Attendance_ID,Employee #,Date,Log In,Log Out,First Name,Last Name";
 
     private static final int IDX_ATT_ID = 0;
+    private static final int IDX_EMP_ID = 1;
     private static final int IDX_DATE = 2;
     private static final int IDX_IN = 3;
     private static final int IDX_OUT = 4;
@@ -290,13 +289,7 @@ public class CsvTimeRepository implements TimeEntryRepository {
             return null;
         }
         try {
-            String v = raw.trim();
-            // Try new format (with seconds) first, then legacy format.
-            try {
-                return LocalTime.parse(v, TIME_FMT);
-            } catch (Exception ignored) {
-                return LocalTime.parse(v, TIME_FMT_LEGACY);
-            }
+            return LocalTime.parse(raw.trim(), TIME_FMT);
         } catch (Exception e) {
             return null;
         }
