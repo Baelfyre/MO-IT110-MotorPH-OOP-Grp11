@@ -1,0 +1,2 @@
+Payslip_ID,Transaction_ID,EmployeeID,LastName,FirstName,PayPeriodStart,PayPeriodEnd,BasicSalary,RiceAllowance,PhoneAllowance,ClothingAllowance,GrossSemiMonthlyRate,HourlyRate,TotalHoursWorked,GrossIncome,SSS,PhilHealth,Pagibig,WithholdingTax,TotalDeductions,NetPay,ProcessedBy,DateProcessed,LeaveCredits,LeaveTaken,RemainingLeaveBalance
+PS-TX-10018-260301-260315,TX-10018-260301-260315,10018,San Jose,Allison,3/1/2026,3/15/2026,22500,1500,500,500,11250,133.93,0,12500,625,312.50,100,0,1037.50,11462.50,10011,3/11/2026 14:29,40,8,32
