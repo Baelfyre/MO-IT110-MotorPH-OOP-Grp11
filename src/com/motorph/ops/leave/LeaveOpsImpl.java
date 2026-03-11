@@ -9,9 +9,9 @@ import com.motorph.domain.models.LeaveRequest;
 import com.motorph.domain.models.PayPeriod;
 import com.motorph.repository.LeaveRepository;
 import com.motorph.service.LeaveCreditsService;
+import com.motorph.service.LeaveService;
 import com.motorph.service.LogService;
 
-import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
@@ -29,6 +29,8 @@ public class LeaveOpsImpl implements LeaveOps {
     private final LeaveRepository leaveRepo;
     private final LeaveCreditsService creditsService;
     private final LogService logService;
+    private final LeaveService leaveService;
+    private String lastRequestMessage = "";
 
     private static final DateTimeFormatter HM_FMT = DateTimeFormatter.ofPattern("HHmm", Locale.US);
 
@@ -36,6 +38,7 @@ public class LeaveOpsImpl implements LeaveOps {
         this.leaveRepo = leaveRepo;
         this.creditsService = creditsService;
         this.logService = logService;
+        this.leaveService = new LeaveService(leaveRepo);
     }
 
     @Override
@@ -72,9 +75,16 @@ public class LeaveOpsImpl implements LeaveOps {
         LeaveRequest r = new LeaveRequest(leaveId, empId, date, start, end, firstName, lastName);
         boolean ok = leaveRepo.create(r);
 
+        String mode = (storedCredits <= 0.0 && allowUnpaidFallback) ? "unpaid-fallback" : "paid-path";
+        lastRequestMessage = ok
+                ? (storedCredits <= 0.0 && allowUnpaidFallback
+                        ? "Leave request recorded through unpaid leave confirmation path."
+                        : "Leave request recorded.")
+                : "Leave request not recorded.";
+
         logService.recordAction(String.valueOf(empId),
                 ok ? "LEAVE_REQUEST_RECORDED" : "LEAVE_REQUEST_FAILED",
-                ok ? ("Leave row appended: " + leaveId) : "Leave row append failed.");
+                (ok ? ("Leave row appended: " + leaveId + " Mode=" + mode) : "Leave row append failed."));
 
         return ok;
     }
@@ -98,13 +108,23 @@ public class LeaveOpsImpl implements LeaveOps {
     }
 
     @Override
+    public double getStoredLeaveCreditsHours(int empId) {
+        return creditsService.getStoredLeaveCreditsHours(empId);
+    }
+
+    @Override
+    public double calculateLeaveHours(LocalTime start, LocalTime end) {
+        return leaveService.calculateHours(start, end);
+    }
+    
+    @Override
     public boolean syncLeaveTakenYtd(int empId, PayPeriod period) {
         return creditsService.syncLeaveTakenYearToDate(empId, period);
     }
 
-    private boolean isWeekend(LocalDate date) {
-        DayOfWeek dow = date.getDayOfWeek();
-        return dow == DayOfWeek.SATURDAY || dow == DayOfWeek.SUNDAY;
+    @Override
+    public String getLastRequestMessage() {
+        return lastRequestMessage == null ? "" : lastRequestMessage;
     }
 
     private String buildLeaveId(int empId, LocalDate date, LocalTime start) {

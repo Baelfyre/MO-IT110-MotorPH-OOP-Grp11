@@ -20,12 +20,21 @@ public interface LeaveOps {
     boolean requestLeave(int empId, String firstName, String lastName,
             LocalDate date, LocalTime start, LocalTime end);
 
+    boolean requestLeave(int empId, String firstName, String lastName,
+            LocalDate date, LocalTime start, LocalTime end, boolean allowUnpaidFallback);
+
     double getLeaveUsedThisPeriod(int empId, PayPeriod period);
 
     double getLeaveRemainingYtd(int empId, PayPeriod period);
+
+    double getStoredLeaveCreditsHours(int empId);
+    
+    double calculateLeaveHours(LocalTime start, LocalTime end);
 
     boolean syncLeaveTakenYtd(int empId, PayPeriod period);
     
     // Annotation: Returns leave rows for display in the Leave panel.
     List<LeaveRequest> listLeaveRequests(int empId, PayPeriod period);
+
+    String getLastRequestMessage();
 }

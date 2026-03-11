@@ -34,6 +34,7 @@ public class LeavePanel extends JPanel {
     private final JComboBox<String> cbEnd = new JComboBox<>();
 
     private final JLabel lblPeriod = new JLabel("Period: -");
+    private final JLabel lblCredits = new JLabel("Current leave credits (hrs): -");
     private final JLabel lblUsed = new JLabel("Used this period (hrs): -");
     private final JLabel lblRemaining = new JLabel("Remaining YTD (hrs): -");
 
@@ -69,6 +70,7 @@ public class LeavePanel extends JPanel {
             editor.setEditable(false);
         }
         dcDate.setDate(new java.util.Date());
+        dcDate.setMinSelectableDate(new java.util.Date());
 
         setActivePeriod(LocalDate.now());
         refreshAll();
@@ -89,6 +91,7 @@ public class LeavePanel extends JPanel {
 
         JPanel summary = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 5));
         summary.add(lblPeriod);
+        summary.add(lblCredits);
         summary.add(lblUsed);
         summary.add(lblRemaining);
 
@@ -141,9 +144,11 @@ public class LeavePanel extends JPanel {
     }
 
     private void refreshSummary() {
+        double credits = leaveOps.getStoredLeaveCreditsHours(empId());
         double used = leaveOps.getLeaveUsedThisPeriod(empId(), activePeriod);
         double remaining = leaveOps.getLeaveRemainingYtd(empId(), activePeriod);
 
+        lblCredits.setText(String.format(Locale.US, "Current leave credits (hrs): %.2f", credits));
         lblUsed.setText(String.format(Locale.US, "Used this period (hrs): %.2f", used));
         lblRemaining.setText(String.format(Locale.US, "Remaining YTD (hrs): %.2f", remaining));
     }
@@ -177,22 +182,45 @@ public class LeavePanel extends JPanel {
             UiDialogs.warn(this, "Select start and end time.");
             return;
         }
-        if (end.isBefore(start)) {
-            UiDialogs.warn(this, "End time must be after start time.");
-            return;
-        }
 
         Employee emp = employeeService.getEmployee(empId());
         String first = emp == null ? "" : emp.getFirstName();
         String last = emp == null ? "" : emp.getLastName();
 
-        boolean ok = leaveOps.requestLeave(empId(), first, last, date, start, end);
+        double remainingCredits = leaveOps.getLeaveRemainingYtd(empId(), activePeriod);
+        double requestedHours = leaveOps.calculateLeaveHours(start, end);
+
+        boolean allowUnpaidFallback = false;
+
+        if (requestedHours > remainingCredits) {
+            boolean confirmed = UiDialogs.confirm(
+                    this,
+                    String.format(
+                            Locale.US,
+                            "Requested leave is %.2f hours but only %.2f paid leave hours remain.%n%n"
+                            + "Do you want to continue through the unpaid leave confirmation path?",
+                            requestedHours,
+                            remainingCredits
+                    )
+            );
+
+            if (!confirmed) {
+                UiDialogs.warn(this, "Leave request cancelled.");
+                return;
+            }
+
+            allowUnpaidFallback = true;
+        }
+
+        boolean ok = leaveOps.requestLeave(empId(), first, last, date, start, end, allowUnpaidFallback);
         if (ok) {
-            UiDialogs.info(this, "Leave request recorded.");
+            UiDialogs.info(this, leaveOps.getLastRequestMessage());
             leaveOps.syncLeaveTakenYtd(empId(), activePeriod);
             refreshAll();
         } else {
-            UiDialogs.warn(this, "Leave request not recorded.");
+            UiDialogs.warn(this, leaveOps.getLastRequestMessage().isEmpty()
+                    ? "Leave request not recorded."
+                    : leaveOps.getLastRequestMessage());
         }
     }
 

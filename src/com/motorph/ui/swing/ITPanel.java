@@ -1,9 +1,11 @@
 package com.motorph.ui.swing;
 
 import com.motorph.domain.models.Employee;
+import com.motorph.domain.models.LogEntry;
 import com.motorph.domain.models.User;
 import com.motorph.ops.it.ItOps;
 import com.motorph.service.EmployeeService;
+import com.motorph.service.LogService;
 
 import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
@@ -19,6 +21,7 @@ public class ITPanel extends JPanel {
     private final User currentUser;
     private final EmployeeService employeeService;
     private final ItOps itOps;
+    private final LogService logService;
 
     private final DefaultTableModel model = new DefaultTableModel(
             new Object[]{"Username", "Name", "Roles", "Locked"}, 0
@@ -36,11 +39,17 @@ public class ITPanel extends JPanel {
     private final JButton btnUnlock = new JButton("Unlock");
     private final JButton btnResetDefault = new JButton("Reset Default Password");
     private final JButton btnResetCustom = new JButton("Reset Custom Password");
+    private final JButton btnLogs = new JButton("System Logs");
 
     public ITPanel(User currentUser, EmployeeService employeeService, ItOps itOps) {
+        this(currentUser, employeeService, itOps, new LogService());
+    }
+
+    public ITPanel(User currentUser, EmployeeService employeeService, ItOps itOps, LogService logService) {
         this.currentUser = currentUser;
         this.employeeService = employeeService;
         this.itOps = itOps;
+        this.logService = logService;
 
         buildUi();
         applyPermissions();
@@ -56,6 +65,7 @@ public class ITPanel extends JPanel {
         top.add(btnUnlock);
         top.add(btnResetDefault);
         top.add(btnResetCustom);
+        top.add(btnLogs);
 
         tbl.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
 
@@ -67,6 +77,7 @@ public class ITPanel extends JPanel {
         btnUnlock.addActionListener(e -> onSetLock(false));
         btnResetDefault.addActionListener(e -> onResetDefault());
         btnResetCustom.addActionListener(e -> onResetCustom());
+        btnLogs.addActionListener(e -> showLogs());
     }
 
     private void applyPermissions() {

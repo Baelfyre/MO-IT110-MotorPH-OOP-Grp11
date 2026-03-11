@@ -4,6 +4,7 @@ import com.motorph.domain.models.TimeEntry;
 import com.motorph.repository.TimeEntryRepository;
 
 import java.time.DayOfWeek;
+import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.List;
@@ -14,6 +15,9 @@ import java.util.List;
  * @author ACER
  */
 public class TimeService {
+
+    // Annotation: Configurable minimum used for short-duration warnings.
+    public static final double MIN_VALID_WORK_HOURS = 1.0;
 
     private final TimeEntryRepository repo;
 
@@ -66,7 +70,11 @@ public class TimeService {
         return repo.getEntries(empId);
     }
 
-    private TimeEntry getEntryForDate(int empId, LocalDate date) {
+    // Annotation: Exposes the active entry for a specific work date.
+    public TimeEntry getEntryForDate(int empId, LocalDate date) {
+        if (date == null) {
+            return null;
+        }
         List<TimeEntry> entries = repo.getEntries(empId);
         for (TimeEntry e : entries) {
             if (e.getDate() != null && e.getDate().equals(date)) {
@@ -74,6 +82,27 @@ public class TimeService {
             }
         }
         return null;
+    }
+
+    // Annotation: Computes worked hours using the shared attendance rule.
+    public double calculateWorkedHours(TimeEntry entry) {
+        if (entry == null || entry.getTimeIn() == null || entry.getTimeOut() == null) {
+            return 0.0;
+        }
+
+        long minutes = Duration.between(entry.getTimeIn(), entry.getTimeOut()).toMinutes();
+        if (minutes < 0) {
+            return 0.0;
+        }
+        if (minutes > 240) {
+            minutes -= 60;
+        }
+        return Math.max(0.0, minutes / 60.0);
+    }
+
+    // Annotation: Flags unusually short worked durations for review.
+    public boolean isWorkedDurationTooShort(TimeEntry entry) {
+        return calculateWorkedHours(entry) > 0.0 && calculateWorkedHours(entry) < MIN_VALID_WORK_HOURS;
     }
 
     private boolean isWorkday(LocalDate date) {

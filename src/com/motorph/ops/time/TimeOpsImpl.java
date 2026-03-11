@@ -12,6 +12,7 @@ import com.motorph.repository.TimeEntryRepository;
 import com.motorph.service.LogService;
 import com.motorph.service.TimeService;
 
+import java.time.LocalDate;
 import java.util.List;
 
 /**
@@ -77,5 +78,19 @@ public class TimeOpsImpl implements TimeOps {
         approvalRepo.ensureRowExists(empId, period);
         return approvalRepo.getDtrStatus(empId, period);
     }
-}
 
+    @Override
+    public TimeEntry getEntryForDate(int empId, LocalDate date) {
+        return timeService.getEntryForDate(empId, date);
+    }
+
+    @Override
+    public double getWorkedHours(TimeEntry entry) {
+        return timeService.calculateWorkedHours(entry);
+    }
+
+    @Override
+    public boolean isWorkedDurationTooShort(TimeEntry entry) {
+        return timeService.isWorkedDurationTooShort(entry);
+    }
+}

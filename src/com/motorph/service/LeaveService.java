@@ -11,6 +11,7 @@ import com.motorph.repository.LeaveRepository;
 
 import java.time.DayOfWeek;
 import java.time.Duration;
+import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.HashSet;
 import java.util.List;
@@ -70,11 +71,12 @@ public class LeaveService {
         return totalHours;
     }
 
-    private double calculateHours(LocalTime start, LocalTime end) {
+    // Annotation: Exposes leave-hour computation for validation and UI summaries.
+    public double calculateHours(LocalTime start, LocalTime end) {
         if (start == null || end == null) {
             return 0.0;
         }
-        if (end.isBefore(start)) {
+        if (!end.isAfter(start)) {
             return 0.0;
         }
 

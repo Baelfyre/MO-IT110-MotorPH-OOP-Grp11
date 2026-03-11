@@ -9,11 +9,13 @@ import com.motorph.repository.UserRepository;
 import java.util.List;
 import com.motorph.repository.csv.DataPaths;
 import com.motorph.service.LogService;
+import com.motorph.utils.ValidationUtil;
 
 public class ItOpsImpl implements ItOps {
 
     private final UserRepository userRepo;
     private final LogService logService;
+    private String lastActionMessage = "";
 
     public ItOpsImpl(UserRepository userRepo, LogService logService) {
         this.userRepo = userRepo;
@@ -52,13 +54,22 @@ public class ItOpsImpl implements ItOps {
         String pass = safeTrim(newPassword);
 
         if (uname.isEmpty() || pass.isEmpty()) {
-            logService.recordAction(actor, "IT_RESET_PASSWORD_FAILED", "Blank username or password.");
+            lastActionMessage = "Username and password are required.";
+            logService.recordAction(actor, "IT_RESET_PASSWORD_FAILED", lastActionMessage);
+            return false;
+        }
+
+        String policyMessage = ValidationUtil.getPasswordPolicyMessage(pass);
+        if (policyMessage != null) {
+            lastActionMessage = policyMessage;
+            logService.recordAction(actor, "IT_RESET_PASSWORD_FAILED", "Target=" + uname + " Reason=" + policyMessage);
             return false;
         }
 
         User existing = userRepo.findByUsername(uname);
         if (existing == null) {
-            logService.recordAction(actor, "IT_RESET_PASSWORD_FAILED", "User not found: " + uname);
+            lastActionMessage = "Selected user was not found.";
+            logService.recordAction(actor, "IT_RESET_PASSWORD_FAILED", "User not found. Target=" + uname);
             return false;
         }
 
@@ -70,11 +81,21 @@ public class ItOpsImpl implements ItOps {
 
             String action = ok ? "IT_RESET_PASSWORD_OK" : "IT_RESET_PASSWORD_FAILED";
             String mode = isDefault ? "default" : "custom";
-            logService.recordAction(actor, action, "Reset password (" + mode + ") for user: " + uname);
+            lastActionMessage = ok
+                    ? (isDefault ? "Password reset to default." : "Password updated.")
+                    : "Password reset failed.";
+
+            logService.recordAction(actor, action,
+                    "Actor=" + actor
+                    + " Target=" + uname
+                    + " ResetMode=" + mode
+                    + " Result=" + (ok ? "success" : "failed"));
 
             return ok;
         } catch (Exception ex) {
-            logService.recordAction(actor, "IT_RESET_PASSWORD_FAILED", "Exception resetting password for " + uname + ": " + ex.getMessage());
+            lastActionMessage = "Password reset failed.";
+            logService.recordAction(actor, "IT_RESET_PASSWORD_FAILED",
+                    "Actor=" + actor + " Target=" + uname + " ResetMode=" + (isDefault ? "default" : "custom") + " Error=" + ex.getMessage());
             return false;
         }
     }
@@ -112,12 +133,14 @@ public class ItOpsImpl implements ItOps {
         }
 
         if (uname.isEmpty()) {
+            lastActionMessage = "Select a user first.";
             logService.recordAction(actor, "IT_SET_LOCK_FAILED", "Blank username.");
             return false;
         }
 
         User existing = userRepo.findByUsername(uname);
         if (existing == null) {
+            lastActionMessage = "Selected user was not found.";
             logService.recordAction(actor, "IT_SET_LOCK_FAILED", "User not found: " + uname);
             return false;
         }
@@ -131,16 +154,25 @@ public class ItOpsImpl implements ItOps {
             String action;
             if (ok) {
                 action = locked ? "IT_LOCK_OK" : "IT_UNLOCK_OK";
+                lastActionMessage = locked ? "Account locked." : "Account unlocked.";
             } else {
                 action = "IT_SET_LOCK_FAILED";
+                lastActionMessage = "Lock status update failed.";
             }
 
-            logService.recordAction(actor, action, (locked ? "Locked" : "Unlocked") + " user: " + uname);
+            logService.recordAction(actor, action,
+                    "Actor=" + actor + " Target=" + uname + " LockState=" + (locked ? "locked" : "unlocked"));
             return ok;
         } catch (Exception ex) {
+            lastActionMessage = "Lock status update failed.";
             logService.recordAction(actor, "IT_SET_LOCK_FAILED", "Exception updating lock for " + uname + ": " + ex.getMessage());
             return false;
         }
+    }
+
+    @Override
+    public String getLastActionMessage() {
+        return lastActionMessage == null ? "" : lastActionMessage;
     }
 
     private String safeTrim(String s) {

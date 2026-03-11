@@ -12,7 +12,6 @@ import com.motorph.repository.EmployeeRepository;
 import com.motorph.repository.PayrollApprovalRepository;
 import com.motorph.service.LogService;
 import com.motorph.service.PayrollService;
-
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -21,12 +20,11 @@ import java.util.List;
 import com.motorph.domain.models.User;
 
 /**
- * Coordinates payroll processing, logging, and bulk execution.
+ * Handles payroll execution flow through the ops layer.
  *
- * DTR approval and payroll approval are tracked in the shared records_payroll
- * CSV.
+ * Keeps UI calls separate from service and repository access.
  *
- * @author ACER
+ * @author OngoJ.
  */
 public class PayrollOpsImpl implements PayrollOps {
 
@@ -35,6 +33,9 @@ public class PayrollOpsImpl implements PayrollOps {
     private final LogService logService;
     private final PayrollApprovalRepository approvalRepo;
 
+    /**
+     * Initializes payroll dependencies.
+     */
     public PayrollOpsImpl(PayrollService payrollService,
             EmployeeRepository empRepo,
             LogService logService,
@@ -45,11 +46,45 @@ public class PayrollOpsImpl implements PayrollOps {
         this.approvalRepo = approvalRepo;
     }
 
+    /**
+     * Resolves the active semi-monthly payroll period.
+     */
     @Override
     public PayPeriod resolvePeriod(LocalDate date) {
         return PayPeriod.fromDateSemiMonthly(date);
     }
 
+    /**
+     * Loads payroll queue rows for the selected period.
+     */
+    @Override
+    public List<PayrollQueueItem> listEmployeesForPeriod(PayPeriod period) {
+        List<Employee> employees = empRepo.findAll();
+        List<PayrollQueueItem> out = new ArrayList<>();
+        if (period == null) {
+            return out;
+        }
+
+        for (Employee employee : employees) {
+            if (employee == null) {
+                continue;
+            }
+
+            int empId = employee.getEmployeeNumber();
+            approvalRepo.ensureRowExists(empId, period);
+            out.add(new PayrollQueueItem(
+                    empId,
+                    employee.getLastName() + ", " + employee.getFirstName(),
+                    approvalRepo.getDtrStatus(empId, period),
+                    approvalRepo.getPayrollStatus(empId, period)
+            ));
+        }
+        return out;
+    }
+
+    /**
+     * Processes payroll for one employee only.
+     */
     @Override
     public Payslip processPayrollForEmployee(int empId, PayPeriod period, User currentUser) {
         // 1. BACKEND RBAC VERIFICATION
@@ -135,7 +170,20 @@ public class PayrollOpsImpl implements PayrollOps {
                 continue;
             }
 
-            Payslip p = payrollService.generatePayslip(empId, period, processedByUserId);
+        /**
+         * Stores the payroll execution result.
+         */
+        private PayrollExecutionResult(int employeeId,
+                Payslip payslip,
+                boolean success,
+                String transactionId,
+                String message) {
+            this.employeeId = employeeId;
+            this.payslip = payslip;
+            this.success = success;
+            this.transactionId = transactionId;
+            this.message = message;
+        }
 
             if (p != null) {
                 results.add(new PayrollRunResult(empId, p.getTransactionId(), true, "Payslip snapshot saved."));

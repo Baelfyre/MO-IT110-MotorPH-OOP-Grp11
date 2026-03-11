@@ -10,6 +10,8 @@ import com.motorph.domain.models.TimeEntry;
 import com.motorph.domain.models.LeaveRequest;
 import com.motorph.domain.models.User;
 import com.motorph.domain.enums.LeaveStatus;
+import java.time.LocalDate;
+import java.time.LocalTime;
 import java.util.List;
 
 public interface SupervisorOps {

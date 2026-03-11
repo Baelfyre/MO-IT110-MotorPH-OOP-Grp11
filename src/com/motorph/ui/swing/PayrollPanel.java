@@ -22,12 +22,27 @@ import javax.swing.JTextArea;
 
 public class PayrollPanel extends JPanel {
 
+    private static final int COL_EMP_ID = 0;
+    private static final int COL_PAYSLIP = 4;
+    private static final String ACTION_VIEW = "View";
+    private static final String ACTION_NONE = "-";
+
     private final User currentUser;
     private final PayrollOps payrollOps;
     private final JTextArea txtResults;
     private final JButton btnRunPayroll;
 
+    /**
+     * Overloaded constructor for screens without payslip preview.
+     */
     public PayrollPanel(User currentUser, PayrollOps payrollOps) {
+        this(currentUser, payrollOps, null);
+    }
+
+    /**
+     * Overloaded constructor for screens with payslip preview support.
+     */
+    public PayrollPanel(User currentUser, PayrollOps payrollOps, PayslipOps payslipOps) {
         this.currentUser = currentUser;
         this.payrollOps = payrollOps;
         
@@ -83,6 +98,28 @@ public class PayrollPanel extends JPanel {
             UiDialogs.error(this, ex.getMessage());
         } catch (Exception ex) {
             UiDialogs.error(this, "An unexpected error occurred: " + ex.getMessage());
+        }
+    }
+
+    /**
+     * Renders the payslip action link in the table.
+     */
+    private static final class PayslipLinkRenderer extends DefaultTableCellRenderer {
+
+        /**
+         * Overrides cell rendering for the payslip action column.
+         */
+        @Override
+        protected void setValue(Object value) {
+            String text = value == null ? "" : String.valueOf(value);
+            setHorizontalAlignment(CENTER);
+            if (ACTION_VIEW.equals(text)) {
+                setForeground(new Color(0, 102, 204));
+                setText("<html><u>View</u></html>");
+            } else {
+                setForeground(Color.GRAY);
+                setText(ACTION_NONE);
+            }
         }
     }
 }

@@ -276,11 +276,14 @@ public class CsvUserRepository implements UserRepository {
         if (dept.contains("HR")) {
             return Role.HR;
         }
-        if (dept.contains("PAYROLL") || dept.contains("FINANCE")) {
+        if (dept.contains("PAYROLL") || dept.contains("FINANCE") || dept.contains("ACCOUNTING") || dept.contains("CHIEF FINANCE OFFICER")) {
             return Role.PAYROLL;
         }
         if (dept.contains("IT")) {
             return Role.IT;
+        }
+        if (dept.contains("CHIEF") || dept.contains("CEO") || dept.contains("COO") || dept.contains("CMO") || dept.contains("TEAM LEADER") || dept.contains("MANAGER") || dept.contains("HEAD")) {
+            return Role.SUPERVISOR;
         }
         return Role.EMPLOYEE;
     }
