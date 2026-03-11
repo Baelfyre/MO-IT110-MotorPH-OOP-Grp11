@@ -8,10 +8,6 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
-/**
- *
- * @author OngoJ.
- */
 public enum Role {
 
     EMPLOYEE("EMPLOYEE", Arrays.asList(
@@ -19,22 +15,32 @@ public enum Role {
     )),
     HR("HR", Arrays.asList(
             "CAN_VIEW_ALL",
-            "CAN_MANAGE_EMPLOYEES"
+            "CAN_MANAGE_EMPLOYEES" // Explicitly allows CRUD, no Payroll access
     )),
     PAYROLL("PAYROLL", Arrays.asList(
             "CAN_VIEW_ALL",
-            "CAN_PROCESS_PAYROLL"
+            "CAN_PROCESS_PAYROLL",
+            "CAN_GENERATE_PAYSLIP" // Cannot manage/delete employees
     )),
     SUPERVISOR("SUPERVISOR", Arrays.asList(
             "CAN_VIEW_ALL",
-            "CAN_APPROVE_DTR"
+            "CAN_APPROVE_DTR",
+            "CAN_APPROVE_LEAVE"
     )),
     IT("IT", Arrays.asList(
             "CAN_VIEW_ALL",
             "CAN_LOCK_ACCOUNTS",
-            "CAN_RESET_PASSWORD",
+            "CAN_RESET_PASSWORD"
+    )),
+    ADMIN("ADMIN", Arrays.asList( // Milestone requirement: Full Access
+            "CAN_VIEW_ALL",
             "CAN_MANAGE_EMPLOYEES",
-            "CAN_PROCESS_PAYROLL"
+            "CAN_PROCESS_PAYROLL",
+            "CAN_GENERATE_PAYSLIP",
+            "CAN_APPROVE_DTR",
+            "CAN_APPROVE_LEAVE",
+            "CAN_LOCK_ACCOUNTS",
+            "CAN_RESET_PASSWORD"
     ));
 
     private final String roleName;

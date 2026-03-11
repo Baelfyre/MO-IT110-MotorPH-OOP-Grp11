@@ -4,6 +4,7 @@
  */
 package com.motorph.service;
 
+import com.motorph.domain.enums.LeaveStatus;
 import com.motorph.domain.models.LeaveRequest;
 import com.motorph.domain.models.PayPeriod;
 import com.motorph.repository.LeaveRepository;
@@ -19,8 +20,6 @@ import java.util.Set;
 /**
  * Computes leave usage in hours for payroll. Dedupe and workday filtering are
  * applied at the service layer.
- *
- * @author ACER
  */
 public class LeaveService {
 
@@ -42,6 +41,11 @@ public class LeaveService {
 
         for (LeaveRequest r : rows) {
             if (r == null || r.getDate() == null) {
+                continue;
+            }
+
+            // --- CRITICAL SAFETY NET: Only count APPROVED leaves for Payroll ---
+            if (r.getStatus() != LeaveStatus.APPROVED) {
                 continue;
             }
 
@@ -78,76 +82,11 @@ public class LeaveService {
 
         long minutes = Duration.between(start, end).toMinutes();
 
-        // Leave usage is measured as work-hours; long spans exclude a lunch break.
         if (minutes > 240) {
             minutes -= 60;
         }
 
         double hours = Math.max(0.0, minutes / 60.0);
-
-        // Daily leave consumption is constrained to a standard workday.
         return Math.min(hours, 8.0);
-    }
-
-    // Annotation: Centralized leave-request validation used before repository save.
-    public String validateLeaveRequest(LocalDate date, LocalTime start, LocalTime end) {
-        if (date == null) {
-            return "Select a leave date.";
-        }
-        if (start == null || end == null) {
-            return "Select start and end time.";
-        }
-        if (date.isBefore(LocalDate.now())) {
-            return "Past dates are not allowed for self-service leave requests.";
-        }
-        if (!end.isAfter(start)) {
-            return "End time must be after start time.";
-        }
-        if (isWeekend(date)) {
-            return "Weekend leave requests are not allowed in self-service.";
-        }
-        if (calculateHours(start, end) <= 0.0) {
-            return "Leave request hours must be greater than zero.";
-        }
-        return null;
-    }
-    
-    // To validate Leave request
-        public String validateLeaveRequest(
-            LocalDate date,
-            LocalTime start,
-            LocalTime end,
-            double remainingCreditsHours,
-            boolean allowUnpaidFallback
-    ) {
-        String basicError = validateLeaveRequest(date, start, end);
-        if (basicError != null) {
-            return basicError;
-        }
-
-        double requestedHours = calculateHours(start, end);
-
-        if (requestedHours <= 0.0) {
-            return "Leave request hours must be greater than zero.";
-        }
-
-        if (requestedHours > remainingCreditsHours && !allowUnpaidFallback) {
-            return String.format(
-                    java.util.Locale.US,
-                    "Requested leave is %.2f hours but only %.2f paid leave hours remain.",
-                    requestedHours,
-                    remainingCreditsHours
-            );
-        }
-
-        return null;
-    }
-
-    public boolean isWeekend(LocalDate date) {
-        if (date == null) {
-            return false;
-        }
-        DayOfWeek dow = date.getDayOfWeek();
-        return dow == DayOfWeek.SATURDAY || dow == DayOfWeek.SUNDAY;
     }
 }

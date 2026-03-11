@@ -6,75 +6,88 @@ package com.motorph.ops.payslip;
 
 import com.motorph.domain.models.PayPeriod;
 import com.motorph.domain.models.Payslip;
+import com.motorph.domain.models.User;
 import com.motorph.repository.PayslipRepository;
 import com.motorph.service.LogService;
 import java.util.List;
 
-/**
- * Implementation of payslip use cases using the repository.
- *
- * @author ACER
- */
 public class PayslipOpsImpl implements PayslipOps {
 
     private final PayslipRepository payslipRepo;
-    private final LogService logService; // optional, may be null
+    private final LogService logService; 
 
     public PayslipOpsImpl(PayslipRepository payslipRepo) {
         this.payslipRepo = payslipRepo;
-        this.logService = null; // logging not enabled in this constructor
+        this.logService = null; 
     }
 
     public PayslipOpsImpl(PayslipRepository payslipRepo, LogService logService) {
         this.payslipRepo = payslipRepo;
-        this.logService = logService; // logging enabled
+        this.logService = logService; 
+    }
+
+    // --- CENTRALIZED RBAC CHECK ---
+    private void verifyAccess(int targetEmpId, User currentUser, String actionName) {
+        if (currentUser == null) {
+            throw new SecurityException("Access Denied: You must be logged in.");
+        }
+        
+        boolean isOwnPayslip = (currentUser.getId() == targetEmpId);
+        boolean isPayrollAdmin = currentUser.hasPermission("CAN_GENERATE_PAYSLIP");
+        
+        if (!isOwnPayslip && !isPayrollAdmin) {
+            if (logService != null) {
+                logService.recordAction(String.valueOf(currentUser.getId()), "SECURITY_VIOLATION", "Unauthorized " + actionName + " attempt for EmpID: " + targetEmpId);
+            }
+            throw new SecurityException("Access Denied: You can only view your own payslips.");
+        }
     }
 
     @Override
-    public Payslip viewPayslipForPeriod(int empId, PayPeriod period) {
+    public Payslip viewPayslipForPeriod(int empId, PayPeriod period, User currentUser) {
+        verifyAccess(empId, currentUser, "viewPayslipForPeriod");
+        
         Payslip p = payslipRepo.findByEmployeeAndPeriod(empId, period);
 
-        // Records a system log entry when logging is available.
         if (logService != null) {
             logService.recordAction(
-                    String.valueOf(empId),
+                    String.valueOf(currentUser.getId()), // Changed to currentUser.getId() for accurate logging
                     "PAYSLIP_VIEW_PERIOD",
                     "Viewed payslip for EmpID=" + empId + " Period=" + (period != null ? period.toKey() : "null")
             );
         }
-
         return p;
     }
 
     @Override
-    public Payslip viewLatestPayslip(int empId) {
+    public Payslip viewLatestPayslip(int empId, User currentUser) {
+        verifyAccess(empId, currentUser, "viewLatestPayslip");
+
         Payslip p = payslipRepo.findLatestByEmployee(empId);
 
-        // Records a system log entry when logging is available.
         if (logService != null) {
             logService.recordAction(
-                    String.valueOf(empId),
+                    String.valueOf(currentUser.getId()), 
                     "PAYSLIP_VIEW_LATEST",
                     "Viewed latest payslip for EmpID=" + empId
             );
         }
-
         return p;
     }
 
     @Override
-    public List<Payslip> listPayslipHistory(int empId) {
+    public List<Payslip> listPayslipHistory(int empId, User currentUser) {
+        verifyAccess(empId, currentUser, "listPayslipHistory");
+
         List<Payslip> list = payslipRepo.findAllByEmployee(empId);
 
-        // Records a system log entry when logging is available.
         if (logService != null) {
             logService.recordAction(
-                    String.valueOf(empId),
+                    String.valueOf(currentUser.getId()), 
                     "PAYSLIP_VIEW_HISTORY",
                     "Viewed payslip history for EmpID=" + empId + " Count=" + (list != null ? list.size() : 0)
             );
         }
-
         return list;
     }
 }

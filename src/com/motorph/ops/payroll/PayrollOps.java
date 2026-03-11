@@ -6,23 +6,16 @@ package com.motorph.ops.payroll;
 
 import com.motorph.domain.models.PayPeriod;
 import com.motorph.domain.models.Payslip;
+import com.motorph.domain.models.User;
 
 import java.time.LocalDate;
 import java.util.List;
 
-/**
- * Use-case boundary for payroll processing. Payroll processing creates a
- * payslip snapshot for a pay period.
- *
- * @author ACER
- */
 public interface PayrollOps {
 
     PayPeriod resolvePeriod(LocalDate date);
 
-    List<PayrollQueueItem> listEmployeesForPeriod(PayPeriod period);
+    Payslip processPayrollForEmployee(int empId, PayPeriod period, User currentUser);
 
-    Payslip processPayrollForEmployee(int empId, PayPeriod period, int processedByUserId);
-
-    List<PayrollRunResult> processPayrollForPeriod(PayPeriod period, int processedByUserId);
+    List<PayrollRunResult> processPayrollForPeriod(PayPeriod period, User currentUser);
 }

@@ -8,15 +8,12 @@ import com.motorph.domain.models.Employee;
 import com.motorph.domain.models.PayPeriod;
 import com.motorph.domain.models.TimeEntry;
 import com.motorph.domain.models.LeaveRequest;
+import com.motorph.domain.models.User;
 import com.motorph.domain.enums.LeaveStatus;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.List;
 
-/**
- *
- * @author ACER
- */
 public interface SupervisorOps {
 
     boolean isDirectReport(int supervisorEmpId, int reportEmpId);
@@ -27,13 +24,11 @@ public interface SupervisorOps {
 
     List<TimeEntry> viewDirectReportTimeEntries(int supervisorEmpId, int reportEmpId, PayPeriod period);
 
-    boolean updateDirectReportTimeEntry(int supervisorEmpId, int reportEmpId, LocalDate date, LocalTime timeIn, LocalTime timeOut);
+    boolean approveDirectReportDtr(User currentUser, int reportEmpId, PayPeriod period);
 
-    boolean approveDirectReportDtr(int supervisorEmpId, int reportEmpId, PayPeriod period);
-
-    boolean rejectDirectReportDtr(int supervisorEmpId, int reportEmpId, PayPeriod period);
+    boolean rejectDirectReportDtr(User currentUser, int reportEmpId, PayPeriod period);
 
     List<LeaveRequest> listDirectReportLeaveRequests(int supervisorEmpId, PayPeriod period);
 
-    boolean decideDirectReportLeave(int supervisorEmpId, int reportEmpId, String leaveId, LeaveStatus status, String note);
+    boolean decideDirectReportLeave(User currentUser, int reportEmpId, String leaveId, LeaveStatus status, String note);
 }

@@ -1,0 +1,2 @@
+Payslip_ID,Transaction_ID,EmployeeID,LastName,FirstName,PayPeriodStart,PayPeriodEnd,BasicSalary,RiceAllowance,PhoneAllowance,ClothingAllowance,GrossSemiMonthlyRate,HourlyRate,TotalHoursWorked,GrossIncome,SSS,PhilHealth,Pagibig,WithholdingTax,TotalDeductions,NetPay,ProcessedBy,DateProcessed,LeaveCredits,LeaveTaken,RemainingLeaveBalance
+PS-TX-10033-260301-260315,TX-10033-260301-260315,10033,Martinez,Carlos Ian,3/1/2026,3/15/2026,52670,1500,1000,1000,26335,313.51,0,28085,1400,702.13,100,1009.97,3212.10,24872.90,10011,3/11/2026 1:43,40,32,8

@@ -4,6 +4,8 @@
  */
 package com.motorph.test;
 
+import com.motorph.domain.enums.Role;
+import com.motorph.domain.models.User;
 import com.motorph.ops.it.ItOps;
 import com.motorph.ops.it.ItOpsImpl;
 import com.motorph.repository.UserRepository;
@@ -27,7 +29,8 @@ public class BackEndItOpsTester {
             return;
         }
 
-        int itActorId = 99999; // example IT actor id for logs
+        // --- THE FIX: Create a dummy Admin user with IT permissions ---
+        User testAdmin = new User(99999, "TEST_IT_ADMIN", "password", Role.ADMIN, false);
 
         String originalPassword = readLegacyField(username, 1); // Password column
         String originalLock = readLegacyField(username, 5);     // Lock Out Status column ("Yes" or "No")
@@ -37,17 +40,17 @@ public class BackEndItOpsTester {
 
         try {
             System.out.println("Locking account...");
-            System.out.println("Result: " + itOps.lockAccount(username, itActorId));
+            System.out.println("Result: " + itOps.lockAccount(username, testAdmin));
 
             System.out.println("Unlocking account...");
-            System.out.println("Result: " + itOps.unlockAccount(username, itActorId));
+            System.out.println("Result: " + itOps.unlockAccount(username, testAdmin));
 
             if (originalPassword != null && !originalPassword.trim().isEmpty()) {
                 System.out.println("Resetting password to default...");
-                System.out.println("Result: " + itOps.resetPasswordToDefault(username, itActorId));
+                System.out.println("Result: " + itOps.resetPasswordToDefault(username, testAdmin));
 
                 System.out.println("Restoring original password...");
-                System.out.println("Result: " + itOps.resetPassword(username, originalPassword, itActorId));
+                System.out.println("Result: " + itOps.resetPassword(username, originalPassword, testAdmin));
             } else {
                 System.out.println("Original password not readable, skipping password restore.");
             }
@@ -56,7 +59,7 @@ public class BackEndItOpsTester {
             // Restore original lock status
             if (originalLock != null) {
                 boolean shouldBeLocked = originalLock.trim().equalsIgnoreCase("Yes");
-                itOps.setLockStatus(username, shouldBeLocked, itActorId);
+                itOps.setLockStatus(username, shouldBeLocked, testAdmin);
             }
             System.out.println("Done. Lock status restored.");
         }

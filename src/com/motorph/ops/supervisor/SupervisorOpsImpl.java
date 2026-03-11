@@ -10,6 +10,7 @@ import com.motorph.domain.models.Employee;
 import com.motorph.domain.models.LeaveRequest;
 import com.motorph.domain.models.PayPeriod;
 import com.motorph.domain.models.TimeEntry;
+import com.motorph.domain.models.User;
 import com.motorph.ops.approval.DtrApprovalOps;
 import com.motorph.repository.LeaveRepository;
 import com.motorph.repository.PayrollApprovalRepository;
@@ -21,10 +22,6 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-/**
- *
- * @author ACER
- */
 public class SupervisorOpsImpl implements SupervisorOps {
 
     private final EmployeeService employeeService;
@@ -57,8 +54,10 @@ public class SupervisorOpsImpl implements SupervisorOps {
             return false;
         }
 
-        String supervisorDisplay = buildDisplayName(supervisor);
-        String reportSupervisor = normalize(report.getImmediateSupervisor());
+        // --- ADVANCED EDGE CASE HANDLING ---
+        // Stripping punctuation/spaces to fix CSV typos (e.g., "San, Jose Brad" vs "San Jose, Brad")
+        String supervisorDisplay = buildDisplayName(supervisor).replaceAll("[^a-zA-Z]", "");
+        String reportSupervisor = normalize(report.getImmediateSupervisor()).replaceAll("[^a-zA-Z]", "");
 
         return !supervisorDisplay.isEmpty()
                 && supervisorDisplay.equalsIgnoreCase(reportSupervisor);
@@ -112,12 +111,7 @@ public class SupervisorOpsImpl implements SupervisorOps {
         }
 
         if (!isDirectReport(supervisorEmpId, reportEmpId)) {
-            logService.recordAction(
-                    String.valueOf(supervisorEmpId),
-                    "SUPERVISOR_DENIED_VIEW_TIME",
-                    "Denied view time entries. Supervisor=" + supervisorEmpId
-                    + " Report=" + reportEmpId + " Period=" + period.toKey()
-            );
+            logService.recordAction(String.valueOf(supervisorEmpId), "SUPERVISOR_DENIED_VIEW_TIME", "Denied view time entries.");
             return Collections.emptyList();
         }
 
@@ -157,56 +151,50 @@ public class SupervisorOpsImpl implements SupervisorOps {
     }
 
     @Override
-    public boolean approveDirectReportDtr(int supervisorEmpId, int reportEmpId, PayPeriod period) {
-        if (period == null) {
-            return false;
+    public boolean approveDirectReportDtr(User currentUser, int reportEmpId, PayPeriod period) {
+        if (currentUser == null) throw new SecurityException("Access Denied: You must be logged in.");
+        
+        int supervisorEmpId = currentUser.getId();
+
+        if (supervisorEmpId == reportEmpId) {
+             throw new SecurityException("Action Denied: You cannot approve your own DTR.");
         }
 
-        if (!isDirectReport(supervisorEmpId, reportEmpId)) {
-            logService.recordAction(
-                    String.valueOf(supervisorEmpId),
-                    "SUPERVISOR_DENIED_DTR_APPROVE",
-                    "Denied DTR approve. Supervisor=" + supervisorEmpId
-                    + " Report=" + reportEmpId + " Period=" + period.toKey()
-            );
-            return false;
+        boolean isAdmin = currentUser.hasPermission("CAN_APPROVE_DTR");
+        boolean isActualSupervisor = isDirectReport(supervisorEmpId, reportEmpId);
+
+        if (!isAdmin && !isActualSupervisor) {
+            throw new SecurityException("Action Denied: Employee ID " + reportEmpId + " is not your direct report.");
         }
+
+        if (period == null) return false;
 
         boolean ok = dtrApprovalOps.approveDtr(reportEmpId, period, supervisorEmpId);
-
-        logService.recordAction(
-                String.valueOf(supervisorEmpId),
-                ok ? "SUPERVISOR_DTR_APPROVED" : "SUPERVISOR_DTR_APPROVE_FAILED",
-                "DTR approve attempted. Report=" + reportEmpId + " Period=" + period.toKey()
-        );
-
+        logService.recordAction(String.valueOf(supervisorEmpId), ok ? "SUPERVISOR_DTR_APPROVED" : "SUPERVISOR_DTR_APPROVE_FAILED", "DTR approve attempted.");
         return ok;
     }
 
     @Override
-    public boolean rejectDirectReportDtr(int supervisorEmpId, int reportEmpId, PayPeriod period) {
-        if (period == null) {
-            return false;
+    public boolean rejectDirectReportDtr(User currentUser, int reportEmpId, PayPeriod period) {
+        if (currentUser == null) throw new SecurityException("Access Denied: You must be logged in.");
+        
+        int supervisorEmpId = currentUser.getId();
+
+        if (supervisorEmpId == reportEmpId) {
+             throw new SecurityException("Action Denied: You cannot reject your own DTR.");
         }
 
-        if (!isDirectReport(supervisorEmpId, reportEmpId)) {
-            logService.recordAction(
-                    String.valueOf(supervisorEmpId),
-                    "SUPERVISOR_DENIED_DTR_REJECT",
-                    "Denied DTR reject. Supervisor=" + supervisorEmpId
-                    + " Report=" + reportEmpId + " Period=" + period.toKey()
-            );
-            return false;
+        boolean isAdmin = currentUser.hasPermission("CAN_APPROVE_DTR");
+        boolean isActualSupervisor = isDirectReport(supervisorEmpId, reportEmpId);
+
+        if (!isAdmin && !isActualSupervisor) {
+            throw new SecurityException("Action Denied: Employee ID " + reportEmpId + " is not your direct report.");
         }
+
+        if (period == null) return false;
 
         boolean ok = dtrApprovalOps.rejectDtr(reportEmpId, period, supervisorEmpId);
-
-        logService.recordAction(
-                String.valueOf(supervisorEmpId),
-                ok ? "SUPERVISOR_DTR_REJECTED" : "SUPERVISOR_DTR_REJECT_FAILED",
-                "DTR reject attempted. Report=" + reportEmpId + " Period=" + period.toKey()
-        );
-
+        logService.recordAction(String.valueOf(supervisorEmpId), ok ? "SUPERVISOR_DTR_REJECTED" : "SUPERVISOR_DTR_REJECT_FAILED", "DTR reject attempted.");
         return ok;
     }
 
@@ -226,35 +214,32 @@ public class SupervisorOpsImpl implements SupervisorOps {
                 }
             }
         }
-
         return out;
     }
 
     @Override
-    public boolean decideDirectReportLeave(int supervisorEmpId, int reportEmpId, String leaveId, LeaveStatus status, String note) {
-        if (leaveId == null || leaveId.trim().isEmpty() || status == null) {
-            return false;
+    public boolean decideDirectReportLeave(User currentUser, int reportEmpId, String leaveId, LeaveStatus status, String note) {
+        if (currentUser == null) throw new SecurityException("Access Denied: You must be logged in.");
+        
+        int supervisorEmpId = currentUser.getId();
+
+        if (supervisorEmpId == reportEmpId) {
+             throw new SecurityException("Action Denied: You cannot approve your own leave requests.");
         }
 
-        if (!isDirectReport(supervisorEmpId, reportEmpId)) {
-            logService.recordAction(
-                    String.valueOf(supervisorEmpId),
-                    "SUPERVISOR_DENIED_LEAVE_DECISION",
-                    "Denied leave decision. Supervisor=" + supervisorEmpId
-                    + " Report=" + reportEmpId + " LeaveId=" + leaveId
-            );
-            return false;
+        boolean isAdmin = currentUser.hasPermission("CAN_APPROVE_LEAVE");
+        boolean isActualSupervisor = isDirectReport(supervisorEmpId, reportEmpId);
+
+        if (!isAdmin && !isActualSupervisor) {
+            throw new SecurityException("Action Denied: Employee ID " + reportEmpId + " is not your direct report.");
         }
+
+        if (leaveId == null || leaveId.trim().isEmpty() || status == null) return false;
 
         String reviewedAt = LocalDateTime.now().toString();
         boolean ok = leaveRepo.updateDecision(reportEmpId, leaveId, status, supervisorEmpId, reviewedAt, note);
 
-        logService.recordAction(
-                String.valueOf(supervisorEmpId),
-                ok ? "SUPERVISOR_LEAVE_" + status.name() : "SUPERVISOR_LEAVE_DECISION_FAILED",
-                "Leave decision attempted. Report=" + reportEmpId + " LeaveId=" + leaveId + " Status=" + status.name()
-        );
-
+        logService.recordAction(String.valueOf(supervisorEmpId), ok ? "SUPERVISOR_LEAVE_" + status.name() : "SUPERVISOR_LEAVE_DECISION_FAILED", "Leave decision attempted.");
         return ok;
     }
 
