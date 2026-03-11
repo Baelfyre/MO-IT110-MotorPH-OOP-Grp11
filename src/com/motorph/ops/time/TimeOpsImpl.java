@@ -77,5 +77,10 @@ public class TimeOpsImpl implements TimeOps {
         approvalRepo.ensureRowExists(empId, period);
         return approvalRepo.getDtrStatus(empId, period);
     }
+
+    @Override
+    public boolean isWorkedHoursShort(int empId) {
+        return timeService.isWorkedHoursShort(empId);
+    }
 }
 

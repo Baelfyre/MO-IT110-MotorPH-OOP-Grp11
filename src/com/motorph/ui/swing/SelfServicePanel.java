@@ -12,7 +12,7 @@ import javax.swing.JPanel;
  */
 public class SelfServicePanel extends JPanel {
 
-    public SelfServicePanel(Runnable openHome, Runnable openAttendance, Runnable openLeave, Runnable openPayslip, Runnable openUpdateProfile) {
+    public SelfServicePanel(Runnable openHome, Runnable openAttendance, Runnable openLeave, Runnable openUpdateProfile) {
         setLayout(new BorderLayout(12, 12));
 
         JLabel title = new JLabel("Use the self-service portal to manage personal requests and records.");

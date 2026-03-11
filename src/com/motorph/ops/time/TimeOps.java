@@ -26,5 +26,7 @@ public interface TimeOps {
     List<TimeEntry> viewMyTimeEntriesForPeriod(int empId, PayPeriod period);
 
     ApprovalStatus getMyDtrStatus(int empId, PayPeriod period);
+
+    boolean isWorkedHoursShort(int empId);
 }
 

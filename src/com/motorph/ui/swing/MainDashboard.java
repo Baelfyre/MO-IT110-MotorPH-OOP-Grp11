@@ -119,7 +119,6 @@ public class MainDashboard extends javax.swing.JFrame {
                 () -> showCard("HOME"),
                 () -> showCard("ATTENDANCE"),
                 () -> showCard("LEAVE"),
-                () -> showCard("PAYSLIP"),
                 this::openUpdateProfileDialog
         ), "SELF_SERVICE");
         mainContentPanel.add(new HrPanel(currentUser, hrOps), "HR");
@@ -749,6 +748,17 @@ public class MainDashboard extends javax.swing.JFrame {
                         this,
                         "Logged out beyond working hours. Time was recorded, but it may be subject for supervisor approval.",
                         "Notice",
+                        JOptionPane.WARNING_MESSAGE
+                );
+            }
+
+            // Check for unusually short work duration using shared service rule.
+            if (timeOps.isWorkedHoursShort(empId)) {
+                JOptionPane.showMessageDialog(
+                        this,
+                        "Your recorded work duration for today looks unusually short.\n"
+                                + "If this is incorrect, please contact your supervisor to request a DTR correction.",
+                        "Short Work Duration Detected",
                         JOptionPane.WARNING_MESSAGE
                 );
             }

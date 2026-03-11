@@ -4,6 +4,7 @@ import com.motorph.domain.models.TimeEntry;
 import com.motorph.repository.TimeEntryRepository;
 
 import java.time.DayOfWeek;
+import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.List;
@@ -14,6 +15,9 @@ import java.util.List;
  * @author ACER
  */
 public class TimeService {
+
+    // Minimum minutes considered a reasonable shift before raising a warning.
+    private static final long MIN_WORK_MINUTES_FOR_WARNING = 60;
 
     private final TimeEntryRepository repo;
 
@@ -64,6 +68,35 @@ public class TimeService {
 
     public List<TimeEntry> getEntries(int empId) {
         return repo.getEntries(empId);
+    }
+
+    /**
+     * Returns true if today's recorded work duration for the employee is
+     * considered short (for example, zero to less than or equal to one hour),
+     * based on the latest time-in and time-out stored in the repository.
+     */
+    public boolean isWorkedHoursShort(int empId) {
+        LocalDate today = LocalDate.now();
+        List<TimeEntry> entries = repo.getEntries(empId);
+
+        LocalTime timeIn = null;
+        LocalTime timeOut = null;
+
+        for (TimeEntry entry : entries) {
+            if (entry.getDate() != null && entry.getDate().equals(today)) {
+                timeIn = entry.getTimeIn();
+                timeOut = entry.getTimeOut();
+                break;
+            }
+        }
+
+        if (timeIn == null || timeOut == null) {
+            return false;
+        }
+
+        long minutes = Duration.between(timeIn, timeOut).toMinutes();
+        // Treat zero or any positive duration up to the threshold as "short".
+        return minutes <= MIN_WORK_MINUTES_FOR_WARNING;
     }
 
     private TimeEntry getEntryForDate(int empId, LocalDate date) {

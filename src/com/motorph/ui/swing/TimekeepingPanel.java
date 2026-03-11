@@ -74,8 +74,6 @@ public class TimekeepingPanel extends JPanel {
         top.add(btnSetPeriod);
         top.add(lblPeriod);
         top.add(lblDtrStatus);
-        top.add(btnClockIn);
-        top.add(btnClockOut);
         top.add(btnRefresh);
 
         add(top, BorderLayout.NORTH);
@@ -89,8 +87,6 @@ public class TimekeepingPanel extends JPanel {
             }
             setActivePeriod(d);
         });
-        btnClockIn.addActionListener(e -> onClockIn());
-        btnClockOut.addActionListener(e -> onClockOut());
         btnRefresh.addActionListener(e -> reload());
     }
 
@@ -149,6 +145,11 @@ public class TimekeepingPanel extends JPanel {
             UiDialogs.info(this, "Time Out recorded.");
             if (isOutsideWorkingHours()) {
                 UiDialogs.warn(this, "Logged out beyond working hours. Time was recorded but may require supervisor approval.");
+            }
+
+            // Check for unusually short work duration using shared service rule.
+            if (timeOps.isWorkedHoursShort(empId)) {
+                UiDialogs.warn(this, "Your recorded work duration for today looks unusually short. If this is incorrect, please contact your supervisor to request a DTR correction.");
             }
         } else {
             UiDialogs.warn(this, "Time Out not recorded. Weekend entries should be processed through supervisor manual DTR, or today's time-out already exists.");
