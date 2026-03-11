@@ -43,48 +43,66 @@ public class LeaveOpsImpl implements LeaveOps {
 
     @Override
     public boolean requestLeave(int empId, String firstName, String lastName, LocalDate date, LocalTime start, LocalTime end) {
+        return requestLeave(empId, firstName, lastName, date, start, end, false);
+    }
+
+    @Override
+    public boolean requestLeave(int empId, String firstName, String lastName,
+            LocalDate date, LocalTime start, LocalTime end,
+            boolean allowUnpaidFallback) {
 
         if (date == null || start == null || end == null) {
-            logService.recordAction(String.valueOf(empId), "LEAVE_REQUEST_FAILED", "Missing date or time range.");
+            lastRequestMessage = "Missing date or time range.";
+            logService.recordAction(String.valueOf(empId), "LEAVE_REQUEST_FAILED", lastRequestMessage);
             return false;
         }
 
-        if (end.isBefore(start)) {
-            logService.recordAction(String.valueOf(empId), "LEAVE_REQUEST_FAILED", "End time is earlier than start time.");
+        PayPeriod period = PayPeriod.fromDateSemiMonthly(date);
+        double remainingCredits = creditsService.getRemainingCreditsYearToDate(empId, period);
+
+        String validationMessage = leaveService.validateLeaveRequest(
+                date, start, end, remainingCredits, allowUnpaidFallback
+        );
+        if (validationMessage != null) {
+            lastRequestMessage = validationMessage;
+            logService.recordAction(String.valueOf(empId), "LEAVE_REQUEST_FAILED", validationMessage);
             return false;
         }
 
-        if (isWeekend(date)) {
-            logService.recordAction(String.valueOf(empId), "LEAVE_REQUEST_IGNORED", "Weekend leave request recorded as invalid workday.");
+        double storedCredits = creditsService.getStoredLeaveCreditsHours(empId);
+        if (storedCredits <= 0.0 && !allowUnpaidFallback) {
+            lastRequestMessage = "Paid leave credits are 0. Confirm unpaid leave before submission.";
+            logService.recordAction(String.valueOf(empId), "LEAVE_REQUEST_NEEDS_UNPAID_CONFIRMATION", lastRequestMessage);
             return false;
         }
 
-        // --- ADVANCED EDGE CASE FIX: Block active duplicates, but allow re-applying if rejected ---
         List<LeaveRequest> existingLeaves = leaveRepo.findByEmployee(empId);
         for (LeaveRequest r : existingLeaves) {
             if (r.getDate() != null && r.getDate().equals(date)) {
                 if (r.getStatus() == LeaveStatus.PENDING || r.getStatus() == LeaveStatus.APPROVED) {
-                    logService.recordAction(String.valueOf(empId), "LEAVE_REQUEST_DENIED", "Active leave already exists for " + date);
-                    return false; 
+                    lastRequestMessage = "An active leave request already exists for this date.";
+                    logService.recordAction(String.valueOf(empId), "LEAVE_REQUEST_DENIED", lastRequestMessage);
+                    return false;
                 }
             }
         }
 
         String leaveId = buildLeaveId(empId, date, start);
-
         LeaveRequest r = new LeaveRequest(leaveId, empId, date, start, end, firstName, lastName);
         boolean ok = leaveRepo.create(r);
 
         String mode = (storedCredits <= 0.0 && allowUnpaidFallback) ? "unpaid-fallback" : "paid-path";
         lastRequestMessage = ok
-                ? (storedCredits <= 0.0 && allowUnpaidFallback
+                ? ((storedCredits <= 0.0 && allowUnpaidFallback)
                         ? "Leave request recorded through unpaid leave confirmation path."
                         : "Leave request recorded.")
                 : "Leave request not recorded.";
 
-        logService.recordAction(String.valueOf(empId),
+        logService.recordAction(
+                String.valueOf(empId),
                 ok ? "LEAVE_REQUEST_RECORDED" : "LEAVE_REQUEST_FAILED",
-                (ok ? ("Leave row appended: " + leaveId + " Mode=" + mode) : "Leave row append failed."));
+                ok ? ("Leave row appended: " + leaveId + " Mode=" + mode) : "Leave row append failed."
+        );
 
         return ok;
     }

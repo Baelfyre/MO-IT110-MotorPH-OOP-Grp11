@@ -128,7 +128,7 @@ public class TimeService {
 
     // Annotation: Flags unusually short worked durations for review.
     public boolean isWorkedDurationTooShort(TimeEntry entry) {
-        return calculateWorkedHours(entry) > 0.0 && calculateWorkedHours(entry) < MIN_VALID_WORK_HOURS;
+        return calculateWorkedHours(entry) > 0.0 && calculateWorkedHours(entry) < (MIN_WORK_MINUTES_FOR_WARNING / 60.0);
     }
 
     private boolean isWorkday(LocalDate date) {

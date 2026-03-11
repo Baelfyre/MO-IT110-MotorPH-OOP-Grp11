@@ -135,12 +135,11 @@ public class PayrollOpsImpl implements PayrollOps {
 
     @Override
     public List<PayrollRunResult> processPayrollForPeriod(PayPeriod period, User currentUser) {
-        // 1. BACKEND RBAC VERIFICATION
         if (currentUser == null || !currentUser.hasPermission("CAN_PROCESS_PAYROLL")) {
             logService.recordAction(
-                currentUser != null ? String.valueOf(currentUser.getId()) : "UNKNOWN",
-                "SECURITY_VIOLATION",
-                "Unauthorized attempt to run batch payroll."
+                    currentUser != null ? String.valueOf(currentUser.getId()) : "UNKNOWN",
+                    "SECURITY_VIOLATION",
+                    "Unauthorized attempt to run batch payroll."
             );
             throw new SecurityException("Access Denied: You do not have permission to process payroll.");
         }
@@ -170,20 +169,7 @@ public class PayrollOpsImpl implements PayrollOps {
                 continue;
             }
 
-        /**
-         * Stores the payroll execution result.
-         */
-        private PayrollExecutionResult(int employeeId,
-                Payslip payslip,
-                boolean success,
-                String transactionId,
-                String message) {
-            this.employeeId = employeeId;
-            this.payslip = payslip;
-            this.success = success;
-            this.transactionId = transactionId;
-            this.message = message;
-        }
+            Payslip p = payrollService.generatePayslip(empId, period, processedByUserId);
 
             if (p != null) {
                 results.add(new PayrollRunResult(empId, p.getTransactionId(), true, "Payslip snapshot saved."));
@@ -195,5 +181,6 @@ public class PayrollOpsImpl implements PayrollOps {
 
         logService.recordAction(String.valueOf(processedByUserId), "PAYROLL_BATCH_DONE", "Processed payroll batch for period " + period.toKey());
         return results;
+        
     }
 }
