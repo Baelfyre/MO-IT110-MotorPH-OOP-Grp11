@@ -121,8 +121,8 @@ public class MainDashboard extends javax.swing.JFrame {
                 () -> showCard("LEAVE"),
                 this::openUpdateProfileDialog
         ), "SELF_SERVICE");
-        mainContentPanel.add(new HrPanel(currentUser, hrOps), "HR");
-        mainContentPanel.add(new PayrollPanel(currentUser, payrollOps), "PAYROLL");
+        mainContentPanel.add(new HrPanel(currentUser, hrOps, addressRepo), "HR");
+        mainContentPanel.add(new PayrollPanel(currentUser, payrollOps, payslipOps), "PAYROLL");
         mainContentPanel.add(new TimekeepingPanel(currentUser, timeOps), "ATTENDANCE");
         mainContentPanel.add(new LeavePanel(currentUser, leaveOps, employeeService), "LEAVE");
         mainContentPanel.add(new SupervisorPanel(currentUser, supervisorOps), "SUPERVISOR");
@@ -863,7 +863,7 @@ public class MainDashboard extends javax.swing.JFrame {
         return day == DayOfWeek.SATURDAY || day == DayOfWeek.SUNDAY;
     }
 
-    // Annotation: Loads today's time-in and time-out into the sidebar labels.
+    // Annotation: Loads today's time-in, time-out, and total worked hours into the sidebar labels.
     private void loadTodayAttendanceLabels() {
         if (currentUser == null) {
             jLabel13.setText("Time In: ");

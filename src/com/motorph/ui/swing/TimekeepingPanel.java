@@ -7,6 +7,7 @@ package com.motorph.ui.swing;
 import com.motorph.domain.models.PayPeriod;
 import com.motorph.domain.models.TimeEntry;
 import com.motorph.domain.models.User;
+import com.motorph.service.TimeService;
 import com.toedter.calendar.JDateChooser;
 import com.toedter.calendar.JTextFieldDateEditor;
 
@@ -33,6 +34,7 @@ public class TimekeepingPanel extends JPanel {
     private final JDateChooser dcAnyDate = new JDateChooser();
     private final JLabel lblPeriod = new JLabel("Period: -");
     private final JLabel lblDtrStatus = new JLabel("DTR Status: -");
+    private final JLabel lblWorkedHours = new JLabel("Worked today (hrs): -");
     private PayPeriod activePeriod;
 
     private final DefaultTableModel model = new DefaultTableModel(
@@ -116,7 +118,7 @@ public class TimekeepingPanel extends JPanel {
         }
     }
 
-    private void onClockIn() {
+    /*private void onClockIn() {
         int empId = empId();
         if (empId <= 0) {
             UiDialogs.error(this, "Invalid EmpID.");
@@ -134,7 +136,7 @@ public class TimekeepingPanel extends JPanel {
         reload();
     }
 
-    private void onClockOut() {
+    /*private void onClockOut() {
         int empId = empId();
         if (empId <= 0) {
             UiDialogs.error(this, "Invalid EmpID.");
@@ -143,6 +145,12 @@ public class TimekeepingPanel extends JPanel {
         boolean ok = timeOps.clockOut(empId);
         if (ok) {
             UiDialogs.info(this, "Time Out recorded.");
+            TimeEntry todayEntry = timeOps.getEntryForDate(empId, LocalDate.now());
+            if (timeOps.isWorkedDurationTooShort(todayEntry)) {
+                UiDialogs.warn(this, "Recorded work duration is below the minimum review threshold of "
+                        + TimeService.MIN_VALID_WORK_HOURS
+                        + " hour(s). Please contact the supervisor for DTR correction.");
+            }
             if (isOutsideWorkingHours()) {
                 UiDialogs.warn(this, "Logged out beyond working hours. Time was recorded but may require supervisor approval.");
             }
@@ -155,7 +163,7 @@ public class TimekeepingPanel extends JPanel {
             UiDialogs.warn(this, "Time Out not recorded. Weekend entries should be processed through supervisor manual DTR, or today's time-out already exists.");
         }
         reload();
-    }
+    }*/
 
     private boolean isOutsideWorkingHours() {
         LocalTime now = LocalTime.now();

@@ -9,6 +9,8 @@ import com.motorph.domain.models.PayPeriod;
 import com.motorph.domain.models.TimeEntry;
 import com.motorph.domain.models.LeaveRequest;
 import com.motorph.domain.enums.LeaveStatus;
+import java.time.LocalDate;
+import java.time.LocalTime;
 import java.util.List;
 
 /**
@@ -24,6 +26,8 @@ public interface SupervisorOps {
     List<SupervisorDtrSummary> listDirectReportStatuses(int supervisorEmpId, PayPeriod period);
 
     List<TimeEntry> viewDirectReportTimeEntries(int supervisorEmpId, int reportEmpId, PayPeriod period);
+
+    boolean updateDirectReportTimeEntry(int supervisorEmpId, int reportEmpId, LocalDate date, LocalTime timeIn, LocalTime timeOut);
 
     boolean approveDirectReportDtr(int supervisorEmpId, int reportEmpId, PayPeriod period);
 

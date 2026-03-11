@@ -20,6 +20,8 @@ public interface PayrollOps {
 
     PayPeriod resolvePeriod(LocalDate date);
 
+    List<PayrollQueueItem> listEmployeesForPeriod(PayPeriod period);
+
     Payslip processPayrollForEmployee(int empId, PayPeriod period, int processedByUserId);
 
     List<PayrollRunResult> processPayrollForPeriod(PayPeriod period, int processedByUserId);

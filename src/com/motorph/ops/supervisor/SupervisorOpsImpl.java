@@ -124,6 +124,38 @@ public class SupervisorOpsImpl implements SupervisorOps {
         return timeRepo.findByEmployeeAndPeriod(reportEmpId, period);
     }
 
+
+    @Override
+    public boolean updateDirectReportTimeEntry(int supervisorEmpId, int reportEmpId, java.time.LocalDate date, java.time.LocalTime timeIn, java.time.LocalTime timeOut) {
+        if (date == null || timeIn == null || timeOut == null) {
+            return false;
+        }
+        if (!timeOut.isAfter(timeIn)) {
+            logService.recordAction(
+                    String.valueOf(supervisorEmpId),
+                    "SUPERVISOR_DTR_EDIT_FAILED",
+                    "Denied DTR edit. Invalid time order for Report=" + reportEmpId + " Date=" + date
+            );
+            return false;
+        }
+        if (!isDirectReport(supervisorEmpId, reportEmpId)) {
+            logService.recordAction(
+                    String.valueOf(supervisorEmpId),
+                    "SUPERVISOR_DTR_EDIT_DENIED",
+                    "Denied DTR edit. Supervisor=" + supervisorEmpId + " Report=" + reportEmpId + " Date=" + date
+            );
+            return false;
+        }
+
+        boolean ok = timeRepo.saveEntry(reportEmpId, new TimeEntry(date, timeIn, timeOut));
+        logService.recordAction(
+                String.valueOf(supervisorEmpId),
+                ok ? "SUPERVISOR_DTR_EDIT_OK" : "SUPERVISOR_DTR_EDIT_FAILED",
+                "Manual DTR edit. Report=" + reportEmpId + " Date=" + date + " TimeIn=" + timeIn + " TimeOut=" + timeOut
+        );
+        return ok;
+    }
+
     @Override
     public boolean approveDirectReportDtr(int supervisorEmpId, int reportEmpId, PayPeriod period) {
         if (period == null) {

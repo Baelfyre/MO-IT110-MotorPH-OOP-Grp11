@@ -4,13 +4,15 @@
  */
 package com.motorph.ui.swing;
 
+import com.motorph.domain.enums.LeaveStatus;
+import com.motorph.domain.models.LeaveRequest;
+import com.motorph.domain.models.LogEntry;
 import com.motorph.domain.models.PayPeriod;
 import com.motorph.domain.models.TimeEntry;
-import com.motorph.domain.models.LeaveRequest;
-import com.motorph.domain.enums.LeaveStatus;
 import com.motorph.domain.models.User;
 import com.motorph.ops.supervisor.SupervisorDtrSummary;
 import com.motorph.ops.supervisor.SupervisorOps;
+import com.motorph.service.LogService;
 import com.toedter.calendar.JDateChooser;
 import com.toedter.calendar.JTextFieldDateEditor;
 
@@ -18,7 +20,9 @@ import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
 import java.awt.*;
 import java.time.LocalDate;
+import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import java.util.Locale;
@@ -31,6 +35,7 @@ public class SupervisorPanel extends JPanel {
 
     private final User currentUser;
     private final SupervisorOps supervisorOps;
+    private final LogService logService;
 
     private final JDateChooser dcAnyDate = new JDateChooser();
     private final JLabel lblPeriod = new JLabel("Period: -");
@@ -53,13 +58,20 @@ public class SupervisorPanel extends JPanel {
     private final JButton btnApprove = new JButton("Approve DTR");
     private final JButton btnReject = new JButton("Reject DTR");
     private final JButton btnLeaveApproval = new JButton("Leave Request Approval");
+    private final JButton btnLogs = new JButton("Change Logs");
 
     private static final DateTimeFormatter DATE_FMT = DateTimeFormatter.ofPattern("MM/dd/yyyy", Locale.US);
     private static final DateTimeFormatter TIME_FMT = DateTimeFormatter.ofPattern("HH:mm", Locale.US);
+    private static final DateTimeFormatter TIME_INPUT_FMT = DateTimeFormatter.ofPattern("h:mm a", Locale.US);
 
     public SupervisorPanel(User currentUser, SupervisorOps supervisorOps) {
+        this(currentUser, supervisorOps, new LogService());
+    }
+
+    public SupervisorPanel(User currentUser, SupervisorOps supervisorOps, LogService logService) {
         this.currentUser = currentUser;
         this.supervisorOps = supervisorOps;
+        this.logService = logService;
 
         buildUi();
 
@@ -84,8 +96,17 @@ public class SupervisorPanel extends JPanel {
         top.add(btnApprove);
         top.add(btnReject);
         top.add(btnLeaveApproval);
+        top.add(btnLogs);
 
-        add(top, BorderLayout.NORTH);
+        JScrollPane topScroll = new JScrollPane(
+            top,
+            JScrollPane.VERTICAL_SCROLLBAR_NEVER,
+            JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED
+        );
+        topScroll.setBorder(BorderFactory.createEmptyBorder());
+        topScroll.getHorizontalScrollBar().setUnitIncrement(16);
+
+        add(topScroll, BorderLayout.NORTH);
         add(new JScrollPane(tbl), BorderLayout.CENTER);
 
         btnSetPeriod.addActionListener(e -> {
@@ -102,6 +123,7 @@ public class SupervisorPanel extends JPanel {
         btnApprove.addActionListener(e -> onApprove());
         btnReject.addActionListener(e -> onReject());
         btnLeaveApproval.addActionListener(e -> onLeaveApproval());
+        btnLogs.addActionListener(e -> showLogs());
     }
 
     private int supervisorEmpId() {
@@ -174,21 +196,122 @@ public class SupervisorPanel extends JPanel {
         }
 
         JTable table = new JTable(tm);
+        table.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
         JDialog dlg = new JDialog(SwingUtilities.getWindowAncestor(this), "DTR Entries: " + reportId, Dialog.ModalityType.APPLICATION_MODAL);
-        dlg.setContentPane(SwingForm.wrapNorthCenterSouth(null, new JScrollPane(table), closeRow(dlg)));
+
+        JPanel south = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 10));
+        JButton btnEditEntry = new JButton("Manual Edit");
+        JButton close = new JButton("Close");
+
+        btnEditEntry.addActionListener(e -> onManualEdit(reportId, table, tm, dlg));
+        close.addActionListener(e -> dlg.dispose());
+        south.add(btnEditEntry);
+        south.add(close);
+
+        dlg.setContentPane(SwingForm.wrapNorthCenterSouth(null, new JScrollPane(table), south));
         dlg.setSize(550, 400);
         dlg.setLocationRelativeTo(this);
         dlg.setVisible(true);
     }
 
-    private JPanel closeRow(JDialog dlg) {
-        JPanel p = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 10));
-        JButton close = new JButton("Close");
-        close.addActionListener(e -> dlg.dispose());
-        p.add(close);
-        return p;
+    private void onManualEdit(int reportId, JTable table, DefaultTableModel tm, JDialog parentDialog) {
+        int viewRow = table.getSelectedRow();
+        if (viewRow < 0) {
+            UiDialogs.warn(parentDialog, "Select an entry first.");
+            return;
+        }
+
+        int modelRow = table.convertRowIndexToModel(viewRow);
+        LocalDate selectedDate;
+        try {
+            selectedDate = LocalDate.parse(String.valueOf(tm.getValueAt(modelRow, 0)), DATE_FMT);
+        } catch (Exception ex) {
+            UiDialogs.warn(parentDialog, "Invalid date selected.");
+            return;
+        }
+
+        JDateChooser dcEditDate = new JDateChooser();
+        dcEditDate.setDateFormatString("MM/dd/yyyy");
+        if (dcEditDate.getDateEditor() instanceof JTextFieldDateEditor editor) {
+            editor.setEditable(false);
+        }
+        dcEditDate.setDate(java.sql.Date.valueOf(selectedDate));
+
+        JComboBox<String> cbTimeIn = new JComboBox<>();
+        JComboBox<String> cbTimeOut = new JComboBox<>();
+        for (String value : buildTimeChoices()) {
+            cbTimeIn.addItem(value);
+            cbTimeOut.addItem(value);
+        }
+        cbTimeIn.setSelectedItem(toDisplayTime(String.valueOf(tm.getValueAt(modelRow, 1))));
+        cbTimeOut.setSelectedItem(toDisplayTime(String.valueOf(tm.getValueAt(modelRow, 2))));
+
+        JPanel form = new JPanel(new GridLayout(0, 2, 8, 8));
+        form.add(new JLabel("Date:"));
+        form.add(dcEditDate);
+        form.add(new JLabel("Time In:"));
+        form.add(cbTimeIn);
+        form.add(new JLabel("Time Out:"));
+        form.add(cbTimeOut);
+
+        int result = JOptionPane.showConfirmDialog(parentDialog, form, "Manual DTR Edit", JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE);
+        if (result != JOptionPane.OK_OPTION) {
+            return;
+        }
+
+        LocalDate date = LocalDates.toLocalDate(dcEditDate.getDate());
+        LocalTime timeIn = parseInputTime((String) cbTimeIn.getSelectedItem());
+        LocalTime timeOut = parseInputTime((String) cbTimeOut.getSelectedItem());
+        if (date == null || timeIn == null || timeOut == null) {
+            UiDialogs.warn(parentDialog, "Provide a valid date and time values.");
+            return;
+        }
+        if (!timeOut.isAfter(timeIn)) {
+            UiDialogs.warn(parentDialog, "Time Out must be after Time In.");
+            return;
+        }
+
+        boolean ok = supervisorOps.updateDirectReportTimeEntry(supervisorEmpId(), reportId, date, timeIn, timeOut);
+        if (ok) {
+            UiDialogs.info(parentDialog, "DTR entry updated.");
+            parentDialog.dispose();
+            reload();
+        } else {
+            UiDialogs.error(parentDialog, "DTR entry update failed.");
+        }
     }
 
+    private List<String> buildTimeChoices() {
+        List<String> times = new ArrayList<>();
+        LocalTime t = LocalTime.of(0, 0);
+        while (!t.isAfter(LocalTime.of(23, 30))) {
+            times.add(t.format(TIME_INPUT_FMT));
+            t = t.plusMinutes(30);
+        }
+        return times;
+    }
+
+    private String toDisplayTime(String raw24) {
+        if (raw24 == null || raw24.trim().isEmpty()) {
+            return LocalTime.of(8, 0).format(TIME_INPUT_FMT);
+        }
+        try {
+            return LocalTime.parse(raw24.trim(), TIME_FMT).format(TIME_INPUT_FMT);
+        } catch (Exception ex) {
+            return LocalTime.of(8, 0).format(TIME_INPUT_FMT);
+        }
+    }
+
+    private LocalTime parseInputTime(String raw) {
+        if (raw == null || raw.trim().isEmpty()) {
+            return null;
+        }
+        try {
+            return LocalTime.parse(raw.trim(), TIME_INPUT_FMT);
+        } catch (Exception ex) {
+            return null;
+        }
+    }
 
     private void onLeaveApproval() {
         if (activePeriod == null) {
@@ -265,13 +388,13 @@ public class SupervisorPanel extends JPanel {
 
         boolean ok = supervisorOps.decideDirectReportLeave(supervisorEmpId(), reportId, leaveId, status, note);
         if (ok) {
-            UiDialogs.info(dlg, "Leave request " + status.name().toLowerCase() + ".");
-            tm.removeRow(modelRow);
+            UiDialogs.info(dlg, "Leave request updated.");
+            dlg.dispose();
+            reload();
         } else {
-            UiDialogs.warn(dlg, "Leave decision failed. Check if the employee is a direct report.");
+            UiDialogs.error(dlg, "Leave request update failed.");
         }
     }
-
 
     private void onApprove() {
         Integer reportId = selectedReportId();
@@ -279,14 +402,13 @@ public class SupervisorPanel extends JPanel {
             UiDialogs.warn(this, "Select a row first.");
             return;
         }
-
         boolean ok = supervisorOps.approveDirectReportDtr(supervisorEmpId(), reportId, activePeriod);
         if (ok) {
             UiDialogs.info(this, "DTR approved.");
+            reload();
         } else {
-            UiDialogs.warn(this, "Approve failed. Check if payroll already approved or report is not direct.");
+            UiDialogs.error(this, "DTR approval failed.");
         }
-        reload();
     }
 
     private void onReject() {
@@ -295,60 +417,58 @@ public class SupervisorPanel extends JPanel {
             UiDialogs.warn(this, "Select a row first.");
             return;
         }
-
         boolean ok = supervisorOps.rejectDirectReportDtr(supervisorEmpId(), reportId, activePeriod);
         if (ok) {
             UiDialogs.info(this, "DTR rejected.");
+            reload();
         } else {
-            UiDialogs.warn(this, "Reject failed. Check if payroll already approved or report is not direct.");
+            UiDialogs.error(this, "DTR rejection failed.");
         }
-        reload();
     }
 
-    /**
-     * This method is called from within the constructor to initialize the form.
-     * WARNING: Do NOT modify this code. The content of this method is always
-     * regenerated by the Form Editor.
-     */
+    private void showLogs() {
+        List<LogEntry> logs = logService.getLogsForUserByActionPrefix(
+                String.valueOf(supervisorEmpId()),
+                "SUPERVISOR_"
+        );
+        JDialog dlg = new JDialog(SwingUtilities.getWindowAncestor(this), "Supervisor Logs", Dialog.ModalityType.APPLICATION_MODAL);
+        DefaultTableModel logModel = new DefaultTableModel(new Object[]{"Log_ID", "Timestamp", "User", "Action", "Details"}, 0) {
+            @Override
+            public boolean isCellEditable(int row, int col) {
+                return false;
+            }
+        };
+        JTable table = new JTable(logModel);
+        table.setAutoResizeMode(JTable.AUTO_RESIZE_OFF);
+        for (LogEntry entry : logs) {
+            logModel.addRow(new Object[]{entry.getId(), entry.getTimestamp(), entry.getUser(), entry.getAction(), entry.getDetails()});
+        }
+        JPanel south = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 10));
+        JButton close = new JButton("Close");
+        close.addActionListener(e -> dlg.dispose());
+        south.add(close);
+        dlg.setContentPane(SwingForm.wrapNorthCenterSouth(null, new JScrollPane(table), south));
+        dlg.setSize(900, 500);
+        dlg.setLocationRelativeTo(this);
+        dlg.setVisible(true);
+    }
+
     @SuppressWarnings("unchecked")
     // <editor-fold defaultstate="collapsed" desc="Generated Code">//GEN-BEGIN:initComponents
     private void initComponents() {
 
-        jPanel2 = new javax.swing.JPanel();
-        jPanel4 = new javax.swing.JPanel();
-
-        setLayout(new java.awt.BorderLayout());
-
-        javax.swing.GroupLayout jPanel2Layout = new javax.swing.GroupLayout(jPanel2);
-        jPanel2.setLayout(jPanel2Layout);
-        jPanel2Layout.setHorizontalGroup(
-            jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGap(0, 100, Short.MAX_VALUE)
+        javax.swing.GroupLayout layout = new javax.swing.GroupLayout(this);
+        this.setLayout(layout);
+        layout.setHorizontalGroup(
+            layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGap(0, 400, Short.MAX_VALUE)
         );
-        jPanel2Layout.setVerticalGroup(
-            jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGap(0, 380, Short.MAX_VALUE)
+        layout.setVerticalGroup(
+            layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGap(0, 300, Short.MAX_VALUE)
         );
-
-        add(jPanel2, java.awt.BorderLayout.LINE_END);
-
-        javax.swing.GroupLayout jPanel4Layout = new javax.swing.GroupLayout(jPanel4);
-        jPanel4.setLayout(jPanel4Layout);
-        jPanel4Layout.setHorizontalGroup(
-            jPanel4Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGap(0, 100, Short.MAX_VALUE)
-        );
-        jPanel4Layout.setVerticalGroup(
-            jPanel4Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGap(0, 380, Short.MAX_VALUE)
-        );
-
-        add(jPanel4, java.awt.BorderLayout.LINE_START);
     }// </editor-fold>//GEN-END:initComponents
 
-
     // Variables declaration - do not modify//GEN-BEGIN:variables
-    private javax.swing.JPanel jPanel2;
-    private javax.swing.JPanel jPanel4;
     // End of variables declaration//GEN-END:variables
 }

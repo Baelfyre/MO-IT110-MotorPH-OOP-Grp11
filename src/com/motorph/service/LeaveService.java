@@ -10,6 +10,7 @@ import com.motorph.repository.LeaveRepository;
 
 import java.time.DayOfWeek;
 import java.time.Duration;
+import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.HashSet;
 import java.util.List;
@@ -66,11 +67,12 @@ public class LeaveService {
         return totalHours;
     }
 
-    private double calculateHours(LocalTime start, LocalTime end) {
+    // Annotation: Exposes leave-hour computation for validation and UI summaries.
+    public double calculateHours(LocalTime start, LocalTime end) {
         if (start == null || end == null) {
             return 0.0;
         }
-        if (end.isBefore(start)) {
+        if (!end.isAfter(start)) {
             return 0.0;
         }
 
@@ -87,4 +89,65 @@ public class LeaveService {
         return Math.min(hours, 8.0);
     }
 
+    // Annotation: Centralized leave-request validation used before repository save.
+    public String validateLeaveRequest(LocalDate date, LocalTime start, LocalTime end) {
+        if (date == null) {
+            return "Select a leave date.";
+        }
+        if (start == null || end == null) {
+            return "Select start and end time.";
+        }
+        if (date.isBefore(LocalDate.now())) {
+            return "Past dates are not allowed for self-service leave requests.";
+        }
+        if (!end.isAfter(start)) {
+            return "End time must be after start time.";
+        }
+        if (isWeekend(date)) {
+            return "Weekend leave requests are not allowed in self-service.";
+        }
+        if (calculateHours(start, end) <= 0.0) {
+            return "Leave request hours must be greater than zero.";
+        }
+        return null;
+    }
+    
+    // To validate Leave request
+        public String validateLeaveRequest(
+            LocalDate date,
+            LocalTime start,
+            LocalTime end,
+            double remainingCreditsHours,
+            boolean allowUnpaidFallback
+    ) {
+        String basicError = validateLeaveRequest(date, start, end);
+        if (basicError != null) {
+            return basicError;
+        }
+
+        double requestedHours = calculateHours(start, end);
+
+        if (requestedHours <= 0.0) {
+            return "Leave request hours must be greater than zero.";
+        }
+
+        if (requestedHours > remainingCreditsHours && !allowUnpaidFallback) {
+            return String.format(
+                    java.util.Locale.US,
+                    "Requested leave is %.2f hours but only %.2f paid leave hours remain.",
+                    requestedHours,
+                    remainingCreditsHours
+            );
+        }
+
+        return null;
+    }
+
+    public boolean isWeekend(LocalDate date) {
+        if (date == null) {
+            return false;
+        }
+        DayOfWeek dow = date.getDayOfWeek();
+        return dow == DayOfWeek.SATURDAY || dow == DayOfWeek.SUNDAY;
+    }
 }

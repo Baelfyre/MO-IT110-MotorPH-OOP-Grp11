@@ -70,6 +70,10 @@ public class PayrollService {
             return null;
         }
 
+        if (payslipRepo.findByEmployeeAndPeriod(empId, period) != null) {
+            return null;
+        }
+
         Payslip payslip = computePayslip(emp, period, comp, processedByUserId, 0.0);
         if (payslip == null) {
             return null;
@@ -96,6 +100,9 @@ public class PayrollService {
         }
         Employee emp = empRepo.findById(empId);
         if (emp == null || emp.getCompensation() == null) {
+            return null;
+        }
+        if (payslipRepo.findByEmployeeAndPeriod(empId, period) != null) {
             return null;
         }
         Payslip payslip = computePayslip(emp, period, emp.getCompensation(), 0, bonusAmount);

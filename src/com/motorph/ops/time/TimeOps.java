@@ -8,6 +8,7 @@ import com.motorph.domain.enums.ApprovalStatus;
 import com.motorph.domain.models.PayPeriod;
 import com.motorph.domain.models.TimeEntry;
 
+import java.time.LocalDate;
 import java.util.List;
 
 /**
@@ -29,4 +30,3 @@ public interface TimeOps {
 
     boolean isWorkedHoursShort(int empId);
 }
-
