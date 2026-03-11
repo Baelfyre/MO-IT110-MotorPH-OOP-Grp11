@@ -121,7 +121,7 @@ public class MainDashboard extends javax.swing.JFrame {
                 () -> showCard("PAYSLIP"),
                 this::openUpdateProfileDialog
         ), "SELF_SERVICE");
-        mainContentPanel.add(new HrPanel(currentUser, hrOps), "HR");
+        mainContentPanel.add(new HrPanel(currentUser, hrOps, addressRepo), "HR");
         mainContentPanel.add(new PayrollPanel(currentUser, payrollOps, payslipOps), "PAYROLL");
         mainContentPanel.add(new TimekeepingPanel(currentUser, timeOps), "ATTENDANCE");
         mainContentPanel.add(new LeavePanel(currentUser, leaveOps, employeeService), "LEAVE");

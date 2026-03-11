@@ -97,6 +97,9 @@ public class LeaveService {
         if (start == null || end == null) {
             return "Select start and end time.";
         }
+        if (date.isBefore(LocalDate.now())) {
+            return "Past dates are not allowed for self-service leave requests.";
+        }
         if (!end.isAfter(start)) {
             return "End time must be after start time.";
         }

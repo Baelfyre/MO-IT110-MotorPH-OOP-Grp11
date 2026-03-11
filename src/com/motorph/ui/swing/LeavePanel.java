@@ -70,6 +70,7 @@ public class LeavePanel extends JPanel {
             editor.setEditable(false);
         }
         dcDate.setDate(new java.util.Date());
+        dcDate.setMinSelectableDate(new java.util.Date());
 
         setActivePeriod(LocalDate.now());
         refreshAll();

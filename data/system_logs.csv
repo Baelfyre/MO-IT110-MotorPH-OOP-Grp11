@@ -152,3 +152,17 @@ Log_ID,LogCategory,Timestamp,User,Action,Details
 150,PAYROLL,2026-03-10 03:55:40,10011,PAYSLIP_VIEW_HISTORY,Viewed payslip history for EmpID=10011 Count=2
 151,SYSTEM,2026-03-10 03:56:42,10011,LOGIN_SUCCESS,User logged in successfully.
 152,PAYROLL,2026-03-10 03:56:43,10011,PAYSLIP_VIEW_HISTORY,Viewed payslip history for EmpID=10011 Count=2
+153,SYSTEM,2026-03-11 03:33:50,10007,LOGIN_SUCCESS,User logged in successfully.
+154,PAYROLL,2026-03-11 03:33:52,10007,PAYSLIP_VIEW_HISTORY,Viewed payslip history for EmpID=10007 Count=2
+155,HR,2026-03-11 03:36:53,10007,HR_UPDATE_OK,Update employee EmpID=10018
+156,HR,2026-03-11 03:38:39,10007,HR_SELF_EDIT_DENIED,Denied self-edit for HR user. EmpID=10007
+157,SUPERVISOR,2026-03-11 03:40:09,10007,TIME_IN_OK,Time-in recorded.
+158,PAYROLL,2026-03-11 03:41:10,10007,PAYSLIP_VIEW_HISTORY,Viewed payslip history for EmpID=10007 Count=2
+159,EMPLOYEE,2026-03-11 03:41:49,10007,LEAVE_REQUEST_FAILED,Weekend leave requests are not allowed in self-service.
+160,EMPLOYEE,2026-03-11 03:41:58,10007,LEAVE_REQUEST_RECORDED,Leave row appended: 10007-46083-0800 Mode=paid-path
+161,SYSTEM,2026-03-11 05:07:11,10007,LOGIN_SUCCESS,User logged in successfully.
+162,PAYROLL,2026-03-11 05:07:13,10007,PAYSLIP_VIEW_HISTORY,Viewed payslip history for EmpID=10007 Count=2
+163,HR,2026-03-11 05:07:24,10007,HR_DELETE_OK,"Deleted employee and login. EmpID=10034, Username=10034, EmployeeDeleted=true, LoginDeleted=true"
+164,SYSTEM,2026-03-11 05:31:22,10007,LOGIN_SUCCESS,User logged in successfully.
+165,PAYROLL,2026-03-11 05:31:24,10007,PAYSLIP_VIEW_HISTORY,Viewed payslip history for EmpID=10007 Count=2
+166,HR,2026-03-11 06:00:28,10007,HR_CREATE_OK,"Created employee profile and login. EmpID=10035, Username=10035, Roles=[EMPLOYEE], Position=Customer Service, Provisioned=true"
