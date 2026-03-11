@@ -45,6 +45,7 @@ public class BackEndHROpsSmokeTester {
         System.out.println("==================================================");
 
         ensureDataFolderExists();
+        User testAdmin = new User(9999, "TEST_ADMIN", "password", java.util.Arrays.asList(com.motorph.domain.enums.Role.ADMIN), false);
 
         // Backups
         FileBackup empBackup = backupFile(DataPaths.EMPLOYEE_CSV);
@@ -72,6 +73,7 @@ public class BackEndHROpsSmokeTester {
 
             // Pick a safe test empId not used in employee or login files
             int empId1 = findAvailableEmpId(empRepo, userRepo, 99001);
+            
 
             // ----------------------------
             // ST-01: Create employee + login
@@ -80,7 +82,7 @@ public class BackEndHROpsSmokeTester {
 
             Employee e1 = buildTestEmployee(empId1, "Regular", "HR Manager");
 
-            boolean created = hrOps.createEmployee(e1, TEST_PERFORMED_BY);
+            boolean created = hrOps.createEmployee(e1, testAdmin);
             assertTrue("createEmployee returns true", created);
 
             Employee createdEmp = hrOps.getEmployee(empId1);
@@ -120,7 +122,7 @@ public class BackEndHROpsSmokeTester {
             int empRowsBeforeDup = countDataRows(DataPaths.EMPLOYEE_CSV);
             int loginRowsBeforeDup = countDataRows(DataPaths.LOGIN_CSV);
 
-            boolean createdDup = hrOps.createEmployee(e1, TEST_PERFORMED_BY);
+            boolean createdDup = hrOps.createEmployee(e1, testAdmin);
             assertTrue("duplicate createEmployee returns false", !createdDup);
 
             int empRowsAfterDup = countDataRows(DataPaths.EMPLOYEE_CSV);
@@ -146,7 +148,7 @@ public class BackEndHROpsSmokeTester {
             assertEquals("login CSV +1 due to manual seed", loginRowsBeforeUdup + 1, loginRowsAfterSeed);
 
             Employee e2 = buildTestEmployee(empId2, "Regular", "HR Manager");
-            boolean created2 = hrOps.createEmployee(e2, TEST_PERFORMED_BY);
+            boolean created2 = hrOps.createEmployee(e2, testAdmin);
             assertTrue("createEmployee returns false when username already exists", !created2);
 
             int empRowsAfterUdup = countDataRows(DataPaths.EMPLOYEE_CSV);

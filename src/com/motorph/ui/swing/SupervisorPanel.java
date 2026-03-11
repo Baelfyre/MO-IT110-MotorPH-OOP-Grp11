@@ -383,16 +383,21 @@ public class SupervisorPanel extends JPanel {
 
         String note = JOptionPane.showInputDialog(dlg, status == LeaveStatus.APPROVED ? "Approval note (optional):" : "Rejection note (optional):", "Leave Decision", JOptionPane.PLAIN_MESSAGE);
         if (note == null) {
-            note = "";
+            return;
         }
 
-        boolean ok = supervisorOps.decideDirectReportLeave(supervisorEmpId(), reportId, leaveId, status, note);
-        if (ok) {
-            UiDialogs.info(dlg, "Leave request updated.");
-            dlg.dispose();
-            reload();
-        } else {
-            UiDialogs.error(dlg, "Leave request update failed.");
+        try {
+            // Replaced supervisorEmpId() with currentUser
+            boolean ok = supervisorOps.decideDirectReportLeave(currentUser, reportId, leaveId, status, note);
+            if (ok) {
+                UiDialogs.info(dlg, "Leave request " + status.name().toLowerCase() + ".");
+                tm.removeRow(modelRow);
+            } else {
+                UiDialogs.warn(dlg, "Leave decision failed.");
+            }
+        } catch (SecurityException ex) {
+            // Catches self-approval or unauthorized access
+            UiDialogs.error(dlg, ex.getMessage());
         }
     }
 
@@ -402,12 +407,18 @@ public class SupervisorPanel extends JPanel {
             UiDialogs.warn(this, "Select a row first.");
             return;
         }
-        boolean ok = supervisorOps.approveDirectReportDtr(supervisorEmpId(), reportId, activePeriod);
-        if (ok) {
-            UiDialogs.info(this, "DTR approved.");
-            reload();
-        } else {
-            UiDialogs.error(this, "DTR approval failed.");
+
+        try {
+            // Replaced supervisorEmpId() with currentUser
+            boolean ok = supervisorOps.approveDirectReportDtr(currentUser, reportId, activePeriod);
+            if (ok) {
+                UiDialogs.info(this, "DTR approved.");
+            } else {
+                UiDialogs.warn(this, "Approve failed. Check if payroll already approved.");
+            }
+        } catch (SecurityException ex) {
+            // Catches self-approval or unauthorized access
+            UiDialogs.error(this, ex.getMessage());
         }
     }
 
@@ -417,12 +428,18 @@ public class SupervisorPanel extends JPanel {
             UiDialogs.warn(this, "Select a row first.");
             return;
         }
-        boolean ok = supervisorOps.rejectDirectReportDtr(supervisorEmpId(), reportId, activePeriod);
-        if (ok) {
-            UiDialogs.info(this, "DTR rejected.");
-            reload();
-        } else {
-            UiDialogs.error(this, "DTR rejection failed.");
+
+        try {
+            // Replaced supervisorEmpId() with currentUser
+            boolean ok = supervisorOps.rejectDirectReportDtr(currentUser, reportId, activePeriod);
+            if (ok) {
+                UiDialogs.info(this, "DTR rejected.");
+            } else {
+                UiDialogs.warn(this, "Reject failed. Check if payroll already approved.");
+            }
+        } catch (SecurityException ex) {
+            // Catches self-rejection or unauthorized access
+            UiDialogs.error(this, ex.getMessage());
         }
     }
 

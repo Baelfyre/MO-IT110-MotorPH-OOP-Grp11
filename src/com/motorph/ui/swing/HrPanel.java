@@ -111,15 +111,18 @@ public class HrPanel extends JPanel {
     }
 
     private void applyPermissions() {
-        boolean hasHR = currentUser != null && currentUser.getRoles().contains(Role.HR);
-        boolean hasIT = currentUser != null && currentUser.getRoles().contains(Role.IT);
+        if (currentUser == null) {
+            btnAdd.setVisible(false);
+            btnEdit.setVisible(false);
+            btnDelete.setVisible(false);
+            return;
+        }
+        // Annotation: Permission-based RBAC instead of hardcoded roles.
+        boolean canManage = currentUser.hasPermission("CAN_MANAGE_EMPLOYEES");
 
-        boolean canCrud = hasHR || hasIT;
-        boolean canDelete = hasHR || hasIT;
-
-        btnAdd.setEnabled(canCrud);
-        btnEdit.setEnabled(canCrud);
-        btnDelete.setEnabled(canDelete);
+        btnAdd.setVisible(canManage);
+        btnEdit.setVisible(canManage);
+        btnDelete.setVisible(canManage);
     }
 
     private void applyFilter() {
@@ -167,20 +170,32 @@ public class HrPanel extends JPanel {
 
     // Annotation: Opens a validation-safe dialog and creates employee profile plus auto-login via HROps.
     private void onAdd() {
-        EmployeeFormPanel form = buildPreparedForm(null);
-        form.setSuggestedEmployeeNumber(nextEmployeeId());
-        form.setEmployeeNumberEditable(false);
+        EmployeeFormPanel form = new EmployeeFormPanel();
+        form.setEmployeeNumberEditable(true);
 
-        showEmployeeDialog("Add Employee", form, emp -> {
-            boolean ok = hrOps.createEmployee(emp, currentUser == null ? 0 : currentUser.getId());
+        int r = JOptionPane.showConfirmDialog(this, form, "Add Employee", JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE);
+        if (r != JOptionPane.OK_OPTION) {
+            return;
+        }
+
+        // Updated to pass hrOps and true for duplicate ID checking
+        Employee emp = form.buildEmployeeOrNull(this, hrOps, true);
+        if (emp == null) {
+            return; // Validation failed inside the form
+        }
+
+        try {
+            boolean ok = hrOps.createEmployee(emp, currentUser);
             if (ok) {
                 UiDialogs.info(this, "Employee created.");
                 loadEmployees();
-                return true;
+            } else {
+                UiDialogs.error(this, "Create failed. Check duplicates or required fields.");
             }
-            UiDialogs.error(this, "Create failed. Check duplicates or required fields.");
-            return false;
-        });
+        } catch (SecurityException ex) {
+            // Catches the backend RBAC check to prevent crashes
+            UiDialogs.error(this, ex.getMessage());
+        }
     }
 
     // Annotation: Opens a validation-safe dialog for selected employee and updates through HROps.
@@ -201,16 +216,23 @@ public class HrPanel extends JPanel {
         form.setEmployee(existing);
         form.setEmployeeNumberEditable(false);
 
-        showEmployeeDialog("Edit Employee", form, updated -> {
-            boolean ok = hrOps.updateEmployee(updated, currentUser == null ? 0 : currentUser.getId());
-            if (ok) {
-                UiDialogs.info(this, "Employee updated.");
-                loadEmployees();
-                return true;
-            }
-            UiDialogs.error(this, "Update failed. HR self-edit is blocked and only the assigned supervisor should update HR records.");
-            return false;
-        });
+        int r = JOptionPane.showConfirmDialog(this, form, "Edit Employee", JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE);
+        if (r != JOptionPane.OK_OPTION) {
+            return;
+        }
+
+        Employee updated = form.buildEmployeeOrNull(this, hrOps, false);
+        if (updated == null) {
+            return;
+        }
+
+        boolean ok = hrOps.updateEmployee(updated, currentUser);
+        if (ok) {
+            UiDialogs.info(this, "Employee updated.");
+            loadEmployees();
+        } else {
+            UiDialogs.error(this, "Update failed.");
+        }
     }
 
     // Annotation: Deletes selected employee and linked CSV records using HROps.
@@ -225,7 +247,7 @@ public class HrPanel extends JPanel {
             return;
         }
 
-        boolean ok = hrOps.deleteEmployee(empId, currentUser == null ? 0 : currentUser.getId());
+        boolean ok = hrOps.deleteEmployee(empId, currentUser);
         if (ok) {
             UiDialogs.info(this, "Employee deleted.");
             loadEmployees();

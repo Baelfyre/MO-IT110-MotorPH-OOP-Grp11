@@ -6,19 +6,11 @@ package com.motorph.ops.payslip;
 
 import com.motorph.domain.models.PayPeriod;
 import com.motorph.domain.models.Payslip;
+import com.motorph.domain.models.User;
 import java.util.List;
 
-/**
- * Use-case layer for Payslip viewing. All roles can view payslips since all
- * roles are employees.
- *
- * @author ACER
- */
 public interface PayslipOps {
-
-    Payslip viewPayslipForPeriod(int empId, PayPeriod period);
-
-    Payslip viewLatestPayslip(int empId);
-
-    List<Payslip> listPayslipHistory(int empId);
+    Payslip viewPayslipForPeriod(int empId, PayPeriod period, User currentUser);
+    Payslip viewLatestPayslip(int empId, User currentUser);
+    List<Payslip> listPayslipHistory(int empId, User currentUser);
 }

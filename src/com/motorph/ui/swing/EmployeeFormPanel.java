@@ -22,7 +22,11 @@ import java.awt.*;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Date;
-import java.util.List;
+import com.motorph.ui.swing.UiHelper.SwingFormHelper;
+import com.motorph.ops.hr.HROps;
+import com.motorph.utils.ValidationUtil;
+import com.motorph.ui.swing.UiDialogs;
+
 
 /**
  *
@@ -528,7 +532,9 @@ public class EmployeeFormPanel extends JPanel {
     }
 
     // Annotation: Builds an Employee object from the form values.
-    public Employee buildEmployeeOrNull(Component parentForErrors) {
+    // Annotation: Builds an Employee object from the form values.
+    // Now requires HROps for duplicate checking, and a flag for new employee creation.
+    public Employee buildEmployeeOrNull(Component parentForErrors, HROps hrOps, boolean isNewEmployee) {
         String empNoStr = txtEmpNo.getText().trim();
         int empNo;
         try {
@@ -538,6 +544,15 @@ public class EmployeeFormPanel extends JPanel {
             return null;
         }
 
+        // --- 1. NEW DUPLICATE ID CHECK ---
+        if (isNewEmployee && hrOps != null) {
+            if (hrOps.isEmployeeIdDuplicate(empNo)) {
+                UiDialogs.error(parentForErrors, "Employee ID " + empNo + " already exists. Please use a different ID.");
+                return null;
+            }
+        }
+
+        // --- 2. REQUIRED FIELDS CHECK ---
         String last = txtLastName.getText().trim();
         String first = txtFirstName.getText().trim();
         LocalDate bday = LocalDates.toLocalDate(dcBirthday.getDate());
@@ -591,7 +606,49 @@ public class EmployeeFormPanel extends JPanel {
 
         String status = selectedValue(cbStatus);
 
-        Employee emp;
+        // --- 3. MILESTONE 2: STRICT GOVERNMENT ID VALIDATION ---
+        String sss = txtSSS.getText().trim();
+        if (!ValidationUtil.isValidSssFormat(sss) && !sss.isEmpty()) {
+            UiDialogs.error(parentForErrors, "Invalid SSS Format. Use XX-XXXXXXX-X");
+            return null;
+        }
+
+        String philHealth = txtPhilHealth.getText().trim();
+        if (!ValidationUtil.isValidPhilHealthFormat(philHealth) && !philHealth.isEmpty()) {
+            UiDialogs.error(parentForErrors, "Invalid PhilHealth Format. Use XX-XXXXXXXXX-X");
+            return null;
+        }
+
+        String tin = txtTIN.getText().trim();
+        if (!ValidationUtil.isValidTinFormat(tin) && !tin.isEmpty()) {
+            UiDialogs.error(parentForErrors, "Invalid TIN Format. Use XXX-XXX-XXX-XXX");
+            return null;
+        }
+
+        String pagibig = txtPagibig.getText().trim();
+        if (!ValidationUtil.isValidPagIbigFormat(pagibig) && !pagibig.isEmpty()) {
+            UiDialogs.error(parentForErrors, "Invalid Pag-IBIG Format. Use XXXX-XXXX-XXXX");
+            return null;
+        }
+
+        // --- 4. NUMERIC PAYROLL VALIDATION ---
+        double basic = parseMoney(parentForErrors, txtBasicSalary, "Basic Salary");
+        if (Double.isNaN(basic)) return null;
+        double rice = parseMoney(parentForErrors, txtRice, "Rice Allowance");
+        if (Double.isNaN(rice)) return null;
+        double phoneAllow = parseMoney(parentForErrors, txtPhoneAllow, "Phone Allowance");
+        if (Double.isNaN(phoneAllow)) return null;
+        double clothing = parseMoney(parentForErrors, txtClothingAllow, "Clothing Allowance");
+        if (Double.isNaN(clothing)) return null;
+        double grossSemi = parseMoney(parentForErrors, txtGrossSemi, "Gross Semi-Monthly Rate");
+        if (Double.isNaN(grossSemi)) return null;
+        double hourly = parseMoney(parentForErrors, txtHourlyRate, "Hourly Rate");
+        if (Double.isNaN(hourly)) return null;
+
+        String status = String.valueOf(cbStatus.getSelectedItem());
+
+        // --- 5. BUILD EMPLOYEE OBJECT ---
+        com.motorph.domain.models.Employee emp;
         if ("Probationary".equalsIgnoreCase(status)) {
             emp = new ProbationaryEmployee(empNo, last, first);
         } else {
@@ -608,10 +665,10 @@ public class EmployeeFormPanel extends JPanel {
         ));
         emp.setPhoneNumber(txtPhone.getText().trim());
 
-        emp.setSssNumber(txtSSS.getText().trim());
-        emp.setPhilHealthNumber(txtPhilHealth.getText().trim());
-        emp.setTinNumber(txtTIN.getText().trim());
-        emp.setPagIbigNumber(txtPagibig.getText().trim());
+        emp.setSssNumber(sss);
+        emp.setPhilHealthNumber(philHealth);
+        emp.setTinNumber(tin);
+        emp.setPagIbigNumber(pagibig);
 
         emp.setStatus(status);
         emp.setPosition(position);

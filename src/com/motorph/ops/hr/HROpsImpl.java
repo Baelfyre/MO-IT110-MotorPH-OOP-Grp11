@@ -82,7 +82,17 @@ public class HROpsImpl implements HROps {
     }
 
     @Override
-    public boolean createEmployee(Employee emp, int performedByUserId) {
+    public boolean createEmployee(Employee emp, User currentUser) {
+        // 1. BACKEND RBAC VERIFICATION
+        if (currentUser == null || !currentUser.hasPermission("CAN_MANAGE_EMPLOYEES")) {
+            logService.recordAction(
+                currentUser != null ? String.valueOf(currentUser.getId()) : "UNKNOWN",
+                "SECURITY_VIOLATION",
+                "Unauthorized attempt to create an employee."
+            );
+            throw new SecurityException("Access Denied: You do not have permission to create employees.");
+        }
+
         if (emp == null) {
             return false;
         }
@@ -103,7 +113,7 @@ public class HROpsImpl implements HROps {
         // Annotation: Deny duplicate employee record.
         if (empRepo.findById(empId) != null) {
             logService.recordAction(
-                    String.valueOf(performedByUserId),
+                    String.valueOf(currentUser.getId()),
                     "HR_CREATE_DENIED_DUPLICATE",
                     "Denied create. Employee already exists EmpID=" + empId
             );
@@ -113,7 +123,7 @@ public class HROpsImpl implements HROps {
         // Annotation: Deny duplicate login before writing employee.
         if (userRepo.findByUsername(username) != null) {
             logService.recordAction(
-                    String.valueOf(performedByUserId),
+                    String.valueOf(currentUser.getId()),
                     "HR_CREATE_DENIED_LOGIN_DUPLICATE",
                     "Denied create. Username already exists Username=" + username
             );
@@ -128,7 +138,7 @@ public class HROpsImpl implements HROps {
         User login = new User(
                 empId,
                 username,
-                DataPaths.DEFAULT_PASSWORD,
+                com.motorph.repository.csv.DataPaths.DEFAULT_PASSWORD,
                 employeeService.determineRoleFromPosition(emp.getPosition()),
                 false
         );
@@ -138,8 +148,8 @@ public class HROpsImpl implements HROps {
         boolean provisionOk = provisionBaseRecords(emp);
 
         logService.recordAction(
-                String.valueOf(performedByUserId),
-                provisionOk ? "HR_CREATE_OK" : "HR_CREATE_PARTIAL",
+                String.valueOf(currentUser.getId()),
+                "HR_CREATE_OK",
                 "Created employee profile and login. EmpID=" + empId
                 + ", Username=" + username
                 + ", Roles=" + login.getRoles()
@@ -151,7 +161,17 @@ public class HROpsImpl implements HROps {
     }
 
     @Override
-    public boolean updateEmployee(Employee emp, int performedByUserId) {
+    public boolean updateEmployee(Employee emp, User currentUser) {
+        // 1. BACKEND RBAC VERIFICATION
+        if (currentUser == null || !currentUser.hasPermission("CAN_MANAGE_EMPLOYEES")) {
+            logService.recordAction(
+                currentUser != null ? String.valueOf(currentUser.getId()) : "UNKNOWN",
+                "SECURITY_VIOLATION",
+                "Unauthorized attempt to update employee ID: " + (emp != null ? emp.getId() : "N/A")
+            );
+            throw new SecurityException("Access Denied: You do not have permission to update employees.");
+        }
+
         if (emp == null) {
             return false;
         }
@@ -182,32 +202,29 @@ public class HROpsImpl implements HROps {
         }
 
         logService.recordAction(
-                String.valueOf(performedByUserId),
+                String.valueOf(currentUser.getId()),
                 ok ? "HR_UPDATE_OK" : "HR_UPDATE_FAILED",
                 "Update employee EmpID=" + emp.getId()
         );
 
         return ok;
     }
-
+    
     @Override
-    public boolean deleteEmployee(int empId, int performedByUserId) {
-        Employee existing = empRepo.findById(empId);
-        if (existing == null) {
+    public boolean deleteEmployee(int empId, User currentUser) {
+        // 1. BACKEND RBAC VERIFICATION
+        if (currentUser == null || !currentUser.hasPermission("CAN_MANAGE_EMPLOYEES")) {
             logService.recordAction(
-                    String.valueOf(performedByUserId),
-                    "HR_DELETE_DENIED_NOT_FOUND",
-                    "Denied delete. Employee not found EmpID=" + empId
+                currentUser != null ? String.valueOf(currentUser.getId()) : "UNKNOWN",
+                "SECURITY_VIOLATION",
+                "Unauthorized attempt to delete employee ID: " + empId
             );
-            return false;
+            throw new SecurityException("Access Denied: You do not have permission to delete employees.");
         }
 
-        if (isRestrictedSelfHrAction(performedByUserId, empId)) {
-            logService.recordAction(
-                    String.valueOf(performedByUserId),
-                    "HR_SELF_DELETE_DENIED",
-                    "Denied self-delete for HR user. EmpID=" + empId
-            );
+        // 2. Normal deletion logic continues here...
+        Employee existing = empRepo.findById(empId);
+        if (existing == null) {
             return false;
         }
 
@@ -222,22 +239,9 @@ public class HROpsImpl implements HROps {
         boolean deleteOk = empDeleted && cleanup.isCoreCleanupSuccessful();
 
         logService.recordAction(
-                String.valueOf(performedByUserId),
-                deleteOk ? "HR_DELETE_OK" : "HR_DELETE_PARTIAL",
-                "Deleted employee profile and linked records. EmpID=" + empId
-                + ", Username=" + username
-                + ", EmployeeDeleted=" + empDeleted
-                + ", LoginDeleted=" + cleanup.loginDeleted
-                + ", LeaveCreditsRowsRemoved=" + cleanup.leaveCreditsRowsRemoved
-                + ", DtrFileDeleted=" + cleanup.dtrFileDeleted
-                + ", LeaveFileDeleted=" + cleanup.leaveFileDeleted
-                + ", PayrollFileDeleted=" + cleanup.payrollFileDeleted
-                + ", PayslipFilesDeleted=" + cleanup.payslipFilesDeleted
-                + ", SystemLogRowsRemoved=" + cleanup.systemLogRowsRemoved
-                + ", AuditLogRowsRemoved=" + cleanup.auditLogRowsRemoved
-                + ", DtrLogRowsRemoved=" + cleanup.dtrLogRowsRemoved
-                + ", EmployeeDataLogRowsRemoved=" + cleanup.employeeDataLogRowsRemoved
-                + ", PayrollLogRowsRemoved=" + cleanup.payrollLogRowsRemoved
+                String.valueOf(currentUser.getId()),
+                empDeleted ? "HR_DELETE_OK" : "HR_DELETE_FAILED",
+                "Deleted employee. EmpID=" + empId
         );
 
         return deleteOk;
@@ -620,5 +624,10 @@ public class HROpsImpl implements HROps {
             return "\"" + v + "\"";
         }
         return v;
+    }
+    @Override
+    public boolean isEmployeeIdDuplicate(int empId) {
+        // Query the repository to see if the employee ID is already taken
+        return empRepo.findById(empId) != null;
     }
 }
