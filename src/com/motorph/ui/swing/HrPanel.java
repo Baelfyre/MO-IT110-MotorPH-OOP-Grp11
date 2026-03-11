@@ -10,6 +10,7 @@ import com.motorph.domain.models.Employee;
 import com.motorph.domain.models.LogEntry;
 import com.motorph.domain.models.User;
 import com.motorph.ops.hr.HROps;
+import com.motorph.repository.csv.CsvAddressReferenceRepository;
 import com.motorph.service.LogService;
 
 import javax.swing.*;
@@ -32,6 +33,7 @@ public class HrPanel extends JPanel {
     private final User currentUser;
     private final HROps hrOps;
     private final LogService logService;
+    private final CsvAddressReferenceRepository addressRepo;
 
     private final JTextField txtSearch = new JTextField(14);
     private final JCheckBox chkIncludeArchived = new JCheckBox("Include Archived");
@@ -54,14 +56,15 @@ public class HrPanel extends JPanel {
     private final JButton btnDelete = new JButton("Delete");
     private final JButton btnLogs = new JButton("System Logs");
 
-    public HrPanel(User currentUser, HROps hrOps) {
-        this(currentUser, hrOps, new LogService());
+    public HrPanel(User currentUser, HROps hrOps, CsvAddressReferenceRepository addressRepo) {
+        this(currentUser, hrOps, new LogService(), addressRepo);
     }
 
-    public HrPanel(User currentUser, HROps hrOps, LogService logService) {
+    public HrPanel(User currentUser, HROps hrOps, LogService logService, CsvAddressReferenceRepository addressRepo) {
         this.currentUser = currentUser;
         this.hrOps = hrOps;
         this.logService = logService;
+        this.addressRepo = addressRepo;
 
         buildUi();
         applyPermissions();
@@ -112,38 +115,28 @@ public class HrPanel extends JPanel {
         boolean hasIT = currentUser != null && currentUser.getRoles().contains(Role.IT);
 
         boolean canCrud = hasHR || hasIT;
-        boolean canDelete = hasIT;
+        boolean canDelete = hasHR || hasIT;
 
         btnAdd.setEnabled(canCrud);
         btnEdit.setEnabled(canCrud);
         btnDelete.setEnabled(canDelete);
-
-        // Annotation: Hide actions for non-HR/IT roles.
-        if (!canCrud) {
-            btnAdd.setVisible(false);
-            btnEdit.setVisible(false);
-        }
-        if (!canDelete) {
-            btnDelete.setVisible(false);
-        }
     }
 
     private void applyFilter() {
-        String q = txtSearch.getText().trim();
+        String q = txtSearch.getText() == null ? "" : txtSearch.getText().trim();
         if (q.isEmpty()) {
             sorter.setRowFilter(null);
             return;
         }
-
-        // Annotation: Case-insensitive contains match.
         sorter.setRowFilter(RowFilter.regexFilter("(?i)" + java.util.regex.Pattern.quote(q)));
     }
 
-    // Annotation: Reloads employee rows from repository through HROps.
     private void loadEmployees() {
         model.setRowCount(0);
-        List<Employee> list = hrOps.listEmployees(chkIncludeArchived.isSelected());
-        for (Employee e : list) {
+        List<Employee> rows = hrOps.listEmployees(chkIncludeArchived.isSelected());
+        rows.sort(Comparator.comparingInt(Employee::getEmployeeNumber));
+
+        for (Employee e : rows) {
             model.addRow(new Object[]{
                 e.getEmployeeNumber(),
                 e.getLastName(),
@@ -172,32 +165,25 @@ public class HrPanel extends JPanel {
         }
     }
 
-    // Annotation: Opens a dialog and creates employee profile plus auto-login via HROps.
+    // Annotation: Opens a validation-safe dialog and creates employee profile plus auto-login via HROps.
     private void onAdd() {
         EmployeeFormPanel form = buildPreparedForm(null);
         form.setSuggestedEmployeeNumber(nextEmployeeId());
         form.setEmployeeNumberEditable(false);
 
-        int r = JOptionPane.showConfirmDialog(this, form, "Add Employee", JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE);
-        if (r != JOptionPane.OK_OPTION) {
-            return;
-        }
-
-        Employee emp = form.buildEmployeeOrNull(this);
-        if (emp == null) {
-            return;
-        }
-
-        boolean ok = hrOps.createEmployee(emp, currentUser == null ? 0 : currentUser.getId());
-        if (ok) {
-            UiDialogs.info(this, "Employee created.");
-            loadEmployees();
-        } else {
+        showEmployeeDialog("Add Employee", form, emp -> {
+            boolean ok = hrOps.createEmployee(emp, currentUser == null ? 0 : currentUser.getId());
+            if (ok) {
+                UiDialogs.info(this, "Employee created.");
+                loadEmployees();
+                return true;
+            }
             UiDialogs.error(this, "Create failed. Check duplicates or required fields.");
-        }
+            return false;
+        });
     }
 
-    // Annotation: Opens a dialog for selected employee and updates through HROps.
+    // Annotation: Opens a validation-safe dialog for selected employee and updates through HROps.
     private void onEdit() {
         Integer empId = selectedEmpId();
         if (empId == null) {
@@ -215,26 +201,19 @@ public class HrPanel extends JPanel {
         form.setEmployee(existing);
         form.setEmployeeNumberEditable(false);
 
-        int r = JOptionPane.showConfirmDialog(this, form, "Edit Employee", JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE);
-        if (r != JOptionPane.OK_OPTION) {
-            return;
-        }
-
-        Employee updated = form.buildEmployeeOrNull(this);
-        if (updated == null) {
-            return;
-        }
-
-        boolean ok = hrOps.updateEmployee(updated, currentUser == null ? 0 : currentUser.getId());
-        if (ok) {
-            UiDialogs.info(this, "Employee updated.");
-            loadEmployees();
-        } else {
+        showEmployeeDialog("Edit Employee", form, updated -> {
+            boolean ok = hrOps.updateEmployee(updated, currentUser == null ? 0 : currentUser.getId());
+            if (ok) {
+                UiDialogs.info(this, "Employee updated.");
+                loadEmployees();
+                return true;
+            }
             UiDialogs.error(this, "Update failed. HR self-edit is blocked and only the assigned supervisor should update HR records.");
-        }
+            return false;
+        });
     }
 
-    // Annotation: Deletes selected employee and related login using HROps.
+    // Annotation: Deletes selected employee and linked CSV records using HROps.
     private void onDelete() {
         Integer empId = selectedEmpId();
         if (empId == null) {
@@ -242,7 +221,7 @@ public class HrPanel extends JPanel {
             return;
         }
 
-        if (!UiDialogs.confirm(this, "Delete EmpID " + empId + "? This also deletes the login account.")) {
+        if (!UiDialogs.confirm(this, "Delete EmpID " + empId + "? This removes the employee profile and linked CSV records.")) {
             return;
         }
 
@@ -255,10 +234,43 @@ public class HrPanel extends JPanel {
         }
     }
 
+    private interface EmployeeSaveAction {
+        boolean save(Employee employee);
+    }
+
+    private void showEmployeeDialog(String title, EmployeeFormPanel form, EmployeeSaveAction saveAction) {
+        JDialog dialog = new JDialog(SwingUtilities.getWindowAncestor(this), title, Dialog.ModalityType.APPLICATION_MODAL);
+        dialog.setDefaultCloseOperation(WindowConstants.DISPOSE_ON_CLOSE);
+
+        JButton btnOk = new JButton("OK");
+        JButton btnCancel = new JButton("Cancel");
+
+        btnOk.addActionListener(e -> {
+            Employee built = form.buildEmployeeOrNull(dialog);
+            if (built == null) {
+                return;
+            }
+            if (saveAction.save(built)) {
+                dialog.dispose();
+            }
+        });
+        btnCancel.addActionListener(e -> dialog.dispose());
+
+        JPanel south = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 10));
+        south.add(btnOk);
+        south.add(btnCancel);
+
+        dialog.setContentPane(SwingForm.wrapNorthCenterSouth(null, new JScrollPane(form), south));
+        dialog.setSize(1240, 760);
+        dialog.setLocationRelativeTo(this);
+        dialog.setVisible(true);
+    }
+
     private EmployeeFormPanel buildPreparedForm(Employee existing) {
-        EmployeeFormPanel form = new EmployeeFormPanel();
+        EmployeeFormPanel form = new EmployeeFormPanel(addressRepo);
         form.setPositionOptions(positionOptions());
         form.setSupervisorOptions(supervisorOptions(existing == null ? null : existing.getId()));
+        form.setMinimumBasicSalary(currentMinimumBasicSalary(existing));
         if (existing != null) {
             String creditsHint = "Probationary".equalsIgnoreCase(existing.getStatus())
                     ? "Current leave credits: 0.00 hrs"
@@ -266,6 +278,29 @@ public class HrPanel extends JPanel {
             form.setLeaveCreditsSummary(creditsHint);
         }
         return form;
+    }
+
+    private double currentMinimumBasicSalary(Employee existing) {
+        double min = Double.MAX_VALUE;
+        for (Employee employee : hrOps.listEmployees(true)) {
+            if (employee == null) {
+                continue;
+            }
+            double basic = employee.getBasicSalary();
+            if (basic > 0.0 && basic < min) {
+                min = basic;
+            }
+        }
+
+        if (min == Double.MAX_VALUE) {
+            return 1.0;
+        }
+
+        if (existing != null && existing.getBasicSalary() > 0.0 && existing.getBasicSalary() < min) {
+            return existing.getBasicSalary();
+        }
+
+        return min;
     }
 
     private List<String> positionOptions() {
@@ -326,6 +361,9 @@ public class HrPanel extends JPanel {
 
         JTable t = new JTable(logModel);
         t.setAutoResizeMode(JTable.AUTO_RESIZE_OFF);
+        t.setRowSelectionAllowed(true);
+        t.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+        t.setAutoCreateRowSorter(true);
 
         for (LogEntry entry : logs) {
             logModel.addRow(new Object[]{
@@ -337,46 +375,68 @@ public class HrPanel extends JPanel {
             });
         }
 
+        if (t.getColumnModel().getColumnCount() >= 5) {
+            t.getColumnModel().getColumn(0).setPreferredWidth(70);
+            t.getColumnModel().getColumn(1).setPreferredWidth(170);
+            t.getColumnModel().getColumn(2).setPreferredWidth(80);
+            t.getColumnModel().getColumn(3).setPreferredWidth(180);
+            t.getColumnModel().getColumn(4).setPreferredWidth(520);
+        }
+
+        t.addMouseListener(new java.awt.event.MouseAdapter() {
+            @Override
+            public void mouseClicked(java.awt.event.MouseEvent e) {
+                if (e.getClickCount() == 2) {
+                    showSelectedLogDetail(t);
+                }
+            }
+        });
+
         dlg.setContentPane(SwingForm.wrapNorthCenterSouth(
                 null,
                 new JScrollPane(t),
-                buttonRow(dlg)
+                buttonRow(dlg, t)
         ));
-        dlg.setSize(900, 500);
+        dlg.setSize(1100, 560);
         dlg.setLocationRelativeTo(this);
         dlg.setVisible(true);
     }
 
-    private JPanel buttonRow(JDialog dlg) {
+    private JPanel buttonRow(JDialog dlg, JTable logTable) {
         JPanel p = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 10));
+        JButton view = new JButton("View Selected");
         JButton close = new JButton("Close");
+        view.addActionListener(e -> showSelectedLogDetail(logTable));
         close.addActionListener(e -> dlg.dispose());
+        p.add(view);
         p.add(close);
         return p;
     }
 
-    /**
-     * This method is called from within the constructor to initialize the form.
-     * WARNING: Do NOT modify this code. The content of this method is always
-     * regenerated by the Form Editor.
-     */
-    @SuppressWarnings("unchecked")
-    // <editor-fold defaultstate="collapsed" desc="Generated Code">//GEN-BEGIN:initComponents
-    private void initComponents() {
+    private void showSelectedLogDetail(JTable logTable) {
+        int viewRow = logTable.getSelectedRow();
+        if (viewRow < 0) {
+            UiDialogs.warn(this, "Select a log row first.");
+            return;
+        }
 
-        javax.swing.GroupLayout layout = new javax.swing.GroupLayout(this);
-        this.setLayout(layout);
-        layout.setHorizontalGroup(
-            layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGap(0, 400, Short.MAX_VALUE)
-        );
-        layout.setVerticalGroup(
-            layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGap(0, 300, Short.MAX_VALUE)
-        );
-    }// </editor-fold>//GEN-END:initComponents
+        int row = logTable.convertRowIndexToModel(viewRow);
+        String message = "Log ID: " + valueOf(logTable.getModel().getValueAt(row, 0))
+                + "\nTimestamp: " + valueOf(logTable.getModel().getValueAt(row, 1))
+                + "\nUser: " + valueOf(logTable.getModel().getValueAt(row, 2))
+                + "\nAction: " + valueOf(logTable.getModel().getValueAt(row, 3))
+                + "\n\nDetails:\n" + valueOf(logTable.getModel().getValueAt(row, 4));
 
+        JTextArea area = new JTextArea(message, 12, 60);
+        area.setEditable(false);
+        area.setLineWrap(true);
+        area.setWrapStyleWord(true);
+        area.setCaretPosition(0);
 
-    // Variables declaration - do not modify//GEN-BEGIN:variables
-    // End of variables declaration//GEN-END:variables
+        JOptionPane.showMessageDialog(this, new JScrollPane(area), "Log Details", JOptionPane.INFORMATION_MESSAGE);
+    }
+
+    private String valueOf(Object value) {
+        return value == null ? "" : String.valueOf(value);
+    }
 }

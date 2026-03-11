@@ -204,6 +204,9 @@ public class ITPanel extends JPanel {
 
         JTable logTable = new JTable(logModel);
         logTable.setAutoResizeMode(JTable.AUTO_RESIZE_OFF);
+        logTable.setRowSelectionAllowed(true);
+        logTable.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+        logTable.setAutoCreateRowSorter(true);
 
         for (LogEntry entry : logs) {
             logModel.addRow(new Object[]{
@@ -215,14 +218,61 @@ public class ITPanel extends JPanel {
             });
         }
 
+        if (logTable.getColumnModel().getColumnCount() >= 5) {
+            logTable.getColumnModel().getColumn(0).setPreferredWidth(70);
+            logTable.getColumnModel().getColumn(1).setPreferredWidth(170);
+            logTable.getColumnModel().getColumn(2).setPreferredWidth(80);
+            logTable.getColumnModel().getColumn(3).setPreferredWidth(180);
+            logTable.getColumnModel().getColumn(4).setPreferredWidth(520);
+        }
+
+        logTable.addMouseListener(new java.awt.event.MouseAdapter() {
+            @Override
+            public void mouseClicked(java.awt.event.MouseEvent e) {
+                if (e.getClickCount() == 2) {
+                    showLogDetail(logTable);
+                }
+            }
+        });
+
         JPanel south = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 10));
+        JButton view = new JButton("View Selected");
         JButton close = new JButton("Close");
+        view.addActionListener(e -> showLogDetail(logTable));
         close.addActionListener(e -> dlg.dispose());
+        south.add(view);
         south.add(close);
 
         dlg.setContentPane(SwingForm.wrapNorthCenterSouth(null, new JScrollPane(logTable), south));
-        dlg.setSize(900, 500);
+        dlg.setSize(1100, 560);
         dlg.setLocationRelativeTo(this);
         dlg.setVisible(true);
+    }
+
+    private void showLogDetail(JTable logTable) {
+        int viewRow = logTable.getSelectedRow();
+        if (viewRow < 0) {
+            UiDialogs.warn(this, "Select a log row first.");
+            return;
+        }
+
+        int row = logTable.convertRowIndexToModel(viewRow);
+        String message = "Log ID: " + valueOf(logTable.getModel().getValueAt(row, 0))
+                + "\nTimestamp: " + valueOf(logTable.getModel().getValueAt(row, 1))
+                + "\nUser: " + valueOf(logTable.getModel().getValueAt(row, 2))
+                + "\nAction: " + valueOf(logTable.getModel().getValueAt(row, 3))
+                + "\n\nDetails:\n" + valueOf(logTable.getModel().getValueAt(row, 4));
+
+        JTextArea area = new JTextArea(message, 12, 60);
+        area.setEditable(false);
+        area.setLineWrap(true);
+        area.setWrapStyleWord(true);
+        area.setCaretPosition(0);
+
+        JOptionPane.showMessageDialog(this, new JScrollPane(area), "Log Details", JOptionPane.INFORMATION_MESSAGE);
+    }
+
+    private String valueOf(Object value) {
+        return value == null ? "" : String.valueOf(value);
     }
 }

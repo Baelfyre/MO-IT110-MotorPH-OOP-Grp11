@@ -8,6 +8,10 @@ import com.motorph.domain.enums.JobPosition;
 import com.motorph.domain.models.Employee;
 import com.motorph.domain.models.ProbationaryEmployee;
 import com.motorph.domain.models.RegularEmployee;
+import com.motorph.repository.csv.CsvAddressReferenceRepository;
+import com.motorph.utils.AddressFormatter;
+import com.motorph.utils.AddressParser;
+import com.motorph.utils.InputRestrictionUtil;
 import com.motorph.utils.ValidationUtil;
 import com.toedter.calendar.JDateChooser;
 
@@ -26,18 +30,31 @@ import java.util.List;
  */
 public class EmployeeFormPanel extends JPanel {
 
+    private static final String PROVINCE_PLACEHOLDER = "Select Province";
+    private static final String CITY_PLACEHOLDER = "Select City / Municipality";
+
     private final JTextField txtEmpNo = new JTextField(10);
     private final JTextField txtLastName = new JTextField(18);
     private final JTextField txtFirstName = new JTextField(18);
 
     private final JDateChooser dcBirthday = new JDateChooser();
-    private final JTextField txtAddress = new JTextField(40);
+    private final JTextField txtAddressLine1 = new JTextField(24);
+    private final JTextField txtAddressLine2 = new JTextField(24);
+    private final JComboBox<String> cbProvinceAddress = new JComboBox<>();
+    private final JComboBox<String> cbCityAddress = new JComboBox<>();
+    private final JTextField txtZipCode = new JTextField(10);
     private final JTextField txtPhone = new JTextField(16);
 
     private final JTextField txtSSS = new JTextField(16);
     private final JTextField txtPhilHealth = new JTextField(16);
     private final JTextField txtTIN = new JTextField(16);
     private final JTextField txtPagibig = new JTextField(16);
+
+    private final JLabel lblPhoneFormat = buildHintLabel("Format: 09XX-XXX-XXXX");
+    private final JLabel lblSssFormat = buildHintLabel("Format: 12-1234567-1");
+    private final JLabel lblPhilHealthFormat = buildHintLabel("Format: 12-123456789-1");
+    private final JLabel lblTinFormat = buildHintLabel("Format: 123-456-789-000");
+    private final JLabel lblPagibigFormat = buildHintLabel("Format: 1234-5678-9012");
 
     private final JComboBox<String> cbStatus = new JComboBox<>(new String[]{"Regular", "Probationary", "Archived"});
     private final JComboBox<String> cbPosition = new JComboBox<>();
@@ -51,7 +68,12 @@ public class EmployeeFormPanel extends JPanel {
     private final JTextField txtHourlyRate = new JTextField(12);
     private final JTextField txtLeaveCreditsSummary = new JTextField(20);
 
-    public EmployeeFormPanel() {
+    private final CsvAddressReferenceRepository addressRepo;
+    private double minimumBasicSalary = 1.0;
+
+    public EmployeeFormPanel(CsvAddressReferenceRepository addressRepo) {
+        this.addressRepo = addressRepo;
+
         setLayout(new BorderLayout());
 
         JPanel form = SwingForm.createFormRoot(12);
@@ -68,11 +90,13 @@ public class EmployeeFormPanel extends JPanel {
         txtGrossSemi.setEditable(false);
         txtHourlyRate.setEditable(false);
         txtLeaveCreditsSummary.setEditable(false);
+        txtZipCode.setEditable(false);
 
         setReadOnlyStyle(txtEmpNo);
         setReadOnlyStyle(txtGrossSemi);
         setReadOnlyStyle(txtHourlyRate);
         setReadOnlyStyle(txtLeaveCreditsSummary);
+        setReadOnlyStyle(txtZipCode);
 
         SwingForm.addLabel(form, gbc, 0, r, "Employee #:");
         SwingForm.addField(form, gbc, 1, r, txtEmpNo);
@@ -90,40 +114,50 @@ public class EmployeeFormPanel extends JPanel {
         SwingForm.addField(form, gbc, 5, r, cbStatus);
         r++;
 
-        SwingForm.addLabel(form, gbc, 0, r, "Address:");
-        SwingForm.addFieldSpan(form, gbc, 1, r, 5, txtAddress);
+        SwingForm.addFieldSpan(form, gbc, 0, r, 2, new JLabel(""));
+        SwingForm.addField(form, gbc, 3, r, lblPhoneFormat);
+        SwingForm.addFieldSpan(form, gbc, 4, r, 2, new JLabel(""));
         r++;
 
-        SwingForm.addLabel(form, gbc, 0, r, "SSS #:");
-        SwingForm.addField(form, gbc, 1, r, txtSSS);
-        SwingForm.addLabel(form, gbc, 2, r, "PhilHealth #:");
-        SwingForm.addField(form, gbc, 3, r, txtPhilHealth);
-        SwingForm.addLabel(form, gbc, 4, r, "TIN #:");
-        SwingForm.addField(form, gbc, 5, r, txtTIN);
+        SwingForm.addLabel(form, gbc, 0, r, "Address Line 1:");
+        SwingForm.addField(form, gbc, 1, r, txtAddressLine1);
+        SwingForm.addLabel(form, gbc, 2, r, "Address Line 2:");
+        SwingForm.addField(form, gbc, 3, r, txtAddressLine2);
+        SwingForm.addLabel(form, gbc, 4, r, "ZIP Code:");
+        SwingForm.addField(form, gbc, 5, r, txtZipCode);
         r++;
 
-        SwingForm.addLabel(form, gbc, 0, r, "Pag-IBIG #:");
-        SwingForm.addField(form, gbc, 1, r, txtPagibig);
-        SwingForm.addLabel(form, gbc, 2, r, "Position:");
-        SwingForm.addField(form, gbc, 3, r, cbPosition);
-        SwingForm.addLabel(form, gbc, 4, r, "Supervisor:");
-        SwingForm.addField(form, gbc, 5, r, cbSupervisor);
+        SwingForm.addLabel(form, gbc, 0, r, "Province:");
+        SwingForm.addField(form, gbc, 1, r, cbProvinceAddress);
+        SwingForm.addLabel(form, gbc, 2, r, "City / Municipality:");
+        SwingForm.addField(form, gbc, 3, r, cbCityAddress);
+        SwingForm.addFieldSpan(form, gbc, 4, r, 2, new JLabel(""));
         r++;
 
-        SwingForm.addLabel(form, gbc, 0, r, "Basic Salary:");
-        SwingForm.addField(form, gbc, 1, r, txtBasicSalary);
-        SwingForm.addLabel(form, gbc, 2, r, "Rice Allow:");
-        SwingForm.addField(form, gbc, 3, r, txtRice);
-        SwingForm.addLabel(form, gbc, 4, r, "Phone Allow:");
-        SwingForm.addField(form, gbc, 5, r, txtPhoneAllow);
+        JPanel groupedDetails = new JPanel(new GridLayout(1, 3, 12, 0));
+        groupedDetails.add(buildGovernmentPanel());
+        groupedDetails.add(buildOrganizationPanel());
+        groupedDetails.add(buildCompensationPanel());
+        SwingForm.addFieldSpan(form, gbc, 0, r, 6, groupedDetails);
         r++;
 
-        SwingForm.addLabel(form, gbc, 0, r, "Clothing Allow:");
-        SwingForm.addField(form, gbc, 1, r, txtClothingAllow);
-        SwingForm.addLabel(form, gbc, 2, r, "Gross Semi-Monthly:");
-        SwingForm.addField(form, gbc, 3, r, txtGrossSemi);
-        SwingForm.addLabel(form, gbc, 4, r, "Hourly Rate:");
-        SwingForm.addField(form, gbc, 5, r, txtHourlyRate);
+        JPanel salaryPanel = new JPanel(new GridBagLayout());
+        GridBagConstraints salaryGbc = new GridBagConstraints();
+        salaryGbc.insets = new Insets(4, 4, 4, 4);
+        salaryGbc.anchor = GridBagConstraints.WEST;
+        salaryGbc.fill = GridBagConstraints.HORIZONTAL;
+        salaryGbc.weightx = 0;
+        salaryGbc.gridx = 0;
+        salaryGbc.gridy = 0;
+        salaryPanel.add(new JLabel("Basic Salary:"), salaryGbc);
+        salaryGbc.gridx = 1;
+        salaryGbc.weightx = 1.0;
+        salaryPanel.add(txtBasicSalary, salaryGbc);
+        salaryGbc.gridx = 2;
+        salaryGbc.weightx = 0;
+        JLabel minimumSalaryNote = buildHintLabel("Minimum allowed follows the current lowest positive employee salary.");
+        salaryPanel.add(minimumSalaryNote, salaryGbc);
+        SwingForm.addFieldSpan(form, gbc, 0, r, 6, salaryPanel);
         r++;
 
         SwingForm.addLabel(form, gbc, 0, r, "Leave Credits:");
@@ -131,12 +165,160 @@ public class EmployeeFormPanel extends JPanel {
 
         add(form, BorderLayout.CENTER);
 
+        initializeAddressDropdowns();
+        initializeRestrictions();
         installDerivedPayListeners();
         installStatusListener();
         loadDefaultPositions();
         seedDefaultSupervisor();
         refreshDerivedPayFields();
         refreshLeaveCreditsSummary();
+    }
+
+    private JPanel buildGovernmentPanel() {
+        JPanel panel = buildGroupPanel("Government IDs");
+        GridBagConstraints gbc = buildGroupGbc();
+        int r = 0;
+
+        addGroupField(panel, gbc, 0, r++, "SSS #:", txtSSS);
+        addGroupHint(panel, gbc, 0, r++, lblSssFormat);
+        addGroupField(panel, gbc, 0, r++, "PhilHealth #:", txtPhilHealth);
+        addGroupHint(panel, gbc, 0, r++, lblPhilHealthFormat);
+        addGroupField(panel, gbc, 0, r++, "TIN #:", txtTIN);
+        addGroupHint(panel, gbc, 0, r++, lblTinFormat);
+        addGroupField(panel, gbc, 0, r++, "Pag-IBIG #:", txtPagibig);
+        addGroupHint(panel, gbc, 0, r, lblPagibigFormat);
+
+        return panel;
+    }
+
+    private JPanel buildOrganizationPanel() {
+        JPanel panel = buildGroupPanel("Position Details");
+        GridBagConstraints gbc = buildGroupGbc();
+        int r = 0;
+
+        addGroupField(panel, gbc, 0, r++, "Position:", cbPosition);
+        addGroupField(panel, gbc, 0, r, "Supervisor:", cbSupervisor);
+
+        return panel;
+    }
+
+    private JPanel buildCompensationPanel() {
+        JPanel panel = buildGroupPanel("Allowances and Rates");
+        GridBagConstraints gbc = buildGroupGbc();
+        int r = 0;
+
+        addGroupField(panel, gbc, 0, r++, "Rice Allow:", txtRice);
+        addGroupField(panel, gbc, 0, r++, "Phone Allow:", txtPhoneAllow);
+        addGroupField(panel, gbc, 0, r++, "Clothing Allow:", txtClothingAllow);
+        addGroupField(panel, gbc, 0, r++, "Gross Semi-Monthly:", txtGrossSemi);
+        addGroupField(panel, gbc, 0, r, "Hourly Rate:", txtHourlyRate);
+
+        return panel;
+    }
+
+    private JPanel buildGroupPanel(String title) {
+        JPanel panel = new JPanel(new GridBagLayout());
+        panel.setBorder(BorderFactory.createTitledBorder(title));
+        return panel;
+    }
+
+    private GridBagConstraints buildGroupGbc() {
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.insets = new Insets(4, 4, 4, 4);
+        gbc.anchor = GridBagConstraints.WEST;
+        gbc.fill = GridBagConstraints.HORIZONTAL;
+        gbc.weightx = 1.0;
+        return gbc;
+    }
+
+    private void addGroupField(JPanel panel, GridBagConstraints base, int x, int y, String label, JComponent field) {
+        GridBagConstraints left = (GridBagConstraints) base.clone();
+        left.gridx = x;
+        left.gridy = y;
+        left.weightx = 0;
+        panel.add(new JLabel(label), left);
+
+        GridBagConstraints right = (GridBagConstraints) base.clone();
+        right.gridx = x + 1;
+        right.gridy = y;
+        right.weightx = 1.0;
+        panel.add(field, right);
+    }
+
+    private void addGroupHint(JPanel panel, GridBagConstraints base, int x, int y, JLabel label) {
+        GridBagConstraints hint = (GridBagConstraints) base.clone();
+        hint.gridx = x + 1;
+        hint.gridy = y;
+        hint.weightx = 1.0;
+        panel.add(label, hint);
+    }
+
+    private JLabel buildHintLabel(String text) {
+        JLabel label = new JLabel(text);
+        label.setFont(label.getFont().deriveFont(Font.PLAIN, 11f));
+        label.setForeground(new Color(110, 110, 110));
+        return label;
+    }
+
+    private void initializeAddressDropdowns() {
+        cbProvinceAddress.removeAllItems();
+        cbCityAddress.removeAllItems();
+        cbProvinceAddress.addItem(PROVINCE_PLACEHOLDER);
+        cbCityAddress.addItem(CITY_PLACEHOLDER);
+
+        if (addressRepo != null) {
+            for (String province : addressRepo.getProvinces()) {
+                cbProvinceAddress.addItem(province);
+            }
+        }
+
+        cbProvinceAddress.addActionListener(e -> onProvinceAddressChanged());
+        cbCityAddress.addActionListener(e -> onCityAddressChanged());
+    }
+
+    private void initializeRestrictions() {
+        InputRestrictionUtil.applyPhoneRestriction(txtPhone);
+        InputRestrictionUtil.applyGovernmentIdRestrictions(txtSSS, txtPagibig, txtTIN, txtPhilHealth);
+        InputRestrictionUtil.applyCompensationRestrictions(txtBasicSalary, txtRice, txtPhoneAllow, txtClothingAllow);
+    }
+
+    private void onProvinceAddressChanged() {
+        cbCityAddress.removeAllItems();
+        cbCityAddress.addItem(CITY_PLACEHOLDER);
+        txtZipCode.setText("");
+
+        if (addressRepo == null) {
+            return;
+        }
+
+        String province = selectedValue(cbProvinceAddress);
+        if (ValidationUtil.isEmpty(province) || PROVINCE_PLACEHOLDER.equalsIgnoreCase(province)) {
+            return;
+        }
+
+        for (String city : addressRepo.getCitiesByProvince(province)) {
+            cbCityAddress.addItem(city);
+        }
+    }
+
+    private void onCityAddressChanged() {
+        txtZipCode.setText("");
+
+        if (addressRepo == null) {
+            return;
+        }
+
+        String province = selectedValue(cbProvinceAddress);
+        String city = selectedValue(cbCityAddress);
+        if (ValidationUtil.isEmpty(province)
+                || ValidationUtil.isEmpty(city)
+                || PROVINCE_PLACEHOLDER.equalsIgnoreCase(province)
+                || CITY_PLACEHOLDER.equalsIgnoreCase(city)) {
+            return;
+        }
+
+        txtZipCode.setText(addressRepo.getZipCode(province, city));
     }
 
     private void setReadOnlyStyle(JTextField field) {
@@ -241,6 +423,10 @@ public class EmployeeFormPanel extends JPanel {
         txtLeaveCreditsSummary.setText(summary == null ? "" : summary);
     }
 
+    public void setMinimumBasicSalary(double minimumBasicSalary) {
+        this.minimumBasicSalary = minimumBasicSalary > 0.0 ? minimumBasicSalary : 1.0;
+    }
+
     // Annotation: Loads an Employee record into the form fields.
     public void setEmployee(Employee e) {
         if (e == null) {
@@ -259,7 +445,7 @@ public class EmployeeFormPanel extends JPanel {
             dcBirthday.setDate(null);
         }
 
-        txtAddress.setText(nullToEmpty(e.getAddress()));
+        loadParsedAddress(e.getAddress());
         txtPhone.setText(nullToEmpty(e.getPhoneNumber()));
 
         txtSSS.setText(nullToEmpty(e.getSssNumber()));
@@ -280,13 +466,49 @@ public class EmployeeFormPanel extends JPanel {
         refreshLeaveCreditsSummary();
     }
 
+    private void loadParsedAddress(String fullAddress) {
+        txtAddressLine1.setText("");
+        txtAddressLine2.setText("");
+        cbProvinceAddress.setSelectedIndex(0);
+        cbCityAddress.removeAllItems();
+        cbCityAddress.addItem(CITY_PLACEHOLDER);
+        txtZipCode.setText("");
+
+        if (ValidationUtil.isEmpty(fullAddress) || addressRepo == null) {
+            txtAddressLine1.setText(nullToEmpty(fullAddress));
+            return;
+        }
+
+        AddressParser.ParsedAddress parsedAddress = AddressParser.parse(fullAddress, addressRepo);
+        txtAddressLine1.setText(parsedAddress.getAddressLine1());
+        txtAddressLine2.setText(parsedAddress.getAddressLine2());
+
+        if (!ValidationUtil.isEmpty(parsedAddress.getProvince())) {
+            cbProvinceAddress.setSelectedItem(parsedAddress.getProvince());
+            cbCityAddress.removeAllItems();
+            cbCityAddress.addItem(CITY_PLACEHOLDER);
+            for (String city : addressRepo.getCitiesByProvince(parsedAddress.getProvince())) {
+                cbCityAddress.addItem(city);
+            }
+            if (!ValidationUtil.isEmpty(parsedAddress.getCityMunicipality())) {
+                cbCityAddress.setSelectedItem(parsedAddress.getCityMunicipality());
+            }
+            txtZipCode.setText(parsedAddress.getZipCode());
+        }
+    }
+
     // Annotation: Clears all form fields.
     public void clear() {
         txtEmpNo.setText("");
         txtLastName.setText("");
         txtFirstName.setText("");
         dcBirthday.setDate(null);
-        txtAddress.setText("");
+        txtAddressLine1.setText("");
+        txtAddressLine2.setText("");
+        cbProvinceAddress.setSelectedIndex(0);
+        cbCityAddress.removeAllItems();
+        cbCityAddress.addItem(CITY_PLACEHOLDER);
+        txtZipCode.setText("");
         txtPhone.setText("");
         txtSSS.setText("");
         txtPhilHealth.setText("");
@@ -339,12 +561,28 @@ public class EmployeeFormPanel extends JPanel {
                 txtClothingAllow.getText()
         ));
 
+        if (ValidationUtil.isEmpty(txtAddressLine1.getText())) {
+            errors.add("Address Line 1 is required.");
+        }
+        if (ValidationUtil.isEmpty(selectedValue(cbProvinceAddress))
+                || PROVINCE_PLACEHOLDER.equalsIgnoreCase(selectedValue(cbProvinceAddress))
+                || ValidationUtil.isEmpty(selectedValue(cbCityAddress))
+                || CITY_PLACEHOLDER.equalsIgnoreCase(selectedValue(cbCityAddress))) {
+            errors.add("Province and City / Municipality are required.");
+        }
+
+        double basic = safeMoney(txtBasicSalary.getText());
+        if (basic < minimumBasicSalary) {
+            errors.add(String.format(java.util.Locale.US,
+                    "Basic Salary must be at least %.2f based on the current employee minimum.",
+                    minimumBasicSalary));
+        }
+
         if (!errors.isEmpty()) {
             UiDialogs.error(parentForErrors, String.join("\n", errors));
             return null;
         }
 
-        double basic = safeMoney(txtBasicSalary.getText());
         double rice = safeMoney(txtRice.getText());
         double phoneAllow = safeMoney(txtPhoneAllow.getText());
         double clothing = safeMoney(txtClothingAllow.getText());
@@ -361,7 +599,13 @@ public class EmployeeFormPanel extends JPanel {
         }
 
         emp.setBirthday(bday);
-        emp.setAddress(txtAddress.getText().trim());
+        emp.setAddress(AddressFormatter.buildFullAddress(
+                txtAddressLine1.getText(),
+                txtAddressLine2.getText(),
+                selectedValue(cbCityAddress),
+                selectedValue(cbProvinceAddress),
+                txtZipCode.getText()
+        ));
         emp.setPhoneNumber(txtPhone.getText().trim());
 
         emp.setSssNumber(txtSSS.getText().trim());
