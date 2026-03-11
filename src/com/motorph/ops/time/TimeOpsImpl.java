@@ -80,17 +80,8 @@ public class TimeOpsImpl implements TimeOps {
     }
 
     @Override
-    public TimeEntry getEntryForDate(int empId, LocalDate date) {
-        return timeService.getEntryForDate(empId, date);
-    }
-
-    @Override
-    public double getWorkedHours(TimeEntry entry) {
-        return timeService.calculateWorkedHours(entry);
-    }
-
-    @Override
-    public boolean isWorkedDurationTooShort(TimeEntry entry) {
-        return timeService.isWorkedDurationTooShort(entry);
+    public boolean isWorkedHoursShort(int empId) {
+        return timeService.isWorkedHoursShort(empId);
     }
 }
+

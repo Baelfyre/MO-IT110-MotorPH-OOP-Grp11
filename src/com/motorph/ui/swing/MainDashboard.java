@@ -44,6 +44,7 @@ public class MainDashboard extends javax.swing.JFrame {
     private JPanel mainContentPanel;
     private HomePanel homePanel;
     private Timer clockTimer;
+    private Timer workedHoursTimer;
     private final TimeOps timeOps;
     private final HROps hrOps;
     private final PayrollOps payrollOps;
@@ -126,7 +127,6 @@ public class MainDashboard extends javax.swing.JFrame {
                 () -> showCard("HOME"),
                 () -> showCard("ATTENDANCE"),
                 () -> showCard("LEAVE"),
-                () -> showCard("PAYSLIP"),
                 this::openUpdateProfileDialog
         ), "SELF_SERVICE");
         mainContentPanel.add(new HrPanel(currentUser, hrOps, addressRepo), "HR");
@@ -751,23 +751,22 @@ public class MainDashboard extends javax.swing.JFrame {
         if (success) {
             JOptionPane.showMessageDialog(this, "Clock Out successful!", "Success", JOptionPane.INFORMATION_MESSAGE);
 
-            TimeEntry todayEntry = timeOps.getEntryForDate(empId, LocalDate.now());
-            if (timeOps.isWorkedDurationTooShort(todayEntry)) {
-                JOptionPane.showMessageDialog(
-                        this,
-                        "Recorded work duration is below the minimum review threshold of "
-                        + com.motorph.service.TimeService.MIN_VALID_WORK_HOURS
-                        + " hour(s). Please contact the supervisor for DTR correction.",
-                        "Notice",
-                        JOptionPane.WARNING_MESSAGE
-                );
-            }
-
             if (isOutsideWorkingHours()) {
                 JOptionPane.showMessageDialog(
                         this,
                         "Logged out beyond working hours. Time was recorded, but it may be subject for supervisor approval.",
                         "Notice",
+                        JOptionPane.WARNING_MESSAGE
+                );
+            }
+
+            // Check for unusually short work duration using shared service rule.
+            if (timeOps.isWorkedHoursShort(empId)) {
+                JOptionPane.showMessageDialog(
+                        this,
+                        "Your recorded work duration for today looks unusually short.\n"
+                                + "If this is incorrect, please contact your supervisor to request a DTR correction.",
+                        "Short Work Duration Detected",
                         JOptionPane.WARNING_MESSAGE
                 );
             }
@@ -878,6 +877,7 @@ public class MainDashboard extends javax.swing.JFrame {
             jLabel13.setText("Time In: ");
             jLabel15.setText("Time Out: ");
             jLabel21.setText("-");
+            stopWorkedHoursTimer();
             return;
         }
 
@@ -888,31 +888,82 @@ public class MainDashboard extends javax.swing.JFrame {
             jLabel13.setText("Time In: ");
             jLabel15.setText("Time Out: ");
             jLabel21.setText("-");
+            stopWorkedHoursTimer();
             return;
         }
 
+        List<TimeEntry> entries = timeOps.viewMyTimeEntries(empId);
         LocalDate today = LocalDate.now();
         DateTimeFormatter timeFmt = DateTimeFormatter.ofPattern("hh:mm:ss a");
-        TimeEntry entry = timeOps.getEntryForDate(empId, today);
 
         String timeInText = "";
         String timeOutText = "";
-        String workedText = "-";
+        LocalTime timeIn = null;
+        LocalTime timeOut = null;
 
-        if (entry != null) {
-            if (entry.getTimeIn() != null) {
-                timeInText = entry.getTimeIn().format(timeFmt);
-                workedText = "In progress";
-            }
-            if (entry.getTimeOut() != null) {
-                timeOutText = entry.getTimeOut().format(timeFmt);
-                workedText = String.format(java.util.Locale.US, "%.2f hrs", timeOps.getWorkedHours(entry));
+        for (TimeEntry entry : entries) {
+            if (entry.getDate() != null && entry.getDate().equals(today)) {
+                if (entry.getTimeIn() != null) {
+                    timeIn = entry.getTimeIn();
+                    timeInText = entry.getTimeIn().format(timeFmt);
+                }
+                if (entry.getTimeOut() != null) {
+                    timeOut = entry.getTimeOut();
+                    timeOutText = entry.getTimeOut().format(timeFmt);
+                }
+                break;
             }
         }
 
         jLabel13.setText("Time In: " + timeInText);
         jLabel15.setText("Time Out: " + timeOutText);
-        jLabel21.setText(workedText);
+
+        updateWorkedHoursLabel(timeIn, timeOut);
+
+        // Refresh worked-hours display every hour while clocked-in.
+        if (timeIn != null && timeOut == null) {
+            startWorkedHoursTimer();
+        } else {
+            stopWorkedHoursTimer();
+        }
+    }
+
+    private void updateWorkedHoursLabel(LocalTime timeIn, LocalTime timeOut) {
+        if (timeIn == null) {
+            jLabel21.setText("-");
+            return;
+        }
+
+        LocalTime end = (timeOut != null) ? timeOut : LocalTime.now();
+        long minutes = java.time.Duration.between(timeIn, end).toMinutes();
+        if (minutes < 0) {
+            minutes = 0;
+        }
+
+        // Mirror payroll lunch-break rule: subtract 60 minutes if worked > 4 hours.
+        if (minutes > 240) {
+            minutes -= 60;
+        }
+
+        double hours = Math.max(0.0, minutes / 60.0);
+        jLabel21.setText(String.format(java.util.Locale.US, "%.2f", hours));
+    }
+
+    private void startWorkedHoursTimer() {
+        if (workedHoursTimer != null && workedHoursTimer.isRunning()) {
+            return;
+        }
+        // Hourly refresh is sufficient; also keeps UI responsive without constant file reads.
+        workedHoursTimer = new Timer(60 * 60 * 1000, e -> loadTodayAttendanceLabels());
+        workedHoursTimer.setInitialDelay(60 * 60 * 1000);
+        workedHoursTimer.start();
+    }
+
+    private void stopWorkedHoursTimer() {
+        if (workedHoursTimer != null) {
+            workedHoursTimer.stop();
+            workedHoursTimer = null;
+        }
     }
 
     private void openUpdateProfileDialog() {
@@ -1068,6 +1119,7 @@ public class MainDashboard extends javax.swing.JFrame {
         if (clockTimer != null) {
             clockTimer.stop();
         }
+        stopWorkedHoursTimer();
         super.dispose();
     }
 }

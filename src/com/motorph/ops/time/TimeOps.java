@@ -28,9 +28,5 @@ public interface TimeOps {
 
     ApprovalStatus getMyDtrStatus(int empId, PayPeriod period);
 
-    TimeEntry getEntryForDate(int empId, LocalDate date);
-
-    double getWorkedHours(TimeEntry entry);
-
-    boolean isWorkedDurationTooShort(TimeEntry entry);
+    boolean isWorkedHoursShort(int empId);
 }

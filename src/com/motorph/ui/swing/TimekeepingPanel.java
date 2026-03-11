@@ -76,9 +76,6 @@ public class TimekeepingPanel extends JPanel {
         top.add(btnSetPeriod);
         top.add(lblPeriod);
         top.add(lblDtrStatus);
-        top.add(lblWorkedHours);
-        top.add(btnClockIn);
-        top.add(btnClockOut);
         top.add(btnRefresh);
 
         add(top, BorderLayout.NORTH);
@@ -92,8 +89,6 @@ public class TimekeepingPanel extends JPanel {
             }
             setActivePeriod(d);
         });
-        btnClockIn.addActionListener(e -> onClockIn());
-        btnClockOut.addActionListener(e -> onClockOut());
         btnRefresh.addActionListener(e -> reload());
     }
 
@@ -121,26 +116,9 @@ public class TimekeepingPanel extends JPanel {
                     t.getTimeOut() == null ? "" : t.getTimeOut().format(TIME_FMT)
             });
         }
-        refreshWorkedHoursLabel();
     }
 
-    private void refreshWorkedHoursLabel() {
-        TimeEntry todayEntry = timeOps.getEntryForDate(empId(), LocalDate.now());
-        if (todayEntry == null || todayEntry.getTimeIn() == null) {
-            lblWorkedHours.setText("Worked today (hrs): -");
-            return;
-        }
-
-        double hours = timeOps.getWorkedHours(todayEntry);
-        if (todayEntry.getTimeOut() == null) {
-            lblWorkedHours.setText("Worked today (hrs): In progress");
-            return;
-        }
-
-        lblWorkedHours.setText(String.format(Locale.US, "Worked today (hrs): %.2f", hours));
-    }
-
-    private void onClockIn() {
+    /*private void onClockIn() {
         int empId = empId();
         if (empId <= 0) {
             UiDialogs.error(this, "Invalid EmpID.");
@@ -158,7 +136,7 @@ public class TimekeepingPanel extends JPanel {
         reload();
     }
 
-    private void onClockOut() {
+    /*private void onClockOut() {
         int empId = empId();
         if (empId <= 0) {
             UiDialogs.error(this, "Invalid EmpID.");
@@ -176,11 +154,16 @@ public class TimekeepingPanel extends JPanel {
             if (isOutsideWorkingHours()) {
                 UiDialogs.warn(this, "Logged out beyond working hours. Time was recorded but may require supervisor approval.");
             }
+
+            // Check for unusually short work duration using shared service rule.
+            if (timeOps.isWorkedHoursShort(empId)) {
+                UiDialogs.warn(this, "Your recorded work duration for today looks unusually short. If this is incorrect, please contact your supervisor to request a DTR correction.");
+            }
         } else {
             UiDialogs.warn(this, "Time Out not recorded. Weekend entries should be processed through supervisor manual DTR, or today's time-out already exists.");
         }
         reload();
-    }
+    }*/
 
     private boolean isOutsideWorkingHours() {
         LocalTime now = LocalTime.now();
