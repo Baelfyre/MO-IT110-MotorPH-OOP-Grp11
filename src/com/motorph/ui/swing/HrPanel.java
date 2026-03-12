@@ -74,53 +74,86 @@ public class HrPanel extends JPanel {
     private void buildUi() {
         setLayout(new BorderLayout(10, 10));
 
-        JPanel top = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 5));
-        top.add(new JLabel("Search EmpID or Name:"));
-        top.add(txtSearch);
+        JPanel searchRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 5));
+        searchRow.add(new JLabel("Search EmpID or Name:"));
+        searchRow.add(txtSearch);
 
         JButton btnFind = new JButton("Find");
         JButton btnClear = new JButton("Clear");
 
-        top.add(btnFind);
-        top.add(btnClear);
-        top.add(chkIncludeArchived);
-        top.add(btnRefresh);
-        top.add(btnAdd);
-        top.add(btnEdit);
-        top.add(btnDelete);
-        top.add(btnViewDetails);
-        top.add(btnLogs);
+        searchRow.add(btnFind);
+        searchRow.add(btnClear);
+        searchRow.add(chkIncludeArchived);
+        searchRow.add(btnRefresh);
+
+        JPanel actionRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 5));
+        actionRow.add(btnAdd);
+        actionRow.add(btnEdit);
+        actionRow.add(btnDelete);
+        actionRow.add(btnViewDetails);
+        actionRow.add(btnLogs);
+
+        JPanel top = new JPanel();
+        top.setLayout(new BoxLayout(top, BoxLayout.Y_AXIS));
+        top.add(searchRow);
+        top.add(actionRow);
 
         tbl.setRowSorter(sorter);
         tbl.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
         tbl.setFillsViewportHeight(true);
+        tbl.setRowHeight(24);
         tbl.getTableHeader().setReorderingAllowed(false);
 
-        // Annotation: Let the table fit inside the panel width instead of stretching indefinitely.
-        tbl.setAutoResizeMode(JTable.AUTO_RESIZE_SUBSEQUENT_COLUMNS);
+        // Annotation: Resize all columns to fit the visible table area more evenly.
+        tbl.setAutoResizeMode(JTable.AUTO_RESIZE_ALL_COLUMNS);
 
         if (tbl.getColumnModel().getColumnCount() >= 6) {
+            // EmpID
             tbl.getColumnModel().getColumn(0).setMinWidth(70);
             tbl.getColumnModel().getColumn(0).setMaxWidth(90);
             tbl.getColumnModel().getColumn(0).setPreferredWidth(80);
 
-            tbl.getColumnModel().getColumn(1).setPreferredWidth(140);
-            tbl.getColumnModel().getColumn(2).setPreferredWidth(140);
+            // Last Name
+            tbl.getColumnModel().getColumn(1).setMinWidth(110);
+            tbl.getColumnModel().getColumn(1).setPreferredWidth(130);
 
+            // First Name
+            tbl.getColumnModel().getColumn(2).setMinWidth(110);
+            tbl.getColumnModel().getColumn(2).setPreferredWidth(130);
+
+            // Status
             tbl.getColumnModel().getColumn(3).setMinWidth(90);
             tbl.getColumnModel().getColumn(3).setMaxWidth(120);
             tbl.getColumnModel().getColumn(3).setPreferredWidth(100);
 
+            // Position
+            tbl.getColumnModel().getColumn(4).setMinWidth(160);
             tbl.getColumnModel().getColumn(4).setPreferredWidth(180);
+
+            // Supervisor
+            tbl.getColumnModel().getColumn(5).setMinWidth(160);
             tbl.getColumnModel().getColumn(5).setPreferredWidth(180);
         }
 
-        JScrollPane scrollPane = new JScrollPane(tbl);
-        scrollPane.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_AS_NEEDED);
-        scrollPane.setVerticalScrollBarPolicy(ScrollPaneConstants.VERTICAL_SCROLLBAR_AS_NEEDED);
+        JScrollPane tableScroll = new JScrollPane(tbl);
+        tableScroll.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_AS_NEEDED);
+        tableScroll.setVerticalScrollBarPolicy(ScrollPaneConstants.VERTICAL_SCROLLBAR_AS_NEEDED);
+
+        JTextArea detailsArea = new JTextArea(8, 40);
+        detailsArea.setEditable(false);
+        detailsArea.setLineWrap(true);
+        detailsArea.setWrapStyleWord(true);
+        detailsArea.setCaretPosition(0);
+
+        JPanel detailsPanel = new JPanel(new BorderLayout());
+        detailsPanel.setBorder(BorderFactory.createTitledBorder("Selected Employee Details"));
+        detailsPanel.add(new JScrollPane(detailsArea), BorderLayout.CENTER);
+
+        JSplitPane splitPane = new JSplitPane(JSplitPane.VERTICAL_SPLIT, tableScroll, detailsPanel);
+        splitPane.setResizeWeight(0.72);
 
         add(top, BorderLayout.NORTH);
-        add(scrollPane, BorderLayout.CENTER);
+        add(splitPane, BorderLayout.CENTER);
 
         // Annotation: Search applies a table row filter.
         btnFind.addActionListener(e -> applyFilter());
@@ -136,6 +169,25 @@ public class HrPanel extends JPanel {
         btnDelete.addActionListener(e -> onDelete());
         btnViewDetails.addActionListener(e -> showSelectedEmployeeDetails());
         btnLogs.addActionListener(e -> showSystemLogs());
+
+        tbl.getSelectionModel().addListSelectionListener(e -> {
+            if (!e.getValueIsAdjusting()) {
+                Integer empId = selectedEmpId();
+                if (empId == null) {
+                    detailsArea.setText("");
+                    return;
+                }
+
+                Employee employee = hrOps.getEmployee(empId);
+                if (employee == null) {
+                    detailsArea.setText("");
+                    return;
+                }
+
+                detailsArea.setText(buildEmployeeDetailsText(employee));
+                detailsArea.setCaretPosition(0);
+            }
+        });
 
         tbl.addMouseListener(new java.awt.event.MouseAdapter() {
             @Override
@@ -178,12 +230,12 @@ public class HrPanel extends JPanel {
 
         for (Employee e : rows) {
             model.addRow(new Object[]{
-                    e.getEmployeeNumber(),
-                    e.getLastName(),
-                    e.getFirstName(),
-                    e.getStatus(),
-                    e.getPosition(),
-                    e.getImmediateSupervisor()
+                e.getEmployeeNumber(),
+                valueOf(e.getLastName()),
+                valueOf(e.getFirstName()),
+                valueOf(e.getStatus()),
+                valueOf(e.getPosition()),
+                valueOf(e.getImmediateSupervisor())
             });
         }
     }
@@ -361,6 +413,7 @@ public class HrPanel extends JPanel {
     }
 
     private interface EmployeeSaveAction {
+
         boolean save(Employee employee);
     }
 
@@ -465,13 +518,11 @@ public class HrPanel extends JPanel {
     private int nextEmployeeId() {
         List<Employee> employees = hrOps.listEmployees(true);
         int max = 10000;
-
         for (Employee employee : employees) {
             if (employee != null && employee.getId() > max) {
                 max = employee.getId();
             }
         }
-
         return max + 1;
     }
 
@@ -500,11 +551,11 @@ public class HrPanel extends JPanel {
 
         for (LogEntry entry : logs) {
             logModel.addRow(new Object[]{
-                    entry.getId(),
-                    entry.getTimestamp(),
-                    entry.getUser(),
-                    entry.getAction(),
-                    entry.getDetails()
+                entry.getId(),
+                entry.getTimestamp(),
+                entry.getUser(),
+                entry.getAction(),
+                entry.getDetails()
             });
         }
 
@@ -539,10 +590,8 @@ public class HrPanel extends JPanel {
         JPanel p = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 10));
         JButton view = new JButton("View Selected");
         JButton close = new JButton("Close");
-
         view.addActionListener(e -> showSelectedLogDetail(logTable));
         close.addActionListener(e -> dlg.dispose());
-
         p.add(view);
         p.add(close);
         return p;
