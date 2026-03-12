@@ -15,6 +15,7 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 
 /**
  * CSV repository for legacy login accounts.
@@ -63,10 +64,10 @@ public class CsvUserRepository implements UserRepository {
 
                 String passwordPlain = data[1].trim();
                 int id = safeParseInt(data[2].trim(), safeParseInt(fileUsername, 0));
-                Role role = determineRoleFromDepartment(data[4].trim());
+                List<Role> roles = determineRolesFromDepartment(data[4].trim());
                 boolean isLocked = parseLocked(data[5].trim());
 
-                return new User(id, fileUsername, passwordPlain, role, isLocked);
+                return new User(id, fileUsername, passwordPlain, roles, isLocked);
             }
         } catch (IOException e) {
             System.err.println("Error reading legacy login file: " + e.getMessage());
@@ -199,10 +200,10 @@ public class CsvUserRepository implements UserRepository {
                 String username = data[0].trim();
                 String passwordPlain = data[1].trim();
                 int id = safeParseInt(data[2].trim(), safeParseInt(username, 0));
-                Role role = determineRoleFromDepartment(data[4].trim());
+                List<Role> roles = determineRolesFromDepartment(data[4].trim());
                 boolean isLocked = parseLocked(data[5].trim());
 
-                users.add(new User(id, username, passwordPlain, role, isLocked));
+                users.add(new User(id, username, passwordPlain, roles, isLocked));
             }
         } catch (IOException e) {
             System.err.println("Error reading all legacy users: " + e.getMessage());
@@ -267,25 +268,36 @@ public class CsvUserRepository implements UserRepository {
                 || lockStr.equalsIgnoreCase("True");
     }
 
-    private Role determineRoleFromDepartment(String department) {
+    // Annotation: Maps department or position text into the matching RBAC role set.
+    private List<Role> determineRolesFromDepartment(String department) {
+        List<Role> roles = new ArrayList<>();
         if (department == null) {
-            return Role.EMPLOYEE;
+            roles.add(Role.EMPLOYEE);
+            return roles;
         }
 
-        String dept = department.trim().toUpperCase();
-        if (dept.contains("HR")) {
-            return Role.HR;
-        }
-        if (dept.contains("PAYROLL") || dept.contains("FINANCE") || dept.contains("ACCOUNTING") || dept.contains("CHIEF FINANCE OFFICER")) {
-            return Role.PAYROLL;
-        }
+        String dept = department.trim().toUpperCase(Locale.US);
+
         if (dept.contains("IT")) {
-            return Role.IT;
+            roles.add(Role.IT);
         }
-        if (dept.contains("CHIEF") || dept.contains("CEO") || dept.contains("COO") || dept.contains("CMO") || dept.contains("TEAM LEADER") || dept.contains("MANAGER") || dept.contains("HEAD")) {
-            return Role.SUPERVISOR;
+        if (dept.contains("HR")) {
+            roles.add(Role.HR);
         }
-        return Role.EMPLOYEE;
+        if (dept.contains("PAYROLL") || dept.contains("FINANCE") || dept.contains("ACCOUNTING")
+                || dept.contains("ACCOUNT MANAGER") || dept.contains("ACCOUNT TEAM LEADER")
+                || dept.contains("CHIEF FINANCE OFFICER")) {
+            roles.add(Role.PAYROLL);
+        }
+        if (dept.contains("CHIEF") || dept.contains("CEO") || dept.contains("COO") || dept.contains("CMO")
+                || dept.contains("TEAM LEADER") || dept.contains("MANAGER") || dept.contains("HEAD")) {
+            roles.add(Role.SUPERVISOR);
+        }
+
+        if (roles.isEmpty()) {
+            roles.add(Role.EMPLOYEE);
+        }
+        return roles;
     }
 
     private int safeParseInt(String value, int fallback) {

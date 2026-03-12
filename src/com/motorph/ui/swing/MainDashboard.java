@@ -106,7 +106,7 @@ public class MainDashboard extends javax.swing.JFrame {
         jButton9.setVisible(canManageIT);          // System Maintenance (IT/Admin)
 
         // 3. DYNAMIC MANAGER CHECK
-        boolean isASupervisor = employeeService.isSupervisor(currentUser.getUsername()) 
+        boolean isASupervisor = employeeService.isSupervisor(currentUser.getId())
                              || currentUser.hasPermission("CAN_APPROVE_DTR");
 
         jButton7.setVisible(isASupervisor);        // Attendance Management

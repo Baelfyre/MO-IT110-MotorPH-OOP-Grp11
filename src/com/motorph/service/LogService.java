@@ -49,6 +49,29 @@ public class LogService {
         return logRepo.findAll();
     }
 
+
+    // Annotation: Returns all logs recorded by one user.
+    public List<LogEntry> getLogsForUser(String user) {
+        List<LogEntry> out = new ArrayList<>();
+        String actor = user == null ? "" : user.trim();
+
+        if (actor.isEmpty()) {
+            return out;
+        }
+
+        for (LogEntry entry : logRepo.findAll()) {
+            if (entry == null) {
+                continue;
+            }
+
+            String currentUser = entry.getUser() == null ? "" : entry.getUser().trim();
+            if (actor.equals(currentUser)) {
+                out.add(entry);
+            }
+        }
+        return out;
+    }
+
     // Annotation: Returns logs filtered by one category.
     public List<LogEntry> getLogsByCategory(String category) {
         List<LogEntry> out = new ArrayList<>();

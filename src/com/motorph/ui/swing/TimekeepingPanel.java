@@ -7,19 +7,19 @@ package com.motorph.ui.swing;
 import com.motorph.domain.models.PayPeriod;
 import com.motorph.domain.models.TimeEntry;
 import com.motorph.domain.models.User;
-import com.motorph.service.TimeService;
-import com.toedter.calendar.JDateChooser;
-import com.toedter.calendar.JTextFieldDateEditor;
 
 import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
 import java.awt.*;
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.time.Month;
 import java.time.format.DateTimeFormatter;
-import java.util.Date;
+import java.time.format.TextStyle;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Set;
 
 /**
  * Employee attendance panel.
@@ -31,10 +31,13 @@ public class TimekeepingPanel extends JPanel {
     private final User currentUser;
     private final com.motorph.ops.time.TimeOps timeOps;
 
-    private final JDateChooser dcAnyDate = new JDateChooser();
-    private final JLabel lblPeriod = new JLabel("Period: -");
+    private final JLabel lblPeriod = new JLabel("Current Period: -");
     private final JLabel lblDtrStatus = new JLabel("DTR Status: -");
     private final JLabel lblWorkedHours = new JLabel("Worked today (hrs): -");
+    private final JComboBox<String> cbHistoryYear = new JComboBox<>();
+    private final JComboBox<String> cbHistoryMonth = new JComboBox<>();
+    private final JButton btnClearFilters = new JButton("Clear Filters");
+    private final JButton btnRefresh = new JButton("Refresh");
     private PayPeriod activePeriod;
 
     private final DefaultTableModel model = new DefaultTableModel(
@@ -47,124 +50,172 @@ public class TimekeepingPanel extends JPanel {
     };
 
     private final JTable tbl = new JTable(model);
-    private final JButton btnSetPeriod = new JButton("Set Period");
-    private final JButton btnClockIn = new JButton("Clock In");
-    private final JButton btnClockOut = new JButton("Clock Out");
-    private final JButton btnRefresh = new JButton("Refresh");
 
     private static final DateTimeFormatter DATE_FMT = DateTimeFormatter.ofPattern("MM/dd/yyyy", Locale.US);
-    private static final DateTimeFormatter TIME_FMT = DateTimeFormatter.ofPattern("HH:mm", Locale.US);
+    private static final DateTimeFormatter TIME_FMT = DateTimeFormatter.ofPattern("h:mm a", Locale.US);
 
     public TimekeepingPanel(User currentUser, com.motorph.ops.time.TimeOps timeOps) {
+        initComponents();
         this.currentUser = currentUser;
         this.timeOps = timeOps;
 
         buildUi();
-        dcAnyDate.setDateFormatString("MM/dd/yyyy");
-        if (dcAnyDate.getDateEditor() instanceof JTextFieldDateEditor editor) {
-            editor.setEditable(false);
-        }
-        dcAnyDate.setDate(new Date());
-        setActivePeriod(LocalDate.now());
+        initHistoryFilters();
+        setCurrentPeriod();
     }
 
     private void buildUi() {
         setLayout(new BorderLayout(10, 10));
+
         JPanel top = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 5));
-        top.add(new JLabel("Any date inside period:"));
-        top.add(dcAnyDate);
-        top.add(btnSetPeriod);
         top.add(lblPeriod);
         top.add(lblDtrStatus);
         top.add(btnRefresh);
 
-        add(top, BorderLayout.NORTH);
+        JPanel filters = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 5));
+        filters.add(new JLabel("History Year:"));
+        filters.add(cbHistoryYear);
+        filters.add(new JLabel("History Month:"));
+        filters.add(cbHistoryMonth);
+        filters.add(btnClearFilters);
+        filters.add(lblWorkedHours);
+
+        JPanel north = new JPanel();
+        north.setLayout(new BoxLayout(north, BoxLayout.Y_AXIS));
+        north.add(top);
+        north.add(filters);
+
+        tbl.setRowHeight(24);
+        add(north, BorderLayout.NORTH);
         add(new JScrollPane(tbl), BorderLayout.CENTER);
 
-        btnSetPeriod.addActionListener(e -> {
-            LocalDate d = LocalDates.toLocalDate(dcAnyDate.getDate());
-            if (d == null) {
-                UiDialogs.warn(this, "Select a date.");
-                return;
-            }
-            setActivePeriod(d);
-        });
         btnRefresh.addActionListener(e -> reload());
+        btnClearFilters.addActionListener(e -> resetHistoryFilters());
+        cbHistoryYear.addActionListener(e -> refreshHistoryTable());
+        cbHistoryMonth.addActionListener(e -> refreshHistoryTable());
+    }
+
+    private void initHistoryFilters() {
+        cbHistoryYear.addItem("All Years");
+        cbHistoryMonth.addItem("All Months");
+        for (Month month : Month.values()) {
+            cbHistoryMonth.addItem(month.getDisplayName(TextStyle.FULL, Locale.US));
+        }
     }
 
     private int empId() {
         return currentUser == null ? 0 : currentUser.getId();
     }
 
-    private void setActivePeriod(LocalDate anyDate) {
-        this.activePeriod = PayPeriod.fromDateSemiMonthly(anyDate);
-        lblPeriod.setText("Period: " + activePeriod.getStartDate() + " to " + activePeriod.getEndDate());
-        int empId = empId();
-        var dtr = timeOps.getMyDtrStatus(empId, activePeriod);
+    private void setCurrentPeriod() {
+        activePeriod = PayPeriod.fromDateSemiMonthly(LocalDate.now());
+        lblPeriod.setText("Current Period: " + activePeriod.getStartDate() + " to " + activePeriod.getEndDate());
+        var dtr = timeOps.getMyDtrStatus(empId(), activePeriod);
         lblDtrStatus.setText("DTR Status: " + (dtr == null ? "N/A" : dtr.name()));
         reload();
     }
 
+    // Annotation: Loads all attendance history, then applies year and month filters for table display.
     private void reload() {
+        List<TimeEntry> entries = timeOps.viewMyTimeEntries(empId());
+        refreshHistoryFilters(entries);
+        refreshHistoryTable();
+        refreshWorkedHours(entries);
+    }
+
+    private void refreshHistoryFilters(List<TimeEntry> entries) {
+        String selectedYear = (String) cbHistoryYear.getSelectedItem();
+        String selectedMonth = (String) cbHistoryMonth.getSelectedItem();
+
+        Set<String> years = new LinkedHashSet<>();
+        for (TimeEntry entry : entries) {
+            if (entry != null && entry.getDate() != null) {
+                years.add(String.valueOf(entry.getDate().getYear()));
+            }
+        }
+
+        cbHistoryYear.removeAllItems();
+        cbHistoryYear.addItem("All Years");
+        years.stream().sorted().forEach(cbHistoryYear::addItem);
+        restoreSelection(cbHistoryYear, selectedYear);
+        restoreSelection(cbHistoryMonth, selectedMonth == null ? "All Months" : selectedMonth);
+    }
+
+    private void restoreSelection(JComboBox<String> comboBox, String selectedValue) {
+        if (selectedValue != null) {
+            comboBox.setSelectedItem(selectedValue);
+            if (comboBox.getSelectedIndex() < 0) {
+                comboBox.setSelectedIndex(0);
+            }
+        }
+    }
+
+    private void resetHistoryFilters() {
+        cbHistoryYear.setSelectedIndex(0);
+        cbHistoryMonth.setSelectedIndex(0);
+        refreshHistoryTable();
+    }
+
+    private void refreshHistoryTable() {
         model.setRowCount(0);
-        int empId = empId();
-        List<TimeEntry> entries = timeOps.viewMyTimeEntriesForPeriod(empId, activePeriod);
-        for (TimeEntry t : entries) {
+        List<TimeEntry> entries = timeOps.viewMyTimeEntries(empId());
+        String yearFilter = (String) cbHistoryYear.getSelectedItem();
+        String monthFilter = (String) cbHistoryMonth.getSelectedItem();
+
+        for (TimeEntry entry : entries) {
+            if (entry == null || entry.getDate() == null) {
+                continue;
+            }
+            if (!matchesYearFilter(entry.getDate(), yearFilter)) {
+                continue;
+            }
+            if (!matchesMonthFilter(entry.getDate(), monthFilter)) {
+                continue;
+            }
             model.addRow(new Object[]{
-                    t.getDate() == null ? "" : t.getDate().format(DATE_FMT),
-                    t.getTimeIn() == null ? "" : t.getTimeIn().format(TIME_FMT),
-                    t.getTimeOut() == null ? "" : t.getTimeOut().format(TIME_FMT)
+                    entry.getDate().format(DATE_FMT),
+                    entry.getTimeIn() == null ? "" : entry.getTimeIn().format(TIME_FMT),
+                    entry.getTimeOut() == null ? "" : entry.getTimeOut().format(TIME_FMT)
             });
         }
     }
 
-    /*private void onClockIn() {
-        int empId = empId();
-        if (empId <= 0) {
-            UiDialogs.error(this, "Invalid EmpID.");
-            return;
+    private boolean matchesYearFilter(LocalDate date, String filter) {
+        if (date == null || filter == null || "All Years".equals(filter)) {
+            return true;
         }
-        boolean ok = timeOps.clockIn(empId);
-        if (ok) {
-            UiDialogs.info(this, "Time In recorded.");
-            if (isOutsideWorkingHours()) {
-                UiDialogs.warn(this, "Logged in beyond working hours. Time was recorded but may require supervisor approval.");
-            }
-        } else {
-            UiDialogs.warn(this, "Time In not recorded. Weekend entries should be processed through supervisor manual DTR, or today's time-in already exists.");
-        }
-        reload();
+        return String.valueOf(date.getYear()).equals(filter);
     }
 
-    /*private void onClockOut() {
-        int empId = empId();
-        if (empId <= 0) {
-            UiDialogs.error(this, "Invalid EmpID.");
+    private boolean matchesMonthFilter(LocalDate date, String filter) {
+        if (date == null || filter == null || "All Months".equals(filter)) {
+            return true;
+        }
+        return date.getMonth().getDisplayName(TextStyle.FULL, Locale.US).equalsIgnoreCase(filter);
+    }
+
+    // Annotation: Shows current-day worked hours when both time-in and time-out are present.
+    private void refreshWorkedHours(List<TimeEntry> entries) {
+        LocalDate today = LocalDate.now();
+        for (TimeEntry entry : entries) {
+            if (entry == null || entry.getDate() == null) {
+                continue;
+            }
+            if (!today.equals(entry.getDate())) {
+                continue;
+            }
+            if (entry.getTimeIn() == null || entry.getTimeOut() == null) {
+                lblWorkedHours.setText("Worked today (hrs): -");
+                return;
+            }
+            long minutes = java.time.Duration.between(entry.getTimeIn(), entry.getTimeOut()).toMinutes();
+            lblWorkedHours.setText(String.format(Locale.US, "Worked today (hrs): %.2f", minutes / 60.0));
             return;
         }
-        boolean ok = timeOps.clockOut(empId);
-        if (ok) {
-            UiDialogs.info(this, "Time Out recorded.");
-            TimeEntry todayEntry = timeOps.getEntryForDate(empId, LocalDate.now());
-            if (timeOps.isWorkedDurationTooShort(todayEntry)) {
-                UiDialogs.warn(this, "Recorded work duration is below the minimum review threshold of "
-                        + TimeService.MIN_VALID_WORK_HOURS
-                        + " hour(s). Please contact the supervisor for DTR correction.");
-            }
-            if (isOutsideWorkingHours()) {
-                UiDialogs.warn(this, "Logged out beyond working hours. Time was recorded but may require supervisor approval.");
-            }
+        lblWorkedHours.setText("Worked today (hrs): -");
+    }
 
-            // Check for unusually short work duration using shared service rule.
-            if (timeOps.isWorkedHoursShort(empId)) {
-                UiDialogs.warn(this, "Your recorded work duration for today looks unusually short. If this is incorrect, please contact your supervisor to request a DTR correction.");
-            }
-        } else {
-            UiDialogs.warn(this, "Time Out not recorded. Weekend entries should be processed through supervisor manual DTR, or today's time-out already exists.");
-        }
-        reload();
-    }*/
-
+    // Annotation: Checks whether the live clock is outside the normal shift range.
     private boolean isOutsideWorkingHours() {
         LocalTime now = LocalTime.now();
         return now.isBefore(LocalTime.of(8, 0)) || now.isAfter(LocalTime.of(17, 0));

@@ -209,11 +209,33 @@ public class SupervisorOpsImpl implements SupervisorOps {
                     : leaveRepo.findByEmployeeAndPeriod(e.getEmployeeNumber(), period);
 
             for (LeaveRequest r : rows) {
-                if (r != null && r.getStatus() == LeaveStatus.PENDING) {
+                if (r != null) {
                     out.add(r);
                 }
             }
         }
+
+        out.sort((a, b) -> {
+            if (a == null && b == null) {
+                return 0;
+            }
+            if (a == null) {
+                return 1;
+            }
+            if (b == null) {
+                return -1;
+            }
+            if (a.getDate() == null && b.getDate() == null) {
+                return 0;
+            }
+            if (a.getDate() == null) {
+                return 1;
+            }
+            if (b.getDate() == null) {
+                return -1;
+            }
+            return b.getDate().compareTo(a.getDate());
+        });
         return out;
     }
 

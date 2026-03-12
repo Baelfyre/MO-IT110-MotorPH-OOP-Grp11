@@ -13,10 +13,14 @@ import javax.swing.table.DefaultTableModel;
 import java.awt.*;
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.time.Month;
 import java.time.format.DateTimeFormatter;
+import java.time.format.TextStyle;
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Set;
 
 /**
  *
@@ -25,13 +29,14 @@ import java.util.Locale;
 public class LeavePanel extends JPanel {
 
     private final User currentUser;
-
     private final EmployeeService employeeService;
     private final LeaveOps leaveOps;
 
     private final JDateChooser dcDate = new JDateChooser();
     private final JComboBox<String> cbStart = new JComboBox<>();
     private final JComboBox<String> cbEnd = new JComboBox<>();
+    private final JComboBox<String> cbHistoryYear = new JComboBox<>();
+    private final JComboBox<String> cbHistoryMonth = new JComboBox<>();
 
     private final JLabel lblPeriod = new JLabel("Period: -");
     private final JLabel lblCredits = new JLabel("Current leave credits (hrs): -");
@@ -41,7 +46,7 @@ public class LeavePanel extends JPanel {
     private PayPeriod activePeriod;
 
     private final DefaultTableModel model = new DefaultTableModel(
-            new Object[]{"Leave_ID", "Date", "Start", "End", "Status"}, 0
+            new Object[]{"Leave_ID", "Date", "Start", "End", "Status", "Comment"}, 0
     ) {
         @Override
         public boolean isCellEditable(int row, int col) {
@@ -53,6 +58,7 @@ public class LeavePanel extends JPanel {
 
     private final JButton btnSubmit = new JButton("Submit Leave");
     private final JButton btnRefresh = new JButton("Refresh");
+    private final JButton btnResetHistory = new JButton("Clear Filters");
 
     private static final DateTimeFormatter DATE_FMT = DateTimeFormatter.ofPattern("MM/dd/yyyy", Locale.US);
     private static final DateTimeFormatter TIME_FMT = DateTimeFormatter.ofPattern("h:mm a", Locale.US);
@@ -64,6 +70,7 @@ public class LeavePanel extends JPanel {
 
         buildUi();
         initTimeOptions();
+        initHistoryFilters();
 
         dcDate.setDateFormatString("MM/dd/yyyy");
         if (dcDate.getDateEditor() instanceof com.toedter.calendar.JTextFieldDateEditor editor) {
@@ -79,15 +86,27 @@ public class LeavePanel extends JPanel {
     private void buildUi() {
         setLayout(new BorderLayout(10, 10));
 
-        JPanel top = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 5));
-        top.add(new JLabel("Leave Date:"));
-        top.add(dcDate);
-        top.add(new JLabel("Start:"));
-        top.add(cbStart);
-        top.add(new JLabel("End:"));
-        top.add(cbEnd);
-        top.add(btnSubmit);
-        top.add(btnRefresh);
+        JPanel requestRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 5));
+        requestRow.add(new JLabel("Leave Date:"));
+        requestRow.add(dcDate);
+        requestRow.add(new JLabel("Start:"));
+        requestRow.add(cbStart);
+        requestRow.add(new JLabel("End:"));
+        requestRow.add(cbEnd);
+        requestRow.add(btnSubmit);
+        requestRow.add(btnRefresh);
+
+        JPanel historyRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 5));
+        historyRow.add(new JLabel("History Year:"));
+        historyRow.add(cbHistoryYear);
+        historyRow.add(new JLabel("History Month:"));
+        historyRow.add(cbHistoryMonth);
+        historyRow.add(btnResetHistory);
+
+        JPanel north = new JPanel();
+        north.setLayout(new BoxLayout(north, BoxLayout.Y_AXIS));
+        north.add(requestRow);
+        north.add(historyRow);
 
         JPanel summary = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 5));
         summary.add(lblPeriod);
@@ -95,18 +114,19 @@ public class LeavePanel extends JPanel {
         summary.add(lblUsed);
         summary.add(lblRemaining);
 
-        add(top, BorderLayout.NORTH);
+        add(north, BorderLayout.NORTH);
         add(new JScrollPane(tbl), BorderLayout.CENTER);
         add(summary, BorderLayout.SOUTH);
 
         btnSubmit.addActionListener(e -> onSubmit());
         btnRefresh.addActionListener(e -> refreshAll());
-
-        dcDate.getDateEditor().addPropertyChangeListener("date", evt -> {
-            LocalDate d = LocalDates.toLocalDate(dcDate.getDate());
-            if (d != null) {
-                setActivePeriod(d);
-                refreshAll();
+        btnResetHistory.addActionListener(e -> resetHistoryFilters());
+        cbHistoryYear.addActionListener(e -> refreshTable());
+        cbHistoryMonth.addActionListener(e -> refreshTable());
+        tbl.addMouseListener(new java.awt.event.MouseAdapter() {
+            @Override
+            public void mouseClicked(java.awt.event.MouseEvent e) {
+                onCommentCellClicked();
             }
         });
     }
@@ -129,6 +149,15 @@ public class LeavePanel extends JPanel {
         cbEnd.setSelectedItem(LocalTime.of(17, 0).format(TIME_FMT));
     }
 
+    // Annotation: Loads history filter choices separately from the leave request date picker.
+    private void initHistoryFilters() {
+        cbHistoryYear.addItem("All Years");
+        cbHistoryMonth.addItem("All Months");
+        for (Month month : Month.values()) {
+            cbHistoryMonth.addItem(month.getDisplayName(TextStyle.FULL, Locale.US));
+        }
+    }
+
     private int empId() {
         return currentUser == null ? 0 : currentUser.getId();
     }
@@ -140,6 +169,7 @@ public class LeavePanel extends JPanel {
 
     private void refreshAll() {
         refreshSummary();
+        refreshHistoryFilters();
         refreshTable();
     }
 
@@ -153,19 +183,143 @@ public class LeavePanel extends JPanel {
         lblRemaining.setText(String.format(Locale.US, "Remaining YTD (hrs): %.2f", remaining));
     }
 
+    private void refreshHistoryFilters() {
+        List<LeaveRequest> allRows = leaveOps.listLeaveRequests(empId(), null);
+        String selectedYear = (String) cbHistoryYear.getSelectedItem();
+        String selectedMonth = (String) cbHistoryMonth.getSelectedItem();
+
+        Set<String> years = new LinkedHashSet<>();
+        for (LeaveRequest request : allRows) {
+            if (request != null && request.getDate() != null) {
+                years.add(String.valueOf(request.getDate().getYear()));
+            }
+        }
+
+        cbHistoryYear.removeAllItems();
+        cbHistoryYear.addItem("All Years");
+        years.stream().sorted().forEach(cbHistoryYear::addItem);
+
+        if (selectedYear != null) {
+            cbHistoryYear.setSelectedItem(selectedYear);
+            if (cbHistoryYear.getSelectedIndex() < 0) {
+                cbHistoryYear.setSelectedIndex(0);
+            }
+        }
+
+        if (selectedMonth != null) {
+            cbHistoryMonth.setSelectedItem(selectedMonth);
+            if (cbHistoryMonth.getSelectedIndex() < 0) {
+                cbHistoryMonth.setSelectedIndex(0);
+            }
+        }
+    }
+
+    private void resetHistoryFilters() {
+        cbHistoryYear.setSelectedIndex(0);
+        cbHistoryMonth.setSelectedIndex(0);
+        refreshTable();
+    }
+
     private void refreshTable() {
         model.setRowCount(0);
 
-        List<LeaveRequest> list = leaveOps.listLeaveRequests(empId(), activePeriod);
+        List<LeaveRequest> list = leaveOps.listLeaveRequests(empId(), null);
+        String yearFilter = (String) cbHistoryYear.getSelectedItem();
+        String monthFilter = (String) cbHistoryMonth.getSelectedItem();
+
         for (LeaveRequest r : list) {
+            if (r == null || r.getDate() == null) {
+                continue;
+            }
+            if (!matchesYearFilter(r.getDate(), yearFilter)) {
+                continue;
+            }
+            if (!matchesMonthFilter(r.getDate(), monthFilter)) {
+                continue;
+            }
+
             model.addRow(new Object[]{
                     r.getLeaveId(),
-                    r.getDate() == null ? "" : r.getDate().format(DATE_FMT),
+                    r.getDate().format(DATE_FMT),
                     r.getStartTime() == null ? "" : r.getStartTime().format(TIME_FMT),
                     r.getEndTime() == null ? "" : r.getEndTime().format(TIME_FMT),
-                    r.getStatus() == null ? "" : r.getStatus().name()
+                    r.getStatus() == null ? "" : r.getStatus().name(),
+                    hasDecisionNote(r) ? "View" : ""
             });
         }
+    }
+
+
+    // Annotation: Opens the stored supervisor comment for the selected leave row.
+    private void onCommentCellClicked() {
+        int viewRow = tbl.getSelectedRow();
+        int viewCol = tbl.getSelectedColumn();
+        if (viewRow < 0 || viewCol != 5) {
+            return;
+        }
+
+        int modelRow = tbl.convertRowIndexToModel(viewRow);
+        Object leaveIdValue = model.getValueAt(modelRow, 0);
+        if (leaveIdValue == null) {
+            return;
+        }
+
+        LeaveRequest request = findLeaveRequestById(String.valueOf(leaveIdValue));
+        if (request == null || !hasDecisionNote(request)) {
+            UiDialogs.info(this, "No supervisor comment recorded for this leave request.");
+            return;
+        }
+
+        JTextArea area = new JTextArea(request.getDecisionNote());
+        area.setWrapStyleWord(true);
+        area.setLineWrap(true);
+        area.setEditable(false);
+        area.setCaretPosition(0);
+
+        JScrollPane scrollPane = new JScrollPane(area);
+        scrollPane.setPreferredSize(new Dimension(420, 180));
+
+        String title = "Leave Comment";
+        if (request.getStatus() != null) {
+            title += " - " + request.getStatus().name();
+        }
+
+        JOptionPane.showMessageDialog(this, scrollPane, title, JOptionPane.INFORMATION_MESSAGE);
+    }
+
+    // Annotation: Finds one leave row from the current employee history using the Leave ID.
+    private LeaveRequest findLeaveRequestById(String leaveId) {
+        if (leaveId == null || leaveId.trim().isEmpty()) {
+            return null;
+        }
+        for (LeaveRequest request : leaveOps.listLeaveRequests(empId(), null)) {
+            if (request != null && leaveId.equalsIgnoreCase(request.getLeaveId())) {
+                return request;
+            }
+        }
+        return null;
+    }
+
+    // Annotation: Checks whether a stored supervisor decision note is available for viewing.
+    private boolean hasDecisionNote(LeaveRequest request) {
+        return request != null
+                && request.getDecisionNote() != null
+                && !request.getDecisionNote().trim().isEmpty();
+    }
+
+    private boolean matchesYearFilter(LocalDate date, String filter) {
+        if (date == null || filter == null || filter.equals("All Years")) {
+            return true;
+        }
+        return String.valueOf(date.getYear()).equals(filter);
+    }
+
+    private boolean matchesMonthFilter(LocalDate date, String filter) {
+        if (date == null || filter == null || filter.equals("All Months")) {
+            return true;
+        }
+        String monthName = date.getMonth().getDisplayName(TextStyle.FULL, Locale.US);
+        return monthName.equalsIgnoreCase(filter);
     }
 
     private void onSubmit() {
