@@ -10,20 +10,20 @@ import com.motorph.domain.models.PayPeriod;
 import com.motorph.domain.models.Payslip;
 import com.motorph.domain.models.User;
 import com.motorph.ops.payslip.PayslipOps;
-import com.motorph.repository.PayslipRepository;
 import com.motorph.service.EmployeeService;
 import com.motorph.service.LeaveCreditsService;
-import com.toedter.calendar.JDateChooser;
-import com.toedter.calendar.JTextFieldDateEditor;
 import java.awt.BorderLayout;
 import java.awt.FlowLayout;
-import java.text.DecimalFormat;
 import java.time.LocalDate;
-import java.time.temporal.ChronoUnit;
-import java.util.Date;
+import java.time.Month;
+import java.time.format.TextStyle;
+import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Set;
 import javax.swing.JButton;
+import javax.swing.JComboBox;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
@@ -44,19 +44,17 @@ public class PayslipPanel extends JPanel {
     private final EmployeeService employeeService;
     private final LeaveCreditsService leaveCreditsService;
 
-    private final JDateChooser dcAnyDate = new JDateChooser();
-    private final JLabel lblPeriod = new JLabel("Period: -");
-    private PayPeriod activePeriod;
-
-    private final JButton btnSetPeriod = new JButton("Set Period");
-    private final JButton btnViewLatest = new JButton("View Latest");
-    private final JButton btnViewPeriod = new JButton("View Period");
+    private final JComboBox<String> cbYear = new JComboBox<>();
+    private final JComboBox<String> cbMonth = new JComboBox<>();
+    private final JComboBox<String> cbCycle = new JComboBox<>();
+    private final JButton btnClearFilters = new JButton("Clear Filters");
     private final JButton btnRefreshHistory = new JButton("Refresh History");
+    private final JLabel lblCurrentPeriod = new JLabel("Current Period: -");
 
     private final JTextPane txtPayslip = new JTextPane();
 
     private final DefaultTableModel historyModel = new DefaultTableModel(
-            new Object[]{"TX", "Period", "Net Pay"}, 0
+            new Object[]{"TX", "Period", "Cycle", "Net Pay"}, 0
     ) {
         @Override
         public boolean isCellEditable(int row, int col) {
@@ -64,21 +62,18 @@ public class PayslipPanel extends JPanel {
         }
     };
     private final JTable tblHistory = new JTable(historyModel);
+    private List<Payslip> cachedHistory = new ArrayList<>();
 
     public PayslipPanel(User currentUser, PayslipOps payslipOps, EmployeeService employeeService, LeaveCreditsService leaveCreditsService) {
+        initComponents();
         this.currentUser = currentUser;
         this.payslipOps = payslipOps;
         this.employeeService = employeeService;
         this.leaveCreditsService = leaveCreditsService;
 
         buildUi();
-
-        dcAnyDate.setDateFormatString("MM/dd/yyyy");
-        if (dcAnyDate.getDateEditor() instanceof JTextFieldDateEditor editor) {
-            editor.setEditable(false);
-        }
-        dcAnyDate.setDate(new Date());
-        setActivePeriod(LocalDate.now());
+        initFilters();
+        updateCurrentPeriodLabel();
         refreshHistory();
     }
 
@@ -86,12 +81,14 @@ public class PayslipPanel extends JPanel {
         setLayout(new BorderLayout(10, 10));
 
         JPanel top = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 5));
-        top.add(new JLabel("Any date inside period:"));
-        top.add(dcAnyDate);
-        top.add(btnSetPeriod);
-        top.add(lblPeriod);
-        top.add(btnViewLatest);
-        top.add(btnViewPeriod);
+        top.add(lblCurrentPeriod);
+        top.add(new JLabel("Year:"));
+        top.add(cbYear);
+        top.add(new JLabel("Month:"));
+        top.add(cbMonth);
+        top.add(new JLabel("Cycle:"));
+        top.add(cbCycle);
+        top.add(btnClearFilters);
         top.add(btnRefreshHistory);
 
         txtPayslip.setContentType("text/html");
@@ -104,112 +101,176 @@ public class PayslipPanel extends JPanel {
         payslipScroll.setBorder(javax.swing.BorderFactory.createTitledBorder("Payslip Preview"));
 
         JSplitPane split = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, historyScroll, payslipScroll);
-        split.setResizeWeight(0.24);
-        split.setDividerLocation(320);
+        split.setResizeWeight(0.32);
+        split.setDividerLocation(430);
         split.setContinuousLayout(true);
 
         add(top, BorderLayout.NORTH);
         add(split, BorderLayout.CENTER);
 
-        btnSetPeriod.addActionListener(e -> {
-            LocalDate d = LocalDates.toLocalDate(dcAnyDate.getDate());
-            if (d == null) {
-                UiDialogs.warn(this, "Select a date.");
-                return;
-            }
-            setActivePeriod(d);
-        });
-
-        btnViewLatest.addActionListener(e -> viewLatest());
-        btnViewPeriod.addActionListener(e -> viewPeriod());
         btnRefreshHistory.addActionListener(e -> refreshHistory());
+        btnClearFilters.addActionListener(e -> resetFilters());
+        cbYear.addActionListener(e -> applyHistoryFilters());
+        cbMonth.addActionListener(e -> applyHistoryFilters());
+        cbCycle.addActionListener(e -> applyHistoryFilters());
 
         tblHistory.setSelectionMode(javax.swing.ListSelectionModel.SINGLE_SELECTION);
         tblHistory.setRowHeight(24);
         tblHistory.getSelectionModel().addListSelectionListener(e -> {
-            if (e.getValueIsAdjusting()) return;
+            if (e.getValueIsAdjusting()) {
+                return;
+            }
             onHistorySelected();
         });
     }
 
-    private void setActivePeriod(LocalDate anyDate) {
-        this.activePeriod = PayPeriod.fromDateSemiMonthly(anyDate);
-        lblPeriod.setText("Period: " + activePeriod.getStartDate() + " to " + activePeriod.getEndDate());
+    private void initFilters() {
+        cbYear.addItem("All Years");
+        cbMonth.addItem("All Months");
+        cbCycle.addItem("All Cycles");
+        cbCycle.addItem("1st Half");
+        cbCycle.addItem("2nd Half");
+        for (Month month : Month.values()) {
+            cbMonth.addItem(month.getDisplayName(TextStyle.FULL, Locale.US));
+        }
+    }
+
+    private void updateCurrentPeriodLabel() {
+        PayPeriod currentPeriod = PayPeriod.fromDateSemiMonthly(LocalDate.now());
+        lblCurrentPeriod.setText("Current Period: " + currentPeriod.getStartDate() + " to " + currentPeriod.getEndDate());
     }
 
     private int empId() {
         return currentUser == null ? 0 : currentUser.getId();
     }
 
-    private void viewLatest() {
-        try {
-            Payslip p = payslipOps.viewLatestPayslip(empId(), currentUser);
-            if (p == null) {
-                clearDetails();
-                UiDialogs.warn(this, "No payslip found.");
-                return;
-            }
-            showPayslip(p);
-        } catch (SecurityException ex) {
-            UiDialogs.error(this, ex.getMessage());
-            clearDetails();
-        }
-    }
-
-    private void viewPeriod() {
-        if (activePeriod == null) {
-            UiDialogs.warn(this, "Set the period first.");
-            return;
-        }
-        try {
-            Payslip p = payslipOps.viewPayslipForPeriod(empId(), activePeriod, currentUser);
-            if (p == null) {
-                clearDetails();
-                UiDialogs.warn(this, "No payslip found for this period.");
-                return;
-            }
-            showPayslip(p);
-        } catch (SecurityException ex) {
-            UiDialogs.error(this, ex.getMessage());
-            clearDetails();
-        }
-    }
-
     private void refreshHistory() {
-        historyModel.setRowCount(0);
         try {
-            List<Payslip> list = payslipOps.listPayslipHistory(empId(), currentUser);
-            for (Payslip p : list) {
-                String periodKey = (p.getPeriod() == null) ? "" : p.getPeriod().toKey();
-                historyModel.addRow(new Object[]{p.getTransactionId(), periodKey, peso(p.getNetPay())});
-            }
+            cachedHistory = payslipOps.listPayslipHistory(empId(), currentUser);
+            refreshYearFilterValues();
+            applyHistoryFilters();
         } catch (SecurityException ex) {
-            // Silently fail or show error if they can't view history
             UiDialogs.error(this, ex.getMessage());
+            cachedHistory = new ArrayList<>();
+            historyModel.setRowCount(0);
+            clearDetails();
         }
+    }
+
+    private void refreshYearFilterValues() {
+        String selectedYear = (String) cbYear.getSelectedItem();
+        Set<String> years = new LinkedHashSet<>();
+        for (Payslip payslip : cachedHistory) {
+            if (payslip != null && payslip.getPeriod() != null && payslip.getPeriod().getStartDate() != null) {
+                years.add(String.valueOf(payslip.getPeriod().getStartDate().getYear()));
+            }
+        }
+
+        cbYear.removeAllItems();
+        cbYear.addItem("All Years");
+        years.stream().sorted().forEach(cbYear::addItem);
+        restoreSelection(cbYear, selectedYear);
+    }
+
+    private void restoreSelection(JComboBox<String> comboBox, String selectedValue) {
+        if (selectedValue != null) {
+            comboBox.setSelectedItem(selectedValue);
+            if (comboBox.getSelectedIndex() < 0) {
+                comboBox.setSelectedIndex(0);
+            }
+        }
+    }
+
+    private void resetFilters() {
+        cbYear.setSelectedIndex(0);
+        cbMonth.setSelectedIndex(0);
+        cbCycle.setSelectedIndex(0);
+        applyHistoryFilters();
+    }
+
+    private void applyHistoryFilters() {
+        historyModel.setRowCount(0);
+        String yearFilter = (String) cbYear.getSelectedItem();
+        String monthFilter = (String) cbMonth.getSelectedItem();
+        String cycleFilter = (String) cbCycle.getSelectedItem();
+
+        for (Payslip payslip : cachedHistory) {
+            if (payslip == null || payslip.getPeriod() == null || payslip.getPeriod().getStartDate() == null) {
+                continue;
+            }
+            if (!matchesYear(payslip, yearFilter)) {
+                continue;
+            }
+            if (!matchesMonth(payslip, monthFilter)) {
+                continue;
+            }
+            if (!matchesCycle(payslip, cycleFilter)) {
+                continue;
+            }
+
+            historyModel.addRow(new Object[]{
+                    payslip.getTransactionId(),
+                    payslip.getPeriod().toKey(),
+                    getCycleLabel(payslip.getPeriod()),
+                    peso(payslip.getNetPay())
+            });
+        }
+
+        if (historyModel.getRowCount() == 0) {
+            clearDetails();
+        }
+    }
+
+    private boolean matchesYear(Payslip payslip, String filter) {
+        if (filter == null || "All Years".equals(filter)) {
+            return true;
+        }
+        return String.valueOf(payslip.getPeriod().getStartDate().getYear()).equals(filter);
+    }
+
+    private boolean matchesMonth(Payslip payslip, String filter) {
+        if (filter == null || "All Months".equals(filter)) {
+            return true;
+        }
+        return payslip.getPeriod().getStartDate().getMonth().getDisplayName(TextStyle.FULL, Locale.US).equalsIgnoreCase(filter);
+    }
+
+    private boolean matchesCycle(Payslip payslip, String filter) {
+        if (filter == null || "All Cycles".equals(filter)) {
+            return true;
+        }
+        return getCycleLabel(payslip.getPeriod()).equalsIgnoreCase(filter);
+    }
+
+    private String getCycleLabel(PayPeriod period) {
+        if (period == null || period.getStartDate() == null) {
+            return "";
+        }
+        return period.getStartDate().getDayOfMonth() <= 15 ? "1st Half" : "2nd Half";
     }
 
     private void onHistorySelected() {
         int viewRow = tblHistory.getSelectedRow();
-        if (viewRow < 0) return;
+        if (viewRow < 0) {
+            return;
+        }
 
         int modelRow = tblHistory.convertRowIndexToModel(viewRow);
         Object txObj = historyModel.getValueAt(modelRow, 0);
-        if (txObj == null) return;
+        if (txObj == null) {
+            return;
+        }
 
         String tx = String.valueOf(txObj).trim();
-        if (tx.isEmpty()) return;
+        if (tx.isEmpty()) {
+            return;
+        }
 
-        try {
-            List<Payslip> list = payslipOps.listPayslipHistory(empId(), currentUser);
-            for (Payslip p : list) {
-                if (tx.equals(p.getTransactionId())) {
-                    showPayslip(p);
-                    return;
-                }
+        for (Payslip payslip : cachedHistory) {
+            if (payslip != null && tx.equals(payslip.getTransactionId())) {
+                showPayslip(payslip);
+                return;
             }
-        } catch (SecurityException ex) {
-             UiDialogs.error(this, ex.getMessage());
         }
     }
 

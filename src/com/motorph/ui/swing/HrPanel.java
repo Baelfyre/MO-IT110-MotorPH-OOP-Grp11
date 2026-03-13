@@ -5,7 +5,6 @@
 package com.motorph.ui.swing;
 
 import com.motorph.domain.enums.JobPosition;
-import com.motorph.domain.enums.Role;
 import com.motorph.domain.models.Employee;
 import com.motorph.domain.models.LogEntry;
 import com.motorph.domain.models.User;
@@ -54,6 +53,7 @@ public class HrPanel extends JPanel {
     private final JButton btnAdd = new JButton("Add");
     private final JButton btnEdit = new JButton("Edit");
     private final JButton btnDelete = new JButton("Delete");
+    private final JButton btnViewDetails = new JButton("View Details");
     private final JButton btnLogs = new JButton("System Logs");
 
     public HrPanel(User currentUser, HROps hrOps, CsvAddressReferenceRepository addressRepo) {
@@ -74,26 +74,86 @@ public class HrPanel extends JPanel {
     private void buildUi() {
         setLayout(new BorderLayout(10, 10));
 
-        JPanel top = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 5));
-        top.add(new JLabel("Search EmpID or Name:"));
-        top.add(txtSearch);
+        JPanel searchRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 5));
+        searchRow.add(new JLabel("Search EmpID or Name:"));
+        searchRow.add(txtSearch);
+
         JButton btnFind = new JButton("Find");
         JButton btnClear = new JButton("Clear");
 
-        top.add(btnFind);
-        top.add(btnClear);
-        top.add(chkIncludeArchived);
-        top.add(btnRefresh);
-        top.add(btnAdd);
-        top.add(btnEdit);
-        top.add(btnDelete);
-        top.add(btnLogs);
+        searchRow.add(btnFind);
+        searchRow.add(btnClear);
+        searchRow.add(chkIncludeArchived);
+        searchRow.add(btnRefresh);
+
+        JPanel actionRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 5));
+        actionRow.add(btnAdd);
+        actionRow.add(btnEdit);
+        actionRow.add(btnDelete);
+        actionRow.add(btnViewDetails);
+        actionRow.add(btnLogs);
+
+        JPanel top = new JPanel();
+        top.setLayout(new BoxLayout(top, BoxLayout.Y_AXIS));
+        top.add(searchRow);
+        top.add(actionRow);
 
         tbl.setRowSorter(sorter);
         tbl.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+        tbl.setFillsViewportHeight(true);
+        tbl.setRowHeight(24);
+        tbl.getTableHeader().setReorderingAllowed(false);
+
+        // Annotation: Resize all columns to fit the visible table area more evenly.
+        tbl.setAutoResizeMode(JTable.AUTO_RESIZE_ALL_COLUMNS);
+
+        if (tbl.getColumnModel().getColumnCount() >= 6) {
+            // EmpID
+            tbl.getColumnModel().getColumn(0).setMinWidth(70);
+            tbl.getColumnModel().getColumn(0).setMaxWidth(90);
+            tbl.getColumnModel().getColumn(0).setPreferredWidth(80);
+
+            // Last Name
+            tbl.getColumnModel().getColumn(1).setMinWidth(110);
+            tbl.getColumnModel().getColumn(1).setPreferredWidth(130);
+
+            // First Name
+            tbl.getColumnModel().getColumn(2).setMinWidth(110);
+            tbl.getColumnModel().getColumn(2).setPreferredWidth(130);
+
+            // Status
+            tbl.getColumnModel().getColumn(3).setMinWidth(90);
+            tbl.getColumnModel().getColumn(3).setMaxWidth(120);
+            tbl.getColumnModel().getColumn(3).setPreferredWidth(100);
+
+            // Position
+            tbl.getColumnModel().getColumn(4).setMinWidth(160);
+            tbl.getColumnModel().getColumn(4).setPreferredWidth(180);
+
+            // Supervisor
+            tbl.getColumnModel().getColumn(5).setMinWidth(160);
+            tbl.getColumnModel().getColumn(5).setPreferredWidth(180);
+        }
+
+        JScrollPane tableScroll = new JScrollPane(tbl);
+        tableScroll.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_AS_NEEDED);
+        tableScroll.setVerticalScrollBarPolicy(ScrollPaneConstants.VERTICAL_SCROLLBAR_AS_NEEDED);
+
+        JTextArea detailsArea = new JTextArea(8, 40);
+        detailsArea.setEditable(false);
+        detailsArea.setLineWrap(true);
+        detailsArea.setWrapStyleWord(true);
+        detailsArea.setCaretPosition(0);
+
+        JPanel detailsPanel = new JPanel(new BorderLayout());
+        detailsPanel.setBorder(BorderFactory.createTitledBorder("Selected Employee Details"));
+        detailsPanel.add(new JScrollPane(detailsArea), BorderLayout.CENTER);
+
+        JSplitPane splitPane = new JSplitPane(JSplitPane.VERTICAL_SPLIT, tableScroll, detailsPanel);
+        splitPane.setResizeWeight(0.72);
 
         add(top, BorderLayout.NORTH);
-        add(new JScrollPane(tbl), BorderLayout.CENTER);
+        add(splitPane, BorderLayout.CENTER);
 
         // Annotation: Search applies a table row filter.
         btnFind.addActionListener(e -> applyFilter());
@@ -107,7 +167,36 @@ public class HrPanel extends JPanel {
         btnAdd.addActionListener(e -> onAdd());
         btnEdit.addActionListener(e -> onEdit());
         btnDelete.addActionListener(e -> onDelete());
+        btnViewDetails.addActionListener(e -> showSelectedEmployeeDetails());
         btnLogs.addActionListener(e -> showSystemLogs());
+
+        tbl.getSelectionModel().addListSelectionListener(e -> {
+            if (!e.getValueIsAdjusting()) {
+                Integer empId = selectedEmpId();
+                if (empId == null) {
+                    detailsArea.setText("");
+                    return;
+                }
+
+                Employee employee = hrOps.getEmployee(empId);
+                if (employee == null) {
+                    detailsArea.setText("");
+                    return;
+                }
+
+                detailsArea.setText(buildEmployeeDetailsText(employee));
+                detailsArea.setCaretPosition(0);
+            }
+        });
+
+        tbl.addMouseListener(new java.awt.event.MouseAdapter() {
+            @Override
+            public void mouseClicked(java.awt.event.MouseEvent e) {
+                if (e.getClickCount() == 2) {
+                    showSelectedEmployeeDetails();
+                }
+            }
+        });
     }
 
     private void applyPermissions() {
@@ -117,9 +206,9 @@ public class HrPanel extends JPanel {
             btnDelete.setVisible(false);
             return;
         }
+
         // Annotation: Permission-based RBAC instead of hardcoded roles.
         boolean canManage = currentUser.hasPermission("CAN_MANAGE_EMPLOYEES");
-
         btnAdd.setVisible(canManage);
         btnEdit.setVisible(canManage);
         btnDelete.setVisible(canManage);
@@ -142,11 +231,11 @@ public class HrPanel extends JPanel {
         for (Employee e : rows) {
             model.addRow(new Object[]{
                 e.getEmployeeNumber(),
-                e.getLastName(),
-                e.getFirstName(),
-                e.getStatus(),
-                e.getPosition(),
-                e.getImmediateSupervisor()
+                valueOf(e.getLastName()),
+                valueOf(e.getFirstName()),
+                valueOf(e.getStatus()),
+                valueOf(e.getPosition()),
+                valueOf(e.getImmediateSupervisor())
             });
         }
     }
@@ -156,11 +245,13 @@ public class HrPanel extends JPanel {
         if (viewRow < 0) {
             return null;
         }
+
         int modelRow = tbl.convertRowIndexToModel(viewRow);
         Object v = model.getValueAt(modelRow, 0);
         if (v == null) {
             return null;
         }
+
         try {
             return Integer.parseInt(String.valueOf(v));
         } catch (NumberFormatException ex) {
@@ -173,15 +264,20 @@ public class HrPanel extends JPanel {
         EmployeeFormPanel form = new EmployeeFormPanel(addressRepo);
         form.setEmployeeNumberEditable(true);
 
-        int r = JOptionPane.showConfirmDialog(this, form, "Add Employee", JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE);
+        int r = JOptionPane.showConfirmDialog(
+                this,
+                form,
+                "Add Employee",
+                JOptionPane.OK_CANCEL_OPTION,
+                JOptionPane.PLAIN_MESSAGE
+        );
         if (r != JOptionPane.OK_OPTION) {
             return;
         }
 
-        // Updated to pass hrOps and true for duplicate ID checking
         Employee emp = form.buildEmployeeOrNull(this, hrOps, true);
         if (emp == null) {
-            return; // Validation failed inside the form
+            return;
         }
 
         try {
@@ -193,7 +289,6 @@ public class HrPanel extends JPanel {
                 UiDialogs.error(this, "Create failed. Check duplicates or required fields.");
             }
         } catch (SecurityException ex) {
-            // Catches the backend RBAC check to prevent crashes
             UiDialogs.error(this, ex.getMessage());
         }
     }
@@ -216,7 +311,13 @@ public class HrPanel extends JPanel {
         form.setEmployee(existing);
         form.setEmployeeNumberEditable(false);
 
-        int r = JOptionPane.showConfirmDialog(this, form, "Edit Employee", JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE);
+        int r = JOptionPane.showConfirmDialog(
+                this,
+                form,
+                "Edit Employee",
+                JOptionPane.OK_CANCEL_OPTION,
+                JOptionPane.PLAIN_MESSAGE
+        );
         if (r != JOptionPane.OK_OPTION) {
             return;
         }
@@ -256,7 +357,63 @@ public class HrPanel extends JPanel {
         }
     }
 
+    // Annotation: Shows complete selected employee details in a read-only dialog.
+    private void showSelectedEmployeeDetails() {
+        Integer empId = selectedEmpId();
+        if (empId == null) {
+            UiDialogs.warn(this, "Select a row first.");
+            return;
+        }
+
+        Employee employee = hrOps.getEmployee(empId);
+        if (employee == null) {
+            UiDialogs.error(this, "Employee not found.");
+            return;
+        }
+
+        JTextArea area = new JTextArea(buildEmployeeDetailsText(employee), 18, 58);
+        area.setEditable(false);
+        area.setWrapStyleWord(true);
+        area.setLineWrap(true);
+        area.setCaretPosition(0);
+
+        JOptionPane.showMessageDialog(
+                this,
+                new JScrollPane(area),
+                "Employee Details - EmpID " + employee.getEmployeeNumber(),
+                JOptionPane.INFORMATION_MESSAGE
+        );
+    }
+
+    // Annotation: Formats the complete employee profile for the details dialog.
+    private String buildEmployeeDetailsText(Employee employee) {
+        if (employee == null) {
+            return "";
+        }
+
+        return "Employee #: " + employee.getEmployeeNumber()
+                + "\nLast Name: " + valueOf(employee.getLastName())
+                + "\nFirst Name: " + valueOf(employee.getFirstName())
+                + "\nBirthday: " + valueOf(employee.getBirthday())
+                + "\nAddress: " + valueOf(employee.getAddress())
+                + "\nPhone #: " + valueOf(employee.getPhoneNumber())
+                + "\nSSS #: " + valueOf(employee.getSssNumber())
+                + "\nPhilHealth #: " + valueOf(employee.getPhilHealthNumber())
+                + "\nTIN #: " + valueOf(employee.getTinNumber())
+                + "\nPag-IBIG #: " + valueOf(employee.getPagIbigNumber())
+                + "\nStatus: " + valueOf(employee.getStatus())
+                + "\nPosition: " + valueOf(employee.getPosition())
+                + "\nImmediate Supervisor: " + valueOf(employee.getImmediateSupervisor())
+                + "\nBasic Salary: " + String.format(java.util.Locale.US, "%.2f", employee.getBasicSalary())
+                + "\nRice Allowance: " + String.format(java.util.Locale.US, "%.2f", employee.getRiceAllowance())
+                + "\nPhone Allowance: " + String.format(java.util.Locale.US, "%.2f", employee.getPhoneAllowance())
+                + "\nClothing Allowance: " + String.format(java.util.Locale.US, "%.2f", employee.getClothingAllowance())
+                + "\nGross Semi-Monthly: " + String.format(java.util.Locale.US, "%.2f", employee.getGrossSemiMonthlyRate())
+                + "\nHourly Rate: " + String.format(java.util.Locale.US, "%.2f", employee.getHourlyRate());
+    }
+
     private interface EmployeeSaveAction {
+
         boolean save(Employee employee);
     }
 
@@ -293,12 +450,14 @@ public class HrPanel extends JPanel {
         form.setPositionOptions(positionOptions());
         form.setSupervisorOptions(supervisorOptions(existing == null ? null : existing.getId()));
         form.setMinimumBasicSalary(currentMinimumBasicSalary(existing));
+
         if (existing != null) {
             String creditsHint = "Probationary".equalsIgnoreCase(existing.getStatus())
                     ? "Current leave credits: 0.00 hrs"
                     : "Current leave credits: seeded from leave credits file";
             form.setLeaveCreditsSummary(creditsHint);
         }
+
         return form;
     }
 
@@ -337,6 +496,7 @@ public class HrPanel extends JPanel {
     private List<String> supervisorOptions(Integer excludeEmpId) {
         List<Employee> employees = hrOps.listEmployees(false);
         List<String> supervisors = new ArrayList<>();
+
         for (Employee employee : employees) {
             if (employee == null) {
                 continue;
@@ -344,11 +504,13 @@ public class HrPanel extends JPanel {
             if (excludeEmpId != null && employee.getId() == excludeEmpId) {
                 continue;
             }
+
             JobPosition position = JobPosition.fromLabel(employee.getPosition());
             if (position != null && position.isSupervisorEligible()) {
                 supervisors.add(employee.getLastName() + ", " + employee.getFirstName());
             }
         }
+
         supervisors.sort(String.CASE_INSENSITIVE_ORDER);
         return supervisors;
     }
@@ -389,11 +551,11 @@ public class HrPanel extends JPanel {
 
         for (LogEntry entry : logs) {
             logModel.addRow(new Object[]{
-                    entry.getId(),
-                    entry.getTimestamp(),
-                    entry.getUser(),
-                    entry.getAction(),
-                    entry.getDetails()
+                entry.getId(),
+                entry.getTimestamp(),
+                entry.getUser(),
+                entry.getAction(),
+                entry.getDetails()
             });
         }
 

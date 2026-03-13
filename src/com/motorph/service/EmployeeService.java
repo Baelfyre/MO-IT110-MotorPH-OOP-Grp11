@@ -10,6 +10,7 @@ import com.motorph.repository.EmployeeRepository;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 
 /**
@@ -25,7 +26,7 @@ public class EmployeeService {
     // Key: Employee ID, Value: Employee
     private final Map<Integer, Employee> employeeCache = new HashMap<>();
 
-    // Key: Supervisor display name (example: "Garcia, Manuel III"), Value: direct subordinates
+    // Key: Normalized supervisor display name, Value: direct subordinates
     private final Map<String, List<Employee>> supervisorMap = new HashMap<>();
 
     public EmployeeService(EmployeeRepository employeeRepo) {
@@ -40,10 +41,15 @@ public class EmployeeService {
         supervisorMap.clear();
 
         for (Employee emp : allEmployees) {
+            if (emp == null) {
+                continue;
+            }
+
             employeeCache.put(emp.getId(), emp);
 
             String supervisorName = normalizeSupervisorName(emp.getImmediateSupervisor());
-            if (!supervisorName.isEmpty()) {
+            String selfName = normalizeEmployeeDisplayName(emp);
+            if (!supervisorName.isEmpty() && !supervisorName.equals(selfName)) {
                 supervisorMap
                         .computeIfAbsent(supervisorName, k -> new ArrayList<>())
                         .add(emp);
@@ -69,8 +75,7 @@ public class EmployeeService {
             return false;
         }
 
-        String fullName = user.getLastName() + ", " + user.getFirstName();
-        return supervisorMap.containsKey(fullName);
+        return supervisorMap.containsKey(normalizeEmployeeDisplayName(user));
     }
 
     public List<Employee> getSubordinates(String supervisorName) {
@@ -78,30 +83,44 @@ public class EmployeeService {
         List<Employee> subs = supervisorMap.getOrDefault(key, new ArrayList<>());
         return new ArrayList<>(subs);
     }
+
     public Role determineRoleFromPosition(String position) {
         if (position == null) {
             return Role.EMPLOYEE;
         }
 
-        String p = position.trim().toUpperCase();
+        String p = position.trim().toUpperCase(Locale.US);
 
-        if (p.contains("HR")) {
-            return Role.HR;
-        }
-        if (p.contains("PAYROLL") || p.contains("FINANCE") || p.contains("ACCOUNTING") || p.contains("ACCOUNT MANAGER") || p.contains("ACCOUNT TEAM LEADER") || p.contains("CHIEF FINANCE OFFICER")) {
-            return Role.PAYROLL;
-        }
         if (p.contains("IT")) {
             return Role.IT;
         }
-        if (p.contains("CHIEF") || p.contains("CEO") || p.contains("COO") || p.contains("CMO") || p.contains("TEAM LEADER") || p.contains("MANAGER") || p.contains("HEAD")) {
+        if (p.contains("HR")) {
+            return Role.HR;
+        }
+        if (p.contains("PAYROLL") || p.contains("FINANCE") || p.contains("ACCOUNTING")
+                || p.contains("ACCOUNT MANAGER") || p.contains("ACCOUNT TEAM LEADER")
+                || p.contains("CHIEF FINANCE OFFICER")) {
+            return Role.PAYROLL;
+        }
+        if (isLeadershipPosition(p)) {
             return Role.SUPERVISOR;
         }
 
         return Role.EMPLOYEE;
     }
 
-    private String normalizeSupervisorName(String supervisorName) {
+    // Annotation: Returns a consistent display name used in hierarchy matching.
+    public String buildEmployeeDisplayName(Employee employee) {
+        if (employee == null) {
+            return "";
+        }
+        String last = employee.getLastName() == null ? "" : employee.getLastName().trim();
+        String first = employee.getFirstName() == null ? "" : employee.getFirstName().trim();
+        return (last + ", " + first).trim();
+    }
+
+    // Annotation: Normalizes supervisor names so CSV punctuation differences still map to the correct team lead.
+    public String normalizeSupervisorName(String supervisorName) {
         if (supervisorName == null) {
             return "";
         }
@@ -111,12 +130,33 @@ public class EmployeeService {
             return "";
         }
 
-        // Placeholder values treated as "no supervisor"
-        String upper = s.toUpperCase();
-        if (upper.equals("N/A") || upper.equals("NA")) {
+        String upper = s.toUpperCase(Locale.US);
+        if (upper.equals("N/A") || upper.equals("NA") || upper.equals("NONE")) {
             return "";
         }
 
-        return s;
+        return normalizeNameToken(s);
+    }
+
+    private String normalizeEmployeeDisplayName(Employee employee) {
+        return normalizeNameToken(buildEmployeeDisplayName(employee));
+    }
+
+    private boolean isLeadershipPosition(String positionUpper) {
+        return positionUpper.contains("CHIEF")
+                || positionUpper.contains("CEO")
+                || positionUpper.contains("COO")
+                || positionUpper.contains("CMO")
+                || positionUpper.contains("TEAM LEADER")
+                || positionUpper.contains("MANAGER")
+                || positionUpper.contains("HEAD");
+    }
+
+    private String normalizeNameToken(String raw) {
+        if (raw == null) {
+            return "";
+        }
+        String token = raw.toUpperCase(Locale.US).replaceAll("[^A-Z0-9]", "");
+        return token == null ? "" : token.trim();
     }
 }
